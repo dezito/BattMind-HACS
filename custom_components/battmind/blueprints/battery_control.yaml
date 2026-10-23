@@ -1,0 +1,214 @@
+blueprint:
+  name: BattMind - styr husbatteriet
+  description: >-
+    Lader husbatteriet styre af **BattMind** - uanset hvilken inverter du har.
+
+
+    BattMind bestemmer *hvad* batteriet skal gøre. Her vælger du *hvordan* din
+    inverter gør det: for hver BattMind handling tilføjer du de handlinger, der
+    skal køres (f.eks. "Tal: Indstil værdi" på batteriets maks. afladeeffekt,
+    "Kontakt: Tænd" eller en service fra din inverter-integration).
+
+
+    | BattMind handling | Batteriet skal |
+
+    |:---|:---|
+
+    | Lad fra elnettet | lade fra nettet (billig strøm) |
+
+    | Tvungen afladning | aflade/sælge til nettet (dyr strøm) |
+
+    | Afladning tilladt | køre normalt og må aflade til huset |
+
+    | Kun solcelleopladning | lade fra solceller, men ikke aflade |
+
+    | Solcelleopladning blokeret | ikke lade fra solceller (overskuddet sælges) |
+
+
+    Felter du lader stå tomme, gør ingenting.
+
+
+    **Elbil (valgfri):** Vælg din laders effektsensor og hvad der skal ske, når
+    bilen lader - f.eks. stoppe afladning, så batteriet ikke tømmes ind i bilen.
+  domain: automation
+  author: dezito
+  homeassistant:
+    min_version: "2024.10.0"
+  source_url: https://github.com/dezito/BattMind-HACS/blob/main/custom_components/battmind/blueprints/battery_control.yaml
+  input:
+    battmind:
+      name: BattMind
+      icon: mdi:home-battery
+      input:
+        battmind_action:
+          name: BattMind handling
+          description: >-
+            Sensoren der fortæller hvad batteriet skal gøre, f.eks.
+            `sensor.battmind_powerwall_action`.
+          selector:
+            entity:
+              filter:
+                - integration: battmind
+                  domain: sensor
+                  device_class: enum
+        repeat_actions:
+          name: Gentag hver halve time
+          description: >-
+            Kør handlingen igen hver halve time. Slå til, hvis din inverters
+            tvungne op-/afladning selv stopper efter et stykke tid (f.eks.
+            Huawei Solar), eller hvis indstillingerne kan blive ændret andre steder.
+          default: false
+          selector:
+            boolean:
+    actions:
+      name: Handlinger
+      icon: mdi:battery-sync
+      input:
+        grid_charging:
+          name: Lad fra elnettet
+          description: >-
+            BattMind har planlagt opladning, fordi strømmen er billig nu.
+            F.eks. tving opladning fra nettet med fuld effekt.
+          default: []
+          selector:
+            action:
+        force_discharge:
+          name: Tvungen afladning
+          description: >-
+            Strømmen er dyr nu og det kan betale sig at sælge fra batteriet.
+            F.eks. tving afladning til nettet med fuld effekt.
+          default: []
+          selector:
+            action:
+        discharge_allowed:
+          name: Afladning tilladt (normal drift)
+          description: >-
+            Batteriet må bruges til huset. F.eks. stop tvungen op-/afladning og
+            sæt lade- og afladeeffekt til maks.
+          default: []
+          selector:
+            action:
+        force_solar_only_charging:
+          name: Kun solcelleopladning
+          description: >-
+            Strømmen gemmes til dyrere timer. F.eks. stop tvungen op-/afladning,
+            sæt afladeeffekten og opladning fra nettet til 0.
+          default: []
+          selector:
+            action:
+        blocked_solar_charge:
+          name: Solcelleopladning blokeret
+          description: >-
+            Det betaler sig bedre at sælge solstrømmen nu og lade senere.
+            F.eks. sæt ladeeffekten til 0 og afladeeffekten til maks.
+          default: []
+          selector:
+            action:
+    ev:
+      name: Elbil (valgfri)
+      icon: mdi:car-electric
+      collapsed: true
+      input:
+        ev_chargers:
+          name: Elbilladerens effekt
+          description: >-
+            Effektsensor for en eller flere elbilladere. Lad feltet være tomt,
+            hvis du ikke har en elbil.
+          default: []
+          selector:
+            entity:
+              multiple: true
+              filter:
+                - domain: sensor
+                  device_class: power
+        ev_threshold:
+          name: Bilen lader over
+          description: Over denne effekt regnes bilen for at lade.
+          default: 1000
+          selector:
+            number:
+              min: 100
+              max: 5000
+              step: 100
+              unit_of_measurement: W
+              mode: box
+        ev_charging:
+          name: Når bilen lader
+          description: >-
+            Køres i stedet for "Afladning tilladt" og "Solcelleopladning blokeret",
+            mens bilen lader. F.eks. sæt batteriets afladeeffekt til 0, så
+            batteriet ikke tømmes ind i bilen. Ved opladning fra nettet, tvungen
+            afladning og kun solcelleopladning bruges BattMinds handling stadig.
+          default: []
+          selector:
+            action:
+
+mode: queued
+max: 5
+max_exceeded: silent
+
+triggers:
+  - id: battmind
+    alias: BattMind handling ændret
+    trigger: state
+    entity_id: !input battmind_action
+    not_to:
+      - unavailable
+      - unknown
+  - id: ev
+    alias: Elbilens ladeeffekt ændret (stabil i 30 sek.)
+    trigger: state
+    entity_id: !input ev_chargers
+    to: ~
+    for: "00:00:30"
+  - id: repeat
+    alias: Hver halve time
+    trigger: time_pattern
+    minutes: /30
+
+variables:
+  battmind_action: !input battmind_action
+  repeat_actions: !input repeat_actions
+  ev_chargers: !input ev_chargers
+  ev_threshold: !input ev_threshold
+  ev_actions: !input ev_charging
+  action: "{{ states(battmind_action) }}"
+  car_charging: >-
+    {{ ev_actions | count > 0
+       and ev_chargers | map('states') | map('float', 0)
+           | select('gt', ev_threshold | float) | list | count > 0 }}
+
+conditions:
+  - alias: BattMind har en gyldig handling
+    condition: template
+    value_template: >-
+      {{ action in ['grid_charging', 'force_discharge', 'discharge_allowed',
+                    'blocked_solar_charge', 'force_solar_only_charging'] }}
+  - alias: Gentagelse er slået til
+    condition: template
+    value_template: "{{ trigger.id != 'repeat' or repeat_actions }}"
+  - alias: Bilen er startet eller stoppet med at lade
+    condition: template
+    value_template: >-
+      {{ trigger.id != 'ev'
+         or (trigger.from_state.state | float(0) > ev_threshold | float)
+            != (trigger.to_state.state | float(0) > ev_threshold | float) }}
+
+actions:
+  - choose:
+      - alias: Lad fra elnettet
+        conditions: "{{ action == 'grid_charging' }}"
+        sequence: !input grid_charging
+      - alias: Tvungen afladning
+        conditions: "{{ action == 'force_discharge' }}"
+        sequence: !input force_discharge
+      - alias: Kun solcelleopladning
+        conditions: "{{ action == 'force_solar_only_charging' }}"
+        sequence: !input force_solar_only_charging
+      - alias: Bilen lader
+        conditions: "{{ car_charging }}"
+        sequence: !input ev_charging
+      - alias: Solcelleopladning blokeret
+        conditions: "{{ action == 'blocked_solar_charge' }}"
+        sequence: !input blocked_solar_charge
+    default: !input discharge_allowed

@@ -1,0 +1,15 @@
+{
+  "domain": "battmind",
+  "name": "BattMind",
+  "after_dependencies": ["recorder", "sun", "weather"],
+  "codeowners": ["@dezito"],
+  "config_flow": true,
+  "dependencies": ["frontend", "lovelace"],
+  "documentation": "https://github.com/dezito/BattMind-HACS",
+  "integration_type": "service",
+  "iot_class": "calculated",
+  "issue_tracker": "https://github.com/dezito/BattMind-HACS/issues",
+  "requirements": [],
+  "single_config_entry": false,
+  "version": "1.0.0"
+}

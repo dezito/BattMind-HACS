@@ -1,0 +1,20 @@
+debug_info:
+  fields:
+    config_entry_id:
+      selector:
+        config_entry:
+          integration: battmind
+
+recalc_charging_history_today:
+  fields:
+    config_entry_id:
+      selector:
+        config_entry:
+          integration: battmind
+
+enforce_planning:
+  fields:
+    config_entry_id:
+      selector:
+        config_entry:
+          integration: battmind

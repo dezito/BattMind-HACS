@@ -1,0 +1,120 @@
+{
+  "entity": {
+    "sensor": {
+      "current_charging_rule": {
+        "default": "mdi:battery-sync"
+      },
+      "powerwall_action": {
+        "default": "mdi:home-battery"
+      },
+      "overview": {
+        "default": "mdi:text-box-outline"
+      },
+      "charging_history": {
+        "default": "mdi:history"
+      },
+      "emoji_description": {
+        "default": "mdi:emoticon-outline"
+      },
+      "battery_level_needed": {
+        "default": "mdi:chart-bell-curve"
+      },
+      "kwh_charged_by_solar": {
+        "default": "mdi:white-balance-sunny"
+      }
+    },
+    "switch": {
+      "deactivate_script": {
+        "default": "mdi:cancel"
+      },
+      "solar_charging": {
+        "default": "mdi:brain"
+      },
+      "cheapest_hour_fill_planner": {
+        "default": "mdi:hand-coin"
+      },
+      "cheapest_hour_fill_up": {
+        "default": "mdi:power-plug-battery"
+      },
+      "most_expensive_planner": {
+        "default": "mdi:chart-bar"
+      },
+      "needed_before_max_level_planner": {
+        "default": "mdi:chart-bell-curve"
+      },
+      "only_discharge_on_profit": {
+        "default": "mdi:cash-plus"
+      },
+      "prioritize_discharge_hours_by_energy_cost": {
+        "default": "mdi:chart-waterfall"
+      },
+      "sell_excess_kwh_available": {
+        "default": "mdi:basket-unfill"
+      },
+      "use_midnight_battery_level": {
+        "default": "mdi:chart-histogram"
+      },
+      "most_profit": {
+        "default": "mdi:cash-multiple"
+      },
+      "force_powerwall_max_hours_old_discharge": {
+        "default": "mdi:clock-out"
+      },
+      "optimize_solar_charging": {
+        "default": "mdi:solar-power"
+      }
+    },
+    "number": {
+      "cheap_price_periods": {
+        "default": "mdi:counter"
+      },
+      "cheapest_price_rise_threshold": {
+        "default": "mdi:decimal-comma-increase"
+      },
+      "cheap_price_period_rise_threshold": {
+        "default": "mdi:decimal-comma-increase"
+      },
+      "min_profit_per_kwh": {
+        "default": "mdi:cash-plus"
+      },
+      "min_total_profit": {
+        "default": "mdi:hand-coin-outline"
+      },
+      "min_sell_kwh": {
+        "default": "mdi:wallet-outline"
+      },
+      "powerwall_max_hours_old": {
+        "default": "mdi:clock-time-four-outline"
+      }
+    },
+    "select": {
+      "forecast_type": {
+        "default": "mdi:form-select"
+      }
+    },
+    "text": {
+      "exclude_sell_hours": {
+        "default": "mdi:timer-remove-outline"
+      }
+    },
+    "button": {
+      "enforce_planning": {
+        "default": "mdi:calendar-refresh"
+      },
+      "restart_script": {
+        "default": "mdi:restart"
+      }
+    }
+  },
+  "services": {
+    "debug_info": {
+      "service": "mdi:bug"
+    },
+    "recalc_charging_history_today": {
+      "service": "mdi:database-sync"
+    },
+    "enforce_planning": {
+      "service": "mdi:calendar-refresh"
+    }
+  }
+}

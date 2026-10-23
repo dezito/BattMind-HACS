@@ -1,0 +1,1966 @@
+views:
+  - type: sections
+    path: ''
+    sections:
+      - type: grid
+        cards:
+          - type: custom:apexcharts-card
+            graph_span: 2.5d
+            experimental:
+              brush: true
+              hidden_by_default: true
+            brush:
+              selection_span: 2.5d
+            header:
+              show: true
+              title: Husbatteri SOC prognose 🟢Lade 🟡Aflade 🔴Stop
+              show_states: false
+            span:
+              start: hour
+            yaxis:
+              - id: soc
+                decimals: 1
+                min: 0
+                max: 100
+              - id: state
+                opposite: true
+                min: 0
+                max: 1
+                show: false
+            apex_config:
+              tooltip:
+                shared: true
+                intersect: false
+                fixed:
+                  enabled: true
+                  position: topLeft
+                x:
+                  show: true
+                  format: ddd dd/MM HH:mm
+                enabledOnSeries:
+                  - 0
+              stroke:
+                curve: smooth
+              dataLabels:
+                enabled: false
+            all_series_config:
+              group_by:
+                duration: 15min
+                func: avg
+                fill: last
+            series:
+              - entity: sensor.battmind_powerwall_action
+                type: area
+                name: Batteri prognose
+                yaxis_id: soc
+                color: blue
+                data_generator: >
+                  const flow = entity.attributes.battery_level_flow || [];
+
+                  return flow.map(p => [new Date(p.hour).setMinutes(59, 59, 59),
+                  p.battery_level]);
+                stroke_width: 2
+                float_precision: 0
+                show:
+                  in_brush: true
+                  legend_value: false
+                  in_header: true
+              - entity: sensor.battmind_powerwall_action
+                name: Charge
+                type: area
+                yaxis_id: state
+                color: green
+                opacity: 0.5
+                data_generator: |
+                  const flow = entity.attributes.battery_level_flow || [];
+                  if (!flow.length) return [];
+
+                  const chargeList = entity.attributes.charge_timestamps || [];
+                  const chargeHours = new Set(
+                    chargeList.map(ts => {
+                      const d = new Date(ts);
+                      d.setMinutes(0, 0, 0);
+                      return d.getTime();
+                    })
+                  );
+
+                  const first = new Date(flow[0].hour);
+                  first.setMinutes(0, 0, 0);
+                  const last = new Date(flow[flow.length - 1].hour);
+                  last.setMinutes(0, 0, 0);
+                  const startMs = first.getTime();
+                  const endMs   = last.getTime() + 60 * 60 * 1000;
+
+                  const step = 5 * 60 * 1000;
+                  const points = [];
+
+                  for (let t = startMs; t <= endMs; t += step) {
+                    const d = new Date(t);
+                    const h = new Date(d);
+                    h.setMinutes(0, 0, 0);
+                    const hMs = h.getTime();
+
+                    const val = chargeHours.has(hMs) ? 1 : 0;
+                    points.push([d, val]);
+                  }
+
+                  return points;
+                stroke_width: 0
+                float_precision: 0
+                show:
+                  in_brush: true
+                  legend_value: false
+              - entity: sensor.battmind_powerwall_action
+                name: Force discharge
+                type: area
+                yaxis_id: state
+                color: orange
+                opacity: 0.33
+                data_generator: >
+                  const flow = entity.attributes.battery_level_flow || [];
+
+                  if (!flow.length) return [];
+
+
+                  // Sæt med timestart (ms) for hver state-type
+
+                  const forceDischargeList =
+                  entity.attributes.force_discharge_timestamps || [];
+
+
+                  const forceDischargeHours = new Set(
+                    forceDischargeList.map(ts => {
+                      const d = new Date(ts);
+                      d.setMinutes(0, 0, 0);
+                      return d.getTime();
+                    })
+                  );
+
+
+                  // 5-min grid fra første -> sidste time
+
+                  const first = new Date(flow[0].hour);
+
+                  first.setMinutes(0, 0, 0);
+
+                  const last = new Date(flow[flow.length - 1].hour);
+
+                  last.setMinutes(0, 0, 0);
+
+                  const startMs = first.getTime();
+
+                  const endMs   = last.getTime() + 60 * 60 * 1000; // +1 time
+
+
+                  const step = 5 * 60 * 1000;
+
+                  const points = [];
+
+
+                  for (let t = startMs; t <= endMs; t += step) {
+                    const d = new Date(t);
+                    const h = new Date(d);
+                    h.setMinutes(0, 0, 0);
+                    const hMs = h.getTime();
+
+                    // Charge vinder over discharge
+                    let val = 0;
+                    if (forceDischargeHours.has(hMs)) {
+                      val = 1;
+                    }
+                    points.push([d, val]);
+                  }
+
+
+                  return points;
+                stroke_width: 0
+                float_precision: 0
+                show:
+                  hidden_by_default: false
+                  in_brush: true
+                  legend_value: false
+              - entity: sensor.battmind_powerwall_action
+                name: Discharge
+                type: area
+                yaxis_id: state
+                color: yellow
+                opacity: 0.33
+                data_generator: >
+                  const flow = entity.attributes.battery_level_flow || [];
+
+                  if (!flow.length) return [];
+
+
+                  // Sæt med timestart (ms) for hver state-type
+
+                  const dischargeList = entity.attributes.discharge_timestamps
+                  || [];
+
+                  const chargeList    = entity.attributes.charge_timestamps ||
+                  [];
+
+
+                  const dischargeHours = new Set(
+                    dischargeList.map(ts => {
+                      const d = new Date(ts);
+                      d.setMinutes(0, 0, 0);
+                      return d.getTime();
+                    })
+                  );
+
+                  const chargeHours = new Set(
+                    chargeList.map(ts => {
+                      const d = new Date(ts);
+                      d.setMinutes(0, 0, 0);
+                      return d.getTime();
+                    })
+                  );
+
+
+                  // 5-min grid fra første -> sidste time
+
+                  const first = new Date(flow[0].hour);
+
+                  first.setMinutes(0, 0, 0);
+
+                  const last = new Date(flow[flow.length - 1].hour);
+
+                  last.setMinutes(0, 0, 0);
+
+                  const startMs = first.getTime();
+
+                  const endMs   = last.getTime() + 60 * 60 * 1000; // +1 time
+
+
+                  const step = 5 * 60 * 1000;
+
+                  const points = [];
+
+
+                  for (let t = startMs; t <= endMs; t += step) {
+                    const d = new Date(t);
+                    const h = new Date(d);
+                    h.setMinutes(0, 0, 0);
+                    const hMs = h.getTime();
+
+                    // Charge vinder over discharge
+                    let val = 0;
+                    if (!chargeHours.has(hMs) && dischargeHours.has(hMs)) {
+                      val = 1;
+                    }
+                    points.push([d, val]);
+                  }
+
+
+                  return points;
+                stroke_width: 0
+                float_precision: 0
+                show:
+                  hidden_by_default: true
+                  in_brush: true
+                  legend_value: false
+              - entity: sensor.battmind_powerwall_action
+                name: Kun solcelle ladning tilladt
+                type: area
+                yaxis_id: state
+                color: red
+                opacity: 0.25
+                data_generator: >
+                  const flow = entity.attributes.battery_level_flow || [];
+
+                  if (!flow.length) return [];
+
+
+                  const force_solar_only_chargingList =
+                  entity.attributes.force_solar_only_charging_timestamps || [];
+
+                  const force_solar_only_chargingHours = new Set(
+                    force_solar_only_chargingList.map(ts => {
+                      const d = new Date(ts);
+                      d.setMinutes(0, 0, 0);
+                      return d.getTime();
+                    })
+                  );
+
+
+                  const first = new Date(flow[0].hour);
+
+                  first.setMinutes(0, 0, 0);
+
+                  const last = new Date(flow[flow.length - 1].hour);
+
+                  last.setMinutes(0, 0, 0);
+
+                  const startMs = first.getTime();
+
+                  const endMs   = last.getTime() + 60 * 60 * 1000;
+
+
+                  const step = 5 * 60 * 1000;
+
+                  const points = [];
+
+
+                  for (let t = startMs; t <= endMs; t += step) {
+                    const d = new Date(t);
+                    const h = new Date(d);
+                    h.setMinutes(0, 0, 0);
+                    const hMs = h.getTime();
+
+                    const val = force_solar_only_chargingHours.has(hMs) ? 1 : 0;
+                    points.push([d, val]);
+                  }
+
+
+                  return points;
+                stroke_width: 0
+                float_precision: 0
+                show:
+                  hidden_by_default: false
+                  in_brush: true
+                  legend_value: false
+            grid_options:
+              columns: 60
+              rows: auto
+          - type: vertical-stack
+            cards:
+              - type: conditional
+                conditions:
+                  - condition: state
+                    entity: sensor.energi_data_service
+                    state: unavailable
+                card:
+                  type: horizontal-stack
+                  cards:
+                    - type: markdown
+                      content: '# Energi Data Service er nede <font color=red>!!!</font>'
+                    - show_name: true
+                      show_icon: true
+                      type: button
+                      entity: sensor.energi_data_service
+                      tap_action:
+                        action: call-service
+                        service: homeassistant.reload_config_entry
+                        target:
+                          entity_id: sensor.energi_data_service
+                      hold_action:
+                        action: none
+                      icon: mdi:reload
+                      name: Genstart Energi Data Service
+                      show_state: true
+              - type: conditional
+                conditions:
+                  - condition: state
+                    entity: sensor.energi_data_service
+                    state_not: unavailable
+                card:
+                  type: custom:config-template-card
+                  variables:
+                    today_prices: >
+                      states['sensor.energi_data_service'].attributes.today ||
+                      []
+                    tomorrow_prices: >
+                      states['sensor.energi_data_service'].attributes.tomorrow
+                      || []
+                    forecast_prices: >
+                      if
+                      (states['sensor.energi_data_service'].attributes.forecast)
+                      {
+                        states['sensor.energi_data_service'].attributes.forecast.map(item =>
+                        item.price)
+                      } else { []}
+                    total_hours: >
+                      const allPrices = [...vars.today_prices,
+                      ...vars.tomorrow_prices, ...vars.forecast_prices];
+                      allPrices.length
+                    lowest_price: >
+                      let min = 999; const allPrices = [...vars.today_prices,
+                      ...vars.tomorrow_prices, ...vars.forecast_prices];
+                      allPrices.forEach(price => {
+                        if (price < min) min = price;
+                      }); min * 1.05
+                    highest_price: >
+                      let max = -999; const allPrices = [...vars.today_prices,
+                      ...vars.tomorrow_prices, ...vars.forecast_prices];
+                      allPrices.forEach(price => {
+                        if (price > max) max = price;
+                      }); max * 0.95
+                    mean_price: >
+                      let sum = 0.0; const allPrices = [...vars.today_prices,
+                      ...vars.tomorrow_prices, ...vars.forecast_prices];
+                      allPrices.forEach(price => {
+                        sum += price;
+                      }); const mean = sum / vars.total_hours; mean
+                    step_under_mean: |
+                      (vars.mean_price - vars.lowest_price) / 5
+                    step_over_mean: |
+                      (vars.highest_price - vars.mean_price) / 5
+                    price1: vars.lowest_price
+                    price2: vars.mean_price - vars.step_under_mean * 4
+                    price3: vars.mean_price - vars.step_under_mean * 3
+                    price4: vars.mean_price - vars.step_under_mean * 2
+                    price5: vars.mean_price - vars.step_under_mean * 1
+                    price6: vars.mean_price
+                    price7: vars.mean_price + vars.step_over_mean * 1
+                    price8: vars.mean_price + vars.step_over_mean * 2
+                    price9: vars.mean_price + vars.step_over_mean * 3
+                    price10: vars.mean_price + vars.step_over_mean * 4
+                    price11: vars.highest_price
+                    total_span: 24 * 7 - 1
+                  entities: []
+                  card:
+                    type: custom:apexcharts-card
+                    apex_config:
+                      chart:
+                        height: 300px
+                      xaxis:
+                        tooltip:
+                          enabled: false
+                      tooltip:
+                        shared: true
+                        intersect: false
+                        fixed:
+                          enabled: true
+                          position: topLeft
+                        x:
+                          show: true
+                        enabledOnSeries:
+                          - 0
+                          - 1
+                          - 2
+                      stroke:
+                        curve: straight
+                      markers:
+                        size: 0
+                    all_series_config:
+                      unit: kWh
+                      extend_to: false
+                      fill_raw: zero
+                      show:
+                        legend_value: false
+                        offset_in_name: false
+                    experimental:
+                      color_threshold: true
+                      brush: true
+                    brush:
+                      selection_span: ${total_span + "h"}
+                    header:
+                      title: >-
+                        ${"Elpriser pr. time (kr/kWh) 🔵" +
+                        vars.lowest_price.toFixed(2) + " 🟢" +
+                        vars.mean_price.toFixed(2) + " 🟣" +
+                        vars.highest_price.toFixed(2)}
+                      show: true
+                      standard_format: false
+                      show_states: false
+                      colorize_states: true
+                    now:
+                      show: true
+                      label: Nu
+                    graph_span: ${total_span +"h"}
+                    span:
+                      start: day
+                    yaxis:
+                      - id: price
+                      - id: solar
+                        opposite: true
+                        decimals: 1
+                        max: ~6.0
+                        min: 0
+                    show:
+                      loading: true
+                      last_updated: true
+                    series:
+                      - entity: sensor.energi_data_service
+                        yaxis_id: price
+                        type: column
+                        name: Inkl. afgifter
+                        unit: kr.
+                        color: green
+                        data_generator: |
+                          var data = []
+                          if (entity.attributes.raw_today) {
+                            var raw_today = entity.attributes.raw_today.map((start, index) => {
+                              return [new Date(start["hour"]), entity.attributes.raw_today[index]["price"]];
+                            });
+                            data = data.concat(raw_today);
+                          }
+                          if (entity.attributes.forecast) {
+                            var forecast = entity.attributes.forecast.map((start, index) => {
+                              return [new Date(start["hour"]), entity.attributes.forecast[index]["price"]];
+                            });
+                            data = data.concat(forecast);
+                          }
+                          if (entity.attributes.tomorrow_valid) {
+                            var tomorrow = entity.attributes.raw_tomorrow.map((start, index) => {
+                              return [new Date(start["hour"]), entity.attributes.raw_tomorrow[index]["price"]];
+                            });
+                            data = data.concat(tomorrow);
+                          }
+                          //console.log('energi_data_service ', data);
+                          return data;
+                        float_precision: 2
+                        group_by:
+                          func: avg
+                          duration: 15min
+                        color_threshold:
+                          - value: ${vars.price1}
+                            color: '#0064FF'
+                          - value: ${vars.price2}
+                            color: '#0096FF'
+                          - value: ${vars.price3}
+                            color: '#00B496'
+                          - value: ${vars.price4}
+                            color: '#00FA50'
+                          - value: ${vars.price5}
+                            color: '#00FF32'
+                          - value: ${vars.price6}
+                            color: '#00FF00'
+                          - value: ${vars.price7}
+                            color: '#FFFF00'
+                          - value: ${vars.price8}
+                            color: '#FFA500'
+                          - value: ${vars.price9}
+                            color: '#FF5000'
+                          - value: ${vars.price10}
+                            color: '#C81919'
+                          - value: ${vars.price11}
+                            color: '#C800C8'
+                        opacity: 0.75
+                        show:
+                          in_brush: true
+                      - entity: sensor.energi_data_service_salg
+                        yaxis_id: price
+                        type: area
+                        name: Salgspris
+                        unit: kr.
+                        color: white
+                        stroke_width: 0
+                        data_generator: |
+                          var data = []
+                          if (entity.attributes.raw_today) {
+                            var raw_today = entity.attributes.raw_today.map((start, index) => {
+                              return [new Date(start["hour"]), entity.attributes.raw_today[index]["price"]];
+                            });
+                            data = data.concat(raw_today);
+                          }
+                          if (entity.attributes.forecast) {
+                            var forecast = entity.attributes.forecast.map((start, index) => {
+                              return [new Date(start["hour"]), entity.attributes.forecast[index]["price"]];
+                            });
+                            data = data.concat(forecast);
+                          }
+                          if (entity.attributes.tomorrow_valid) {
+                            var tomorrow = entity.attributes.raw_tomorrow.map((start, index) => {
+                              return [new Date(start["hour"]), entity.attributes.raw_tomorrow[index]["price"]];
+                            });
+                            data = data.concat(tomorrow);
+                          }
+                          //console.log('energi_data_service ', data);
+                          return data;
+                        float_precision: 2
+                        group_by:
+                          func: avg
+                          duration: 15min
+                        opacity: 0.75
+                        show:
+                          in_brush: true
+                      - entity: sensor.solcast_pv_forecast_forecast_today
+                        yaxis_id: solar
+                        type: area
+                        name: Solcelle prognose
+                        data_generator: >
+                          const toUTC00 = (d) => {
+                            const x = new Date(d);
+                            return new Date(Date.UTC(
+                              x.getUTCFullYear(), x.getUTCMonth(), x.getUTCDate(), x.getUTCHours(), 0, 0, 0
+                            ));
+                          };
+
+                          const map = new Map(); const eds =
+                          hass.states['sensor.energi_data_service']?.attributes
+                          || {}; const pushZero = (rows) => {
+                            (rows || []).forEach(r => {
+                              const key = toUTC00(r.hour).getTime();
+                              if (!map.has(key)) map.set(key, 0);
+                            });
+                          };
+
+                          pushZero(eds.raw_today); pushZero(eds.forecast);
+
+                          if (eds.tomorrow_valid) pushZero(eds.raw_tomorrow);
+
+                          const overlay = (series) => {
+                            (series || []).forEach(row => {
+                              const key = toUTC00(row.period_start).getTime();
+                              map.set(key, row.pv_estimate);
+                            });
+                          };
+
+
+                          overlay(entity.attributes.detailedHourly || []);
+                          overlay(hass.states['sensor.solcast_pv_forecast_forecast_tomorrow']?.attributes?.detailedHourly
+                          || []);
+                          overlay(hass.states['sensor.solcast_pv_forecast_forecast_day_3']?.attributes?.detailedHourly
+                          || []);
+                          overlay(hass.states['sensor.solcast_pv_forecast_forecast_day_4']?.attributes?.detailedHourly
+                          || []);
+                          overlay(hass.states['sensor.solcast_pv_forecast_forecast_day_5']?.attributes?.detailedHourly
+                          || []);
+                          overlay(hass.states['sensor.solcast_pv_forecast_forecast_day_6']?.attributes?.detailedHourly
+                          || []);
+                          overlay(hass.states['sensor.solcast_pv_forecast_forecast_day_7']?.attributes?.detailedHourly
+                          || []);
+
+                          const out = Array.from(map.entries())
+                            .sort((a,b) => a[0] - b[0])
+                            .map(([k,v]) => [new Date(Number(k)), v]);
+
+                          //console.log('solcast ', out);
+
+                          return out;
+                        color: orange
+                        stroke_width: 0
+                        opacity: 0.5
+                        group_by:
+                          func: avg
+                          duration: 15min
+                        show:
+                          in_brush: true
+                      - entity: sensor.energi_data_service
+                        yaxis_id: price
+                        type: area
+                        name: Prognose
+                        unit: ''
+                        stroke_width: 0
+                        opacity: 0.25
+                        color: purple
+                        data_generator: |
+                          try {
+                            var eds = (entity && entity.attributes) ? entity.attributes : {};
+                            //if (eds.tomorrow_valid) return [];
+
+                            // Start: første forecast-hour (mest korrekt)
+                            var start = null;
+                            if (eds.forecast && eds.forecast.length && eds.forecast[0] && eds.forecast[0].hour) {
+                              start = new Date(eds.forecast[0].hour).getTime();
+                            }
+                            
+                            // Fallback: i morgen 00:00 lokal tid
+                            if (!start || isNaN(start)) {
+                              var now = new Date();
+                              start = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0, 0).getTime();
+                            }
+                            
+                            
+                            // Brug de samme rækker som du alligevel plotter
+                            var rows = [];
+                            if (eds.raw_today) rows = rows.concat(eds.raw_today);
+                            if (eds.forecast) rows = rows.concat(eds.forecast);
+                            if (eds.raw_tomorrow) rows = rows.concat(eds.raw_tomorrow);
+
+                            // Max pris til at fylde "hele højden"
+                            var maxP = 0;
+                            for (var i = 0; i < rows.length; i++) {
+                              var p = Number(rows[i] && rows[i].price);
+                              if (!isNaN(p) && p > maxP) maxP = p;
+                            }
+                            if (maxP <= 0) maxP = 10;
+
+                            // Unikke tider sorteret
+                            var map = {};
+                            for (var j = 0; j < rows.length; j++) {
+                              var h = rows[j] && rows[j].hour;
+                              if (!h) continue;
+                              var t = new Date(h).getTime();
+                              if (isNaN(t)) continue;
+                              map[t] = 1;
+                            }
+                            var times = Object.keys(map).map(function(x){ return Number(x); }).sort(function(a,b){ return a-b; });
+
+                            // Fail-safe: hvis vi ikke fik tider, lav 2 punkter så kortet ikke hænger
+                            if (!times.length) {
+                              return [
+                                [new Date(start), maxP],
+                                [new Date(start + 3600000), maxP]
+                              ];
+                            }
+
+                            // 0 før start, max efter start => udfylder resten
+                            var out = [];
+                            for (var k = 0; k < times.length; k++) {
+                              var tt = times[k];
+                              out.push([new Date(tt), (tt >= start) ? maxP : 0]);
+                            }
+                            return out;
+
+                          } catch (e) {
+                            console.log("forecast_zone error", e);
+                            return [];
+                          }
+                        group_by:
+                          func: avg
+                          duration: 15min
+                        show:
+                          in_brush: false
+                          legend_value: false
+            grid_options:
+              columns: full
+              rows: auto
+          - type: vertical-stack
+            cards:
+              - type: conditional
+                conditions:
+                  - condition: state
+                    entity: sensor.stromligning_current_price_vat
+                    state: unavailable
+                card:
+                  type: horizontal-stack
+                  cards:
+                    - type: markdown
+                      content: '# Strømligning er nede <font color=red>!!!</font>'
+                    - show_name: true
+                      show_icon: true
+                      type: button
+                      entity: sensor.stromligning_current_price_vat
+                      tap_action:
+                        action: call-service
+                        service: homeassistant.reload_config_entry
+                        target:
+                          entity_id: sensor.stromligning_current_price_vat
+                      hold_action:
+                        action: none
+                      icon: mdi:reload
+                      name: Genstart Strømligning
+                      show_state: true
+              - type: conditional
+                conditions:
+                  - condition: state
+                    entity: sensor.stromligning_current_price_vat
+                    state_not: unavailable
+                card:
+                  type: custom:config-template-card
+                  variables:
+                    today_prices: |
+                      states['sensor.stromligning_current_price_vat']
+                        ?.attributes?.prices || []
+                    tomorrow_prices: |
+                      (() => {
+                        const entity =
+                          states['binary_sensor.stromligning_tomorrow_available_vat'];
+
+                        return entity?.attributes?.prices || [];
+                      })()
+                    forecast_prices: |
+                      states['sensor.stromligning_forecasts_vat']
+                        ?.attributes?.prices || []
+                    all_prices: |
+                      (() => {
+                        const today =
+                          states['sensor.stromligning_current_price_vat']
+                            ?.attributes?.prices || [];
+
+                        const tomorrowEntity =
+                          states['binary_sensor.stromligning_tomorrow_available_vat'];
+
+                        const tomorrow =
+                          tomorrowEntity?.attributes?.prices || [];
+
+                        const tomorrowIsForecast =
+                          tomorrowEntity?.attributes?.forecast_data === true;
+
+                        const officialTomorrow =
+                          tomorrowIsForecast ? [] : tomorrow;
+
+                        const official = [
+                          ...today,
+                          ...officialTomorrow
+                        ];
+
+                        let officialEnd = 0;
+
+                        official.forEach(p => {
+                          const end = new Date(p.end).getTime();
+
+                          if (!isNaN(end) && end > officialEnd)
+                            officialEnd = end;
+                        });
+
+                        const forecast =
+                          states['sensor.stromligning_forecasts_vat']
+                            ?.attributes?.prices || [];
+
+                        const prices = [
+                          ...today,
+                          ...tomorrow
+                        ]
+                          .map(p => Number(p.price))
+                          .filter(Number.isFinite);
+
+                        let forecastEnd = 0;
+
+                        tomorrow.forEach(p => {
+                          const end = new Date(p.end).getTime();
+
+                          if (!isNaN(end) && end > forecastEnd)
+                            forecastEnd = end;
+                        });
+
+                        const existingEnd =
+                          Math.max(officialEnd, forecastEnd);
+
+                        forecast.forEach(p => {
+                          const start = new Date(p.start).getTime();
+                          const price = Number(p.price);
+
+                          if (
+                            start >= existingEnd &&
+                            Number.isFinite(price)
+                          ) {
+                            prices.push(price);
+                          }
+                        });
+
+                        return prices;
+                      })()
+                    total_hours: |
+                      vars.all_prices.length
+                    lowest_price: |
+                      (() => {
+                        if (!vars.all_prices.length)
+                          return 0;
+
+                        return Math.min(...vars.all_prices) * 1.05;
+                      })()
+                    highest_price: |
+                      (() => {
+                        if (!vars.all_prices.length)
+                          return 0;
+
+                        return Math.max(...vars.all_prices) * 0.95;
+                      })()
+                    mean_price: |
+                      (() => {
+                        if (!vars.all_prices.length)
+                          return 0;
+
+                        return vars.all_prices.reduce(
+                          (sum, price) => sum + price,
+                          0
+                        ) / vars.all_prices.length;
+                      })()
+                    step_under_mean: |
+                      (vars.mean_price - vars.lowest_price) / 5
+                    step_over_mean: |
+                      (vars.highest_price - vars.mean_price) / 5
+                    price1: vars.lowest_price
+                    price2: vars.mean_price - vars.step_under_mean * 4
+                    price3: vars.mean_price - vars.step_under_mean * 3
+                    price4: vars.mean_price - vars.step_under_mean * 2
+                    price5: vars.mean_price - vars.step_under_mean
+                    price6: vars.mean_price
+                    price7: vars.mean_price + vars.step_over_mean
+                    price8: vars.mean_price + vars.step_over_mean * 2
+                    price9: vars.mean_price + vars.step_over_mean * 3
+                    price10: vars.mean_price + vars.step_over_mean * 4
+                    price11: vars.highest_price
+                    total_span: 24 * 7 - 1
+                  entities:
+                    - sensor.stromligning_current_price_vat
+                    - binary_sensor.stromligning_tomorrow_available_vat
+                    - sensor.stromligning_forecasts_vat
+                    - sensor.stromligning_15min_spotprice_ex_vat
+                    - binary_sensor.stromligning_15min_tomorrow_available_ex_vat
+                    - sensor.stromligning_15min_forecasts_ex_vat
+                    - sensor.stromligning_nettariff_vat
+                    - sensor.stromligning_systemtariff_vat
+                    - sensor.solcast_pv_forecast_forecast_today
+                    - sensor.solcast_pv_forecast_forecast_tomorrow
+                    - sensor.solcast_pv_forecast_forecast_day_3
+                    - sensor.solcast_pv_forecast_forecast_day_4
+                    - sensor.solcast_pv_forecast_forecast_day_5
+                    - sensor.solcast_pv_forecast_forecast_day_6
+                    - sensor.solcast_pv_forecast_forecast_day_7
+                  card:
+                    type: custom:apexcharts-card
+                    apex_config:
+                      chart:
+                        height: 300px
+                      xaxis:
+                        tooltip:
+                          enabled: false
+                      tooltip:
+                        shared: true
+                        intersect: false
+                        fixed:
+                          enabled: true
+                          position: topLeft
+                        x:
+                          show: true
+                        enabledOnSeries:
+                          - 0
+                          - 1
+                          - 2
+                      stroke:
+                        curve: straight
+                      markers:
+                        size: 0
+                    all_series_config:
+                      unit: kWh
+                      extend_to: false
+                      fill_raw: zero
+                      show:
+                        legend_value: false
+                        offset_in_name: false
+                    experimental:
+                      color_threshold: true
+                      brush: true
+                    brush:
+                      selection_span: ${total_span + "h"}
+                    header:
+                      title: >-
+                        ${"Elpriser pr. time (kr/kWh) 🔵" +
+                        vars.lowest_price.toFixed(2) + " 🟢" +
+                        vars.mean_price.toFixed(2) + " 🟣" +
+                        vars.highest_price.toFixed(2)}
+                      show: true
+                      standard_format: false
+                      show_states: false
+                      colorize_states: true
+                    now:
+                      show: true
+                      label: Nu
+                    graph_span: ${total_span + "h"}
+                    span:
+                      start: day
+                    yaxis:
+                      - id: price
+                      - id: solar
+                        opposite: true
+                        decimals: 1
+                        max: ~6.0
+                        min: 0
+                    show:
+                      loading: true
+                      last_updated: true
+                    series:
+                      - entity: sensor.stromligning_current_price_vat
+                        yaxis_id: price
+                        type: column
+                        name: Inkl. afgifter
+                        unit: kr.
+                        color: green
+                        data_generator: |
+                          const data = [];
+
+                          // ------------------------------------------
+                          // I DAG
+                          // ------------------------------------------
+
+                          const today =
+                            hass.states[
+                              'sensor.stromligning_current_price_vat'
+                            ]?.attributes?.prices || [];
+
+                          today.forEach(p => {
+                            const price = Number(p.price);
+
+                            if (Number.isFinite(price)) {
+                              data.push([
+                                new Date(p.start),
+                                price
+                              ]);
+                            }
+                          });
+
+
+                          // ------------------------------------------
+                          // I MORGEN
+                          // ------------------------------------------
+
+                          const tomorrowEntity =
+                            hass.states[
+                              'binary_sensor.stromligning_tomorrow_available_vat'
+                            ];
+
+                          const tomorrowPrices =
+                            tomorrowEntity?.attributes?.prices || [];
+
+                          const tomorrowIsForecast =
+                            tomorrowEntity?.attributes?.forecast_data === true;
+
+                          const officialTomorrow =
+                            tomorrowIsForecast
+                              ? []
+                              : tomorrowPrices;
+
+                          officialTomorrow.forEach(p => {
+                            const price = Number(p.price);
+
+                            if (Number.isFinite(price)) {
+                              data.push([
+                                new Date(p.start),
+                                price
+                              ]);
+                            }
+                          });
+
+
+                          // ------------------------------------------
+                          // SIDSTE OFFICIELLE PRIS
+                          // ------------------------------------------
+
+                          let officialEnd = 0;
+
+                          [...today, ...officialTomorrow].forEach(p => {
+                            const end = new Date(p.end).getTime();
+
+                            if (
+                              !isNaN(end) &&
+                              end > officialEnd
+                            ) {
+                              officialEnd = end;
+                            }
+                          });
+
+
+                          // ------------------------------------------
+                          // FORECAST FOR I MORGEN
+                          // ------------------------------------------
+
+                          if (tomorrowIsForecast) {
+                            tomorrowPrices.forEach(p => {
+                              const price = Number(p.price);
+
+                              if (Number.isFinite(price)) {
+                                data.push([
+                                  new Date(p.start),
+                                  price
+                                ]);
+                              }
+                            });
+                          }
+
+
+                          // ------------------------------------------
+                          // SIDSTE TOMORROW-TIDSPUNKT
+                          // ------------------------------------------
+
+                          let tomorrowEnd = officialEnd;
+
+                          tomorrowPrices.forEach(p => {
+                            const end = new Date(p.end).getTime();
+
+                            if (
+                              !isNaN(end) &&
+                              end > tomorrowEnd
+                            ) {
+                              tomorrowEnd = end;
+                            }
+                          });
+
+
+                          // ------------------------------------------
+                          // FORECAST
+                          // ------------------------------------------
+
+                          const forecast =
+                            hass.states[
+                              'sensor.stromligning_forecasts_vat'
+                            ]?.attributes?.prices || [];
+
+                          forecast.forEach(p => {
+                            const start =
+                              new Date(p.start).getTime();
+
+                            const price =
+                              Number(p.price);
+
+                            if (
+                              start >= tomorrowEnd &&
+                              Number.isFinite(price)
+                            ) {
+                              data.push([
+                                new Date(p.start),
+                                price
+                              ]);
+                            }
+                          });
+
+
+                          return data.sort(
+                            (a, b) => a[0] - b[0]
+                          );
+                        float_precision: 2
+                        group_by:
+                          func: avg
+                          duration: 15min
+                        color_threshold:
+                          - value: ${vars.price1}
+                            color: '#0064FF'
+                          - value: ${vars.price2}
+                            color: '#0096FF'
+                          - value: ${vars.price3}
+                            color: '#00B496'
+                          - value: ${vars.price4}
+                            color: '#00FA50'
+                          - value: ${vars.price5}
+                            color: '#00FF32'
+                          - value: ${vars.price6}
+                            color: '#00FF00'
+                          - value: ${vars.price7}
+                            color: '#FFFF00'
+                          - value: ${vars.price8}
+                            color: '#FFA500'
+                          - value: ${vars.price9}
+                            color: '#FF5000'
+                          - value: ${vars.price10}
+                            color: '#C81919'
+                          - value: ${vars.price11}
+                            color: '#C800C8'
+                        opacity: 0.75
+                        show:
+                          in_brush: true
+                      - entity: sensor.stromligning_15min_spotprice_ex_vat
+                        yaxis_id: price
+                        type: area
+                        name: Salgspris
+                        unit: kr.
+                        color: white
+                        stroke_width: 0
+                        data_generator: |
+                          const data = [];
+
+                          const sellFee = 0.025;
+
+                          const nettariff = Number(
+                            hass.states[
+                              'sensor.stromligning_nettariff_vat'
+                            ]?.state
+                          ) || 0;
+
+                          const systemtariff = Number(
+                            hass.states[
+                              'sensor.stromligning_systemtariff_vat'
+                            ]?.state
+                          ) || 0;
+
+                          const sellCosts =
+                            nettariff +
+                            systemtariff +
+                            sellFee;
+
+
+                          // ------------------------------------------
+                          // I DAG
+                          // ------------------------------------------
+
+                          const today =
+                            hass.states[
+                              'sensor.stromligning_15min_spotprice_ex_vat'
+                            ]?.attributes?.prices || [];
+
+                          today.forEach(p => {
+                            const spotprice = Number(p.price);
+
+                            if (Number.isFinite(spotprice)) {
+                              data.push([
+                                new Date(p.start),
+                                spotprice - sellCosts
+                              ]);
+                            }
+                          });
+
+
+                          // ------------------------------------------
+                          // I MORGEN
+                          // ------------------------------------------
+
+                          const tomorrowEntity =
+                            hass.states[
+                              'binary_sensor.stromligning_15min_tomorrow_available_ex_vat'
+                            ];
+
+                          const tomorrowPrices =
+                            tomorrowEntity?.attributes?.prices || [];
+
+                          tomorrowPrices.forEach(p => {
+                            const spotprice = Number(p.price);
+
+                            if (Number.isFinite(spotprice)) {
+                              data.push([
+                                new Date(p.start),
+                                spotprice - sellCosts
+                              ]);
+                            }
+                          });
+
+
+                          // ------------------------------------------
+                          // SIDSTE PRIS FRA TOMORROW ENTITY
+                          // ------------------------------------------
+
+                          let availableEnd = 0;
+
+                          [...today, ...tomorrowPrices].forEach(p => {
+                            const end =
+                              new Date(p.end).getTime();
+
+                            if (
+                              !isNaN(end) &&
+                              end > availableEnd
+                            ) {
+                              availableEnd = end;
+                            }
+                          });
+
+
+                          // ------------------------------------------
+                          // FORECAST
+                          // ------------------------------------------
+
+                          const forecast =
+                            hass.states[
+                              'sensor.stromligning_15min_forecasts_ex_vat'
+                            ]?.attributes?.prices || [];
+
+                          forecast.forEach(p => {
+                            const start =
+                              new Date(p.start).getTime();
+
+                            const spotprice =
+                              Number(p.price);
+
+                            if (
+                              start >= availableEnd &&
+                              Number.isFinite(spotprice)
+                            ) {
+                              data.push([
+                                new Date(p.start),
+                                spotprice - sellCosts
+                              ]);
+                            }
+                          });
+
+
+                          return data.sort(
+                            (a, b) => a[0] - b[0]
+                          );
+                        float_precision: 2
+                        group_by:
+                          func: avg
+                          duration: 15min
+                        opacity: 0.75
+                        show:
+                          in_brush: true
+                      - entity: sensor.solcast_pv_forecast_forecast_today
+                        yaxis_id: solar
+                        type: area
+                        name: Solcelle prognose
+                        data_generator: |
+                          const toUTC00 = (d) => {
+                            const x = new Date(d);
+
+                            return new Date(Date.UTC(
+                              x.getUTCFullYear(),
+                              x.getUTCMonth(),
+                              x.getUTCDate(),
+                              x.getUTCHours(),
+                              0,
+                              0,
+                              0
+                            ));
+                          };
+
+                          const map = new Map();
+
+
+                          // ------------------------------------------
+                          // OPRET ALLE PRISTIMESTAMPS SOM 0
+                          // ------------------------------------------
+
+                          const addTimes = (rows) => {
+                            (rows || []).forEach(row => {
+                              if (!row.start)
+                                return;
+
+                              const key =
+                                toUTC00(row.start).getTime();
+
+                              if (!map.has(key))
+                                map.set(key, 0);
+                            });
+                          };
+
+
+                          // I dag
+                          addTimes(
+                            hass.states[
+                              'sensor.stromligning_current_price_vat'
+                            ]?.attributes?.prices || []
+                          );
+
+
+                          // I morgen - både forecast og officielle
+                          const tomorrowEntity =
+                            hass.states[
+                              'binary_sensor.stromligning_tomorrow_available_vat'
+                            ];
+
+                          addTimes(
+                            tomorrowEntity?.attributes?.prices || []
+                          );
+
+
+                          // Forecast
+                          addTimes(
+                            hass.states[
+                              'sensor.stromligning_forecasts_vat'
+                            ]?.attributes?.prices || []
+                          );
+
+
+                          // ------------------------------------------
+                          // SOLCAST DATA
+                          // ------------------------------------------
+
+                          const overlay = (series) => {
+                            (series || []).forEach(row => {
+                              if (!row.period_start)
+                                return;
+
+                              const key =
+                                toUTC00(
+                                  row.period_start
+                                ).getTime();
+
+                              map.set(
+                                key,
+                                Number(row.pv_estimate) || 0
+                              );
+                            });
+                          };
+
+
+                          overlay(
+                            entity.attributes?.detailedHourly || []
+                          );
+
+                          overlay(
+                            hass.states[
+                              'sensor.solcast_pv_forecast_forecast_tomorrow'
+                            ]?.attributes?.detailedHourly || []
+                          );
+
+                          overlay(
+                            hass.states[
+                              'sensor.solcast_pv_forecast_forecast_day_3'
+                            ]?.attributes?.detailedHourly || []
+                          );
+
+                          overlay(
+                            hass.states[
+                              'sensor.solcast_pv_forecast_forecast_day_4'
+                            ]?.attributes?.detailedHourly || []
+                          );
+
+                          overlay(
+                            hass.states[
+                              'sensor.solcast_pv_forecast_forecast_day_5'
+                            ]?.attributes?.detailedHourly || []
+                          );
+
+                          overlay(
+                            hass.states[
+                              'sensor.solcast_pv_forecast_forecast_day_6'
+                            ]?.attributes?.detailedHourly || []
+                          );
+
+                          overlay(
+                            hass.states[
+                              'sensor.solcast_pv_forecast_forecast_day_7'
+                            ]?.attributes?.detailedHourly || []
+                          );
+
+
+                          return Array.from(
+                            map.entries()
+                          )
+                            .sort((a, b) => a[0] - b[0])
+                            .map(([time, value]) => [
+                              new Date(Number(time)),
+                              value
+                            ]);
+                        color: orange
+                        stroke_width: 0
+                        opacity: 0.5
+                        group_by:
+                          func: avg
+                          duration: 15min
+                        show:
+                          in_brush: true
+                      - entity: sensor.stromligning_forecasts_vat
+                        yaxis_id: price
+                        type: area
+                        name: Prognose
+                        unit: ''
+                        stroke_width: 0
+                        opacity: 0.25
+                        color: purple
+                        data_generator: |
+                          try {
+
+                            // ------------------------------------------
+                            // I DAG
+                            // ------------------------------------------
+
+                            const today =
+                              hass.states[
+                                'sensor.stromligning_current_price_vat'
+                              ]?.attributes?.prices || [];
+
+
+                            // ------------------------------------------
+                            // I MORGEN
+                            // ------------------------------------------
+
+                            const tomorrowEntity =
+                              hass.states[
+                                'binary_sensor.stromligning_tomorrow_available_vat'
+                              ];
+
+                            const tomorrowPrices =
+                              tomorrowEntity?.attributes?.prices || [];
+
+                            const tomorrowIsForecast =
+                              tomorrowEntity?.attributes?.forecast_data === true;
+
+                            const officialTomorrow =
+                              tomorrowIsForecast
+                                ? []
+                                : tomorrowPrices;
+
+                            const tomorrowForecast =
+                              tomorrowIsForecast
+                                ? tomorrowPrices
+                                : [];
+
+
+                            // ------------------------------------------
+                            // OFFICIELLE PRISER
+                            // ------------------------------------------
+
+                            const official = [
+                              ...today,
+                              ...officialTomorrow
+                            ];
+
+
+                            // ------------------------------------------
+                            // FIND STARTEN PÅ FORECAST
+                            // ------------------------------------------
+
+                            let forecastStart = 0;
+
+                            if (tomorrowForecast.length) {
+                              forecastStart =
+                                Math.min(
+                                  ...tomorrowForecast
+                                    .map(p =>
+                                      new Date(p.start).getTime()
+                                    )
+                                    .filter(t =>
+                                      !isNaN(t)
+                                    )
+                                );
+                            }
+
+
+                            const normalForecast =
+                              entity.attributes?.prices || [];
+
+
+                            if (
+                              !forecastStart &&
+                              normalForecast.length
+                            ) {
+                              const times =
+                                normalForecast
+                                  .map(p =>
+                                    new Date(p.start).getTime()
+                                  )
+                                  .filter(t =>
+                                    !isNaN(t)
+                                  );
+
+                              if (times.length)
+                                forecastStart = Math.min(...times);
+                            }
+
+
+                            if (!forecastStart)
+                              return [];
+
+
+                            // ------------------------------------------
+                            // ALLE RÆKKER
+                            // ------------------------------------------
+
+                            const rows = [
+                              ...official,
+                              ...tomorrowForecast,
+                              ...normalForecast
+                            ];
+
+
+                            // ------------------------------------------
+                            // FIND MAX PRIS
+                            // ------------------------------------------
+
+                            let maxP = 0;
+
+                            rows.forEach(row => {
+                              const price =
+                                Number(row.price);
+
+                              if (
+                                Number.isFinite(price) &&
+                                price > maxP
+                              ) {
+                                maxP = price;
+                              }
+                            });
+
+
+                            if (maxP <= 0)
+                              maxP = 10;
+
+
+                            // ------------------------------------------
+                            // ALLE TIMESTAMPS
+                            // ------------------------------------------
+
+                            const times = [
+                              ...new Set(
+                                rows
+                                  .map(row =>
+                                    new Date(
+                                      row.start
+                                    ).getTime()
+                                  )
+                                  .filter(time =>
+                                    !isNaN(time)
+                                  )
+                              )
+                            ].sort(
+                              (a, b) => a - b
+                            );
+
+
+                            if (!times.length) {
+                              return [
+                                [
+                                  new Date(forecastStart),
+                                  maxP
+                                ],
+                                [
+                                  new Date(
+                                    forecastStart +
+                                    3600000
+                                  ),
+                                  maxP
+                                ]
+                              ];
+                            }
+
+
+                            // ------------------------------------------
+                            // 0 FØR FORECAST
+                            // MAX EFTER FORECAST
+                            // ------------------------------------------
+
+                            return times.map(time => [
+                              new Date(time),
+                              time >= forecastStart
+                                ? maxP
+                                : 0
+                            ]);
+
+
+                          } catch (e) {
+
+                            console.log(
+                              'stromligning forecast_zone error',
+                              e
+                            );
+
+                            return [];
+                          }
+                        group_by:
+                          func: avg
+                          duration: 15min
+                        show:
+                          in_brush: false
+                          legend_value: false
+            grid_options:
+              columns: full
+              rows: auto
+        column_span: 2
+      - type: grid
+        cards:
+          - type: custom:mushroom-entity-card
+            entity: sensor.battmind_current_charging_rule
+            primary_info: state
+            secondary_info: none
+            icon_type: none
+            card_mod:
+              style:
+                mushroom-state-info$: |
+                  .container {
+                   --card-primary-font-size: 20px;
+                   align-items: center;
+                  padding-bottom: 10px !important;
+                  padding-top: 10px !important;
+                  }
+                  .primary {
+                    text-align: center !important;
+                    white-space: pre-wrap !important;
+                  }
+            grid_options:
+              columns: full
+          - type: custom:mushroom-entity-card
+            entity: sensor.battmind_powerwall_action
+            primary_info: state
+            secondary_info: none
+            icon_type: none
+            grid_options:
+              columns: full
+            card_mod:
+              style:
+                mushroom-state-info$: |
+                  .container {
+                   --card-primary-font-size: 20px;
+                   align-items: center;
+                  padding-bottom: 10px !important;
+                  padding-top: 10px !important;
+                  }
+                  .primary {
+                    text-align: center !important;
+                    white-space: pre-wrap !important;
+                  }
+          - type: markdown
+            card_mod:
+              style: |
+                ha-card {
+                  --markdown-table-border-color: transparent
+                }
+            content: '{{ states.sensor.battmind_charging_history.attributes.history }}'
+            grid_options:
+              columns: full
+          - type: vertical-stack
+            cards:
+              - type: markdown
+                card_mod:
+                  style: |
+                    ha-card {
+                      --markdown-table-border-color: transparent
+                    }
+                content: '{{ states.sensor.battmind_overview.attributes.overview }}'
+                view_layout:
+                  position: sidebar
+            view_layout:
+              position: sidebar
+      - type: grid
+        cards:
+          - type: markdown
+            content: >-
+              {{ states.sensor.battmind_emoji_description.attributes.description
+              }}
+            view_layout:
+              position: sidebar
+        column_span: 1
+    max_columns: 5
+    cards: []
+    title: Hjem
+    dense_section_placement: true
+    badges:
+      - type: custom:mushroom-template-badge
+        content: Debug info
+        icon: mdi:mushroom
+        color: yellow
+        tap_action:
+          action: perform-action
+          perform_action: battmind.debug_info
+          target: {}
+        label: ''
+      - type: entity
+        show_name: false
+        show_state: true
+        show_icon: true
+        entity: button.battmind_enforce_planning
+        state_content: name
+        tap_action:
+          action: perform-action
+          perform_action: button.press
+          target:
+            entity_id: button.battmind_enforce_planning
+  - type: sections
+    path: ''
+    max_columns: 5
+    sections:
+      - type: grid
+        cards:
+          - color: state
+            type: entities
+            entities:
+              - entity: select.battmind_forecast_type
+              - entity: number.battmind_min_profit_per_kwh
+              - entity: number.battmind_min_sell_kwh
+              - entity: switch.battmind_solar_charging
+              - entity: switch.battmind_most_expensive_planner
+              - entity: switch.battmind_needed_before_max_level_planner
+              - entity: switch.battmind_only_discharge_on_profit
+              - entity: >-
+                  switch.battmind_prioritize_discharge_hours_by_energy_cost
+              - entity: switch.battmind_most_profit
+              - entity: switch.battmind_force_powerwall_max_hours_old_discharge
+              - entity: number.battmind_powerwall_max_hours_old
+            grid_options:
+              columns: 18
+              rows: auto
+            title: Generelle indstillinger
+            show_header_toggle: false
+          - type: entities
+            entities:
+              - entity: switch.battmind_cheapest_hour_fill_planner
+              - entity: switch.battmind_cheapest_hour_fill_up
+              - entity: number.battmind_cheap_price_periods
+              - entity: number.battmind_cheap_price_period_rise_threshold
+              - entity: number.battmind_cheapest_price_rise_threshold
+            grid_options:
+              columns: 18
+              rows: auto
+            title: 'Ladning: Billigste regler'
+            show_header_toggle: false
+            state_color: true
+          - color: state
+            type: entities
+            entities:
+              - entity: switch.battmind_sell_excess_kwh_available
+              - entity: switch.battmind_use_midnight_battery_level
+              - entity: number.battmind_min_total_profit
+              - entity: text.battmind_exclude_sell_hours
+            grid_options:
+              columns: 18
+              rows: auto
+            title: 'Afladning: Sælg overskydence kWh regler'
+            show_header_toggle: false
+        column_span: 3
+      - type: grid
+        cards:
+          - type: vertical-stack
+            cards:
+              - type: custom:stack-in-card
+                mode: vertical
+                cards:
+                  - type: horizontal-stack
+                    cards:
+                      - type: custom:mushroom-entity-card
+                        entity: switch.battmind_deactivate_script
+                        icon_color: red
+                        double_tap_action:
+                          action: none
+                        hold_action:
+                          action: more-info
+                        tap_action:
+                          action: toggle
+                        secondary_info: none
+                  - type: markdown
+                    content: >-
+                      # 📎 {{
+                      states.switch.battmind_deactivate_script.name }}
+
+
+                      <details>
+
+                      <summary><b>Læs mere</b></summary>
+
+                      Laderen og elbilen, bliver ikke styret af scriptet, og
+                      fungere normalt
+
+
+                      </details>
+            grid_options:
+              columns: full
+              rows: auto
+          - type: history-graph
+            entities:
+              - entity: sensor.battmind_battery_level_needed
+            max_y_axis: 100
+            min_y_axis: 0
+        column_span: 1
+      - type: grid
+        cards:
+          - type: custom:apexcharts-card
+            header:
+              show: true
+              title: Powerwall prediction
+            experimental:
+              brush: true
+            brush:
+              selection_span: 2.5d
+            graph_span: 2.5d
+            span:
+              start: hour
+            now:
+              show: true
+            apex_config:
+              tooltip:
+                fixed:
+                  enabled: true
+                  position: topLeft
+              chart:
+                height: 320px
+            yaxis:
+              - id: type
+                decimals: 2
+                min: 0
+                apex_config:
+                  tickAmount: 10
+              - id: sum
+                opposite: true
+                decimals: 2
+                min: 0
+                apex_config:
+                  tickAmount: 10
+            all_series_config:
+              type: line
+              opacity: 0.75
+              stroke_width: 2
+              curve: straight
+              yaxis_id: type
+              unit: kWh
+              show:
+                in_brush: true
+            series:
+              - name: Avg
+                entity: sensor.battmind_powerwall_action
+                color: orange
+                data_generator: |
+                  const d = entity.attributes.hour_cost_prediction_avg || {};
+                  return Object.entries(d)
+                    .map(([ts, v]) => {
+                      const d = new Date(ts);
+                      d.setMinutes(59,0,0);
+                      return [d.getTime(), Number(v)];
+                    })
+                    .filter(([t, v]) => Number.isFinite(t) && Number.isFinite(v))
+                    .sort((a,b) => a[0]-b[0]);
+              - name: EMA
+                entity: sensor.battmind_powerwall_action
+                color: blue
+                data_generator: |
+                  const d = entity.attributes.hour_cost_prediction_ema || {};
+                  return Object.entries(d)
+                    .map(([ts, v]) => {
+                      const d = new Date(ts);
+                      d.setMinutes(59,0,0);
+                      return [d.getTime(), Number(v)];
+                    })
+                    .filter(([t, v]) => Number.isFinite(t) && Number.isFinite(v))
+                    .sort((a,b) => a[0]-b[0]);
+              - name: Trend
+                entity: sensor.battmind_powerwall_action
+                color: green
+                data_generator: |
+                  const d = entity.attributes.hour_cost_prediction_trend || {};
+                  return Object.entries(d)
+                    .map(([ts, v]) => {
+                      const d = new Date(ts);
+                      d.setMinutes(59,0,0);
+                      return [d.getTime(), Number(v)];
+                    })
+                    .filter(([t, v]) => Number.isFinite(t) && Number.isFinite(v))
+                    .sort((a,b) => a[0]-b[0]);
+              - name: Sum Avg
+                entity: sensor.battmind_powerwall_action
+                color: darkorange
+                yaxis_id: sum
+                opacity: 0.25
+                stroke_width: 4
+                data_generator: >
+                  const d = entity.attributes.hour_cost_prediction_sum_avg ||
+                  {};
+
+                  return Object.entries(d)
+                    .map(([ts, v]) => {
+                    const d = new Date(ts);
+                    d.setMinutes(59,0,0);
+                    return [d.getTime(), Number(v)];
+                    })
+                    .filter(([t, v]) => Number.isFinite(t) && Number.isFinite(v))
+                    .sort((a,b) => a[0]-b[0]);
+              - name: Sum EMA
+                entity: sensor.battmind_powerwall_action
+                color: darkblue
+                yaxis_id: sum
+                opacity: 0.25
+                stroke_width: 4
+                data_generator: >
+                  const d = entity.attributes.hour_cost_prediction_sum_ema ||
+                  {};
+
+                  return Object.entries(d)
+                    .map(([ts, v]) => {
+                    const d = new Date(ts);
+                    d.setMinutes(59,0,0);
+                    return [d.getTime(), Number(v)];
+                    })
+                    .filter(([t, v]) => Number.isFinite(t) && Number.isFinite(v))
+                    .sort((a,b) => a[0]-b[0]);
+              - name: Sum Trend
+                entity: sensor.battmind_powerwall_action
+                color: darkgreen
+                yaxis_id: sum
+                opacity: 0.25
+                stroke_width: 4
+                data_generator: >
+                  const d = entity.attributes.hour_cost_prediction_sum_trend ||
+                  {};
+
+                  return Object.entries(d)
+                    .map(([ts, v]) => {
+                    const d = new Date(ts);
+                    d.setMinutes(59,0,0);
+                    return [d.getTime(), Number(v)];
+                    })
+                    .filter(([t, v]) => Number.isFinite(t) && Number.isFinite(v))
+                    .sort((a,b) => a[0]-b[0]);
+            grid_options:
+              columns: 60
+              rows: auto
+        column_span: 5
+    cards: []
+    title: Indstillinger
+    dense_section_placement: true
+    badges:
+      - type: custom:mushroom-template-badge
+        content: Recalc charging history today
+        icon: mdi:database-sync
+        color: yellow
+        tap_action:
+          action: perform-action
+          perform_action: battmind.recalc_charging_history_today
+          target: {}
+        label: ''
+      - type: entity
+        show_name: true
+        show_state: false
+        show_icon: true
+        entity: button.battmind_restart_script
+        show_entity_picture: false
+        tap_action:
+          action: perform-action
+          perform_action: button.press
+          target:
+            entity_id: button.battmind_restart_script

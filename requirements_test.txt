@@ -1,0 +1,4 @@
+# Same Home Assistant version as the production installation (2026.10.x, Python 3.14)
+pytest-homeassistant-custom-component==0.13.373
+# the integration depends on frontend + lovelace (sidebar dashboard)
+home-assistant-frontend==20260930.4

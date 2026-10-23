@@ -1,0 +1,47 @@
+# Trimmed copy of a PyScript BattMind config (used by the legacy import test)
+cron_interval: 5
+database:
+  charging_history_db_data_to_save: 12
+  kwh_avg_prices_db_data_to_save: 15
+  power_values_db_data_to_save: 15
+  solar_available_db_data_to_save: 10
+enable_diagnostic_file_log: false
+forecast:
+  entity_ids:
+    daily_service_entity_id: weather.forecast_home
+    hourly_service_entity_id: weather.forecast_home
+home:
+  entity_ids:
+    ignore_consumption_from_entity_ids:
+    - sensor.bil_lader_power
+    power_consumption_entity_id: sensor.home_power_consumption
+    powerwall_battery_level_entity_id: sensor.batteries_state_of_capacity
+    powerwall_watt_flow_entity_id: sensor.batteries_charge_discharge_power
+  invert_powerwall_watt_flow_entity_id: true
+  power_consumption_entity_id_include_powerwall_charging: false
+  power_consumption_entity_id_include_powerwall_discharging: true
+language: da-DK
+prices:
+  cheap_price_period_rise_threshold: 0.2
+  cheap_price_periods: 2
+  cheapest_price_rise_threshold: 0.1
+  entity_ids:
+    energidataservice_buy_entity_id: sensor.energi_data_service
+    energidataservice_sell_entity_id: sensor.energi_data_service_salg
+  refund: 0.0
+  sell_fee: 0.03
+solar:
+  entity_ids:
+    forecast_entity_id: ""
+    production_entity_id: sensor.inverter_input_power
+  inverter_discharging_power_limit: 6000.0
+  powerwall_battery_level_max: 100.0
+  powerwall_battery_level_min: 5.0
+  powerwall_battery_size: 10.0
+  powerwall_charge_discharge_loss: 0.25
+  powerwall_charging_power_limit: 5000.0
+  powerwall_discharging_power: 5000.0
+  powerwall_wear_cost_per_kwh: 0.1
+  production_price: -1.0
+  use_charge_discharge_loss_from_history: true
+testing_mode: false

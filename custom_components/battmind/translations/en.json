@@ -1,0 +1,754 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Add BattMind",
+        "description": "BattMind plans when the home battery should charge from the grid, discharge or sell, based on prices, consumption and solar forecast. The plan is published as sensors you use in your own automations.\n\n**Entity prefix** is used in every entity id, e.g. `sensor.PREFIX_powerwall_action`. Use a different prefix for each instance (and another prefix than the PyScript version if both run). It cannot be changed later.",
+        "data": {
+          "entity_prefix": "Entity prefix",
+          "language": "Language"
+        },
+        "data_description": {
+          "entity_prefix": "e.g. battmind, battmind_ha or garage_battery",
+          "language": "Language used in the overview, charging history, charging rule and notifications."
+        }
+      },
+      "import_legacy": {
+        "title": "Import from the PyScript version",
+        "description": "BattMind PyScript installations found in the config folder:\n{files}\n\nChoose one to import from (it may have another prefix than **{prefix}**). The settings are used as defaults on the next pages, and the databases (charging history, consumption, prices, solar) are copied on first start. The PyScript files are only read, never changed - both versions can run at the same time.",
+        "data": {
+          "import_source": "Import from"
+        }
+      },
+      "price_provider": {
+        "title": "Electricity prices",
+        "description": "Choose where the hourly prices come from. With both, the first one with a price for an hour is used and the other fills the gaps.",
+        "data": {
+          "price_providers": "Price providers"
+        }
+      },
+      "battery_entities": {
+        "title": "Home battery - sensors",
+        "description": "The sensors BattMind reads from your home battery / inverter.",
+        "data": {
+          "powerwall_battery_level_entity_id": "Battery level",
+          "powerwall_watt_flow_entity_id": "Battery power flow",
+          "invert_powerwall_watt_flow_entity_id": "Invert power flow"
+        },
+        "data_description": {
+          "powerwall_battery_level_entity_id": "Sensor with the home battery state of charge in percent (0-100 %).",
+          "powerwall_watt_flow_entity_id": "Sensor with the power into/out of the battery (W or kW). Expected: positive when discharging, negative when charging. Tip: block battery discharging while the EV is charging.",
+          "invert_powerwall_watt_flow_entity_id": "Enable if your sensor is positive when charging and negative when discharging."
+        }
+      },
+      "battery_specs": {
+        "title": "Home battery - specifications",
+        "description": "Used to convert between % and kWh, to limit the plan and to calculate what the energy in the battery costs.",
+        "data": {
+          "powerwall_battery_size": "Usable capacity",
+          "powerwall_battery_level_min": "Minimum level",
+          "powerwall_battery_level_max": "Maximum level",
+          "powerwall_charging_power_limit": "Max charging power",
+          "powerwall_discharging_power": "Max discharging power",
+          "powerwall_charge_discharge_loss": "Charge/discharge loss",
+          "use_charge_discharge_loss_from_history": "Use measured loss",
+          "powerwall_wear_cost_per_kwh": "Wear cost"
+        },
+        "data_description": {
+          "powerwall_battery_size": "Usable capacity of the home battery.",
+          "powerwall_battery_level_min": "BattMind never plans below this level (the reserve you keep in the battery).",
+          "powerwall_battery_level_max": "BattMind never plans charging above this level.",
+          "powerwall_charging_power_limit": "Highest power the battery charges with. Used to calculate how many kWh can be charged per hour.",
+          "powerwall_discharging_power": "Highest power the battery discharges with. Limits how much can be sold per hour.",
+          "powerwall_charge_discharge_loss": "Round-trip loss as a fraction: 0.1 = 10 % loss. Added to the price of the energy in the battery.",
+          "use_charge_discharge_loss_from_history": "Calculate the loss from the charging history instead (used after 6 full charge cycles of history).",
+          "powerwall_wear_cost_per_kwh": "Cost of wear per kWh taken from the battery (battery price / expected lifetime in kWh). Discharging must earn more than this."
+        }
+      },
+      "consumption": {
+        "title": "House consumption",
+        "description": "BattMind stores the consumption per hour and predicts how much the battery must cover the next days.",
+        "data": {
+          "power_consumption_entity_id": "House consumption",
+          "power_consumption_entity_id_include_powerwall_charging": "Includes battery charging",
+          "power_consumption_entity_id_include_powerwall_discharging": "Includes battery discharging",
+          "ignore_consumption_from_entity_ids": "Ignore consumption from"
+        },
+        "data_description": {
+          "power_consumption_entity_id": "Sensor with the house consumption (W/kW) - not the grid import. The history is used to predict the consumption per hour.",
+          "power_consumption_entity_id_include_powerwall_charging": "Enable if the consumption sensor includes the power used to charge the battery.",
+          "power_consumption_entity_id_include_powerwall_discharging": "Enable if the consumption sensor already includes the consumption covered by the battery.",
+          "ignore_consumption_from_entity_ids": "Power sensors that are subtracted from the house consumption, e.g. EV chargers that should not be covered by the battery."
+        }
+      },
+      "prices_energidataservice": {
+        "title": "Energi Data Service",
+        "description": "Sensors from the [Energi Data Service](https://github.com/MTrab/energidataservice) integration. Enable Carnot (AI price forecast) in Energi Data Service to plan more than the published prices.",
+        "data": {
+          "energidataservice_buy_entity_id": "Buy price",
+          "energidataservice_sell_entity_id": "Sell price (optional)"
+        },
+        "data_description": {
+          "energidataservice_buy_entity_id": "The Energi Data Service sensor with the total price incl. tariffs (attributes raw_today/raw_tomorrow/forecast).",
+          "energidataservice_sell_entity_id": "A separate Energi Data Service sensor for the sell price. Empty = the buy price minus tariffs is used."
+        }
+      },
+      "prices_stromligning": {
+        "title": "Strømligning",
+        "description": "Sensors from the Strømligning integration. The buy price is required; the sell sensors are needed to calculate an accurate sell price.",
+        "data": {
+          "stromligning_buy_current_price": "Buy price",
+          "stromligning_buy_tomorrow_available": "Buy price tomorrow",
+          "stromligning_buy_forecasts": "Buy price forecasts",
+          "stromligning_sell_current_price": "Sell price (optional)",
+          "stromligning_sell_tomorrow_available": "Sell price tomorrow (optional)",
+          "stromligning_sell_forecasts": "Sell price forecasts (optional)"
+        },
+        "data_description": {
+          "stromligning_buy_current_price": "Strømligning current price incl. VAT (e.g. sensor.stromligning_current_price_vat).",
+          "stromligning_buy_tomorrow_available": "Strømligning ’tomorrow available’ entity for the buy price.",
+          "stromligning_buy_forecasts": "Strømligning forecast sensor - used for the hours where no real price is published yet.",
+          "stromligning_sell_current_price": "Strømligning current price excl. VAT for selling (e.g. the 15 min ex_vat sensor). Enables the tariff page.",
+          "stromligning_sell_tomorrow_available": "Strømligning ’tomorrow available’ entity for the sell price.",
+          "stromligning_sell_forecasts": "Strømligning forecast sensor for the sell price."
+        }
+      },
+      "prices_stromligning_tariffs": {
+        "title": "Strømligning - tariffs for selling",
+        "description": "When selling, tariffs and taxes are removed from the price and the transmission/system tariff and sell fee are added. Leave a field empty to use 0.",
+        "data": {
+          "stromligning_sell_distribution": "Transmission tariff",
+          "stromligning_sell_electricity_tax": "Electricity tax",
+          "stromligning_sell_nettariff": "Net tariff",
+          "stromligning_sell_systemtariff": "System tariff",
+          "stromligning_sell_surcharge": "Supplier surcharge"
+        },
+        "data_description": {
+          "stromligning_sell_distribution": "Distribution (transport) tariff sensor. Added back to the sell price.",
+          "stromligning_sell_electricity_tax": "Electricity tax sensor. Subtracted when the sell price is calculated.",
+          "stromligning_sell_nettariff": "Net tariff sensor. Subtracted when the sell price is calculated.",
+          "stromligning_sell_systemtariff": "System tariff sensor. Added back to the sell price.",
+          "stromligning_sell_surcharge": "The supplier surcharge on the spot price. Subtracted when the sell price is calculated."
+        }
+      },
+      "price_fees": {
+        "title": "Refund and fees",
+        "description": "Amounts per kWh that change what charging and selling is worth.",
+        "data": {
+          "refund": "Refund",
+          "sell_fee": "Sell fee"
+        },
+        "data_description": {
+          "refund": "Refund per kWh from state/grid company/supplier, subtracted from the buy price in the price history. 0 if none.",
+          "sell_fee": "Fee per kWh when selling to the grid. Included in the calculated sell price."
+        }
+      },
+      "solar": {
+        "title": "Solar panels",
+        "description": "Optional. With solar, BattMind predicts the surplus that charges the battery for free, can move solar charging to cheaper hours and accumulates `sensor.{prefix}_kwh_charged_by_solar`. Leave empty without solar.",
+        "data": {
+          "production_entity_id": "Solar production",
+          "inverter_discharging_power_limit": "Inverter power limit",
+          "production_price": "Fixed sell price for solar surplus",
+          "forecast_entity_id": "Solar forecast (optional)"
+        },
+        "data_description": {
+          "production_entity_id": "Sensor with the current solar production (W/kW). Leave empty if you have no solar panels.",
+          "inverter_discharging_power_limit": "Max AC power of the inverter. Limits how much solar + battery power is available at the same time.",
+          "production_price": "Price in kr/kWh used to value solar surplus that is sold, e.g. a fixed price from your electricity company. Set to -1 to use the hourly sell price.",
+          "forecast_entity_id": "Solcast PV Forecast sensor, e.g. sensor.solcast_pv_forecast_forecast_today. The days ahead are found automatically."
+        }
+      },
+      "weather": {
+        "title": "Weather forecast",
+        "description": "Used together with the stored solar history to predict the solar surplus. Any weather integration supporting `weather.get_forecasts` works (Met.no, AccuWeather, OpenWeather, ...).",
+        "data": {
+          "hourly_service_entity_id": "Hourly forecast",
+          "daily_service_entity_id": "Daily forecast"
+        },
+        "data_description": {
+          "hourly_service_entity_id": "Weather entity supporting hourly forecasts. Cloud cover, UV and temperature are used to estimate the solar surplus.",
+          "daily_service_entity_id": "Weather entity supporting daily forecasts. Used for the hours the hourly forecast does not cover."
+        }
+      },
+      "advanced": {
+        "title": "Planning",
+        "description": "The planner, rules and thresholds are controlled from the BattMind entities (switches and numbers) - these are the technical settings.",
+        "data": {
+          "days_to_predict": "Days to plan",
+          "cron_interval": "Planning interval",
+          "dashboard": "Dashboard in the sidebar",
+          "enable_diagnostic_file_log": "Diagnostic file log",
+          "testing_mode": "Testing mode"
+        },
+        "data_description": {
+          "days_to_predict": "Number of days (incl. today) the charging plan, the consumption prediction and the solar prediction cover. More days give better decisions about storing energy, but cost more CPU and depend on price forecasts.",
+          "cron_interval": "Minutes between each check of the plan. The plan is only recalculated when prices, battery level or settings changed.",
+          "dashboard": "Adds a ready-made BattMind dashboard to the sidebar with the plan, prices, history and all settings for this instance. Needs the HACS cards apexcharts-card, mushroom, stack-in-card and config-template-card.",
+          "enable_diagnostic_file_log": "Write a detailed log to battmind_{prefix}.log in the config folder (2 MB per file, 3 rotations). For troubleshooting.",
+          "testing_mode": "Marks the charging rule with 🧪 so a test instance can be told apart from the real one."
+        }
+      },
+      "database": {
+        "title": "Data storage",
+        "description": "How much history BattMind keeps. More history gives more stable predictions but adapts slower to changes.",
+        "data": {
+          "power_values_db_data_to_save": "Consumption history",
+          "solar_available_db_data_to_save": "Solar history per weather type",
+          "kwh_avg_prices_db_data_to_save": "Price history",
+          "charging_history_db_data_to_save": "Charging history"
+        },
+        "data_description": {
+          "power_values_db_data_to_save": "Number of days of consumption per hour kept for the consumption prediction.",
+          "solar_available_db_data_to_save": "Number of measurements of solar surplus kept per hour and weather score.",
+          "kwh_avg_prices_db_data_to_save": "Number of days of prices kept. Used as fallback prices when the price integration is offline.",
+          "charging_history_db_data_to_save": "Number of months of charging history kept (shown in the history and used for the battery cost)."
+        }
+      }
+    },
+    "error": {
+      "invalid_prefix": "Use 1-50 lowercase letters, digits or underscores, starting with a letter.",
+      "prefix_in_use": "This prefix is already used by another BattMind entry.",
+      "prefix_entities_exist": "Entities with this prefix already exist (e.g. from the PyScript version). Choose another prefix to run both at the same time.",
+      "min_above_max": "The minimum level must be lower than the maximum level.",
+      "no_price_provider": "Choose at least one price provider.",
+      "production_required": "A solar forecast requires a solar production sensor."
+    },
+    "abort": {
+      "already_configured": "Already configured"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "BattMind",
+        "description": "Choose what to change. The integration is reloaded when you save.",
+        "menu_options": {
+          "menu_general": "General",
+          "menu_battery": "Home battery",
+          "menu_consumption": "House consumption",
+          "menu_prices": "Electricity prices",
+          "menu_solar": "Solar panels and weather",
+          "menu_advanced": "Planning and data storage"
+        }
+      },
+      "price_provider": {
+        "title": "Electricity prices",
+        "description": "Choose where the hourly prices come from. With both, the first one with a price for an hour is used and the other fills the gaps.",
+        "data": {
+          "price_providers": "Price providers"
+        }
+      },
+      "general": {
+        "title": "General",
+        "data": {
+          "language": "Language"
+        },
+        "data_description": {
+          "language": "Language used in the overview, charging history, charging rule and notifications."
+        }
+      },
+      "battery_entities": {
+        "title": "Home battery - sensors",
+        "description": "The sensors BattMind reads from your home battery / inverter.",
+        "data": {
+          "powerwall_battery_level_entity_id": "Battery level",
+          "powerwall_watt_flow_entity_id": "Battery power flow",
+          "invert_powerwall_watt_flow_entity_id": "Invert power flow"
+        },
+        "data_description": {
+          "powerwall_battery_level_entity_id": "Sensor with the home battery state of charge in percent (0-100 %).",
+          "powerwall_watt_flow_entity_id": "Sensor with the power into/out of the battery (W or kW). Expected: positive when discharging, negative when charging. Tip: block battery discharging while the EV is charging.",
+          "invert_powerwall_watt_flow_entity_id": "Enable if your sensor is positive when charging and negative when discharging."
+        }
+      },
+      "battery_specs": {
+        "title": "Home battery - specifications",
+        "description": "Used to convert between % and kWh, to limit the plan and to calculate what the energy in the battery costs.",
+        "data": {
+          "powerwall_battery_size": "Usable capacity",
+          "powerwall_battery_level_min": "Minimum level",
+          "powerwall_battery_level_max": "Maximum level",
+          "powerwall_charging_power_limit": "Max charging power",
+          "powerwall_discharging_power": "Max discharging power",
+          "powerwall_charge_discharge_loss": "Charge/discharge loss",
+          "use_charge_discharge_loss_from_history": "Use measured loss",
+          "powerwall_wear_cost_per_kwh": "Wear cost"
+        },
+        "data_description": {
+          "powerwall_battery_size": "Usable capacity of the home battery.",
+          "powerwall_battery_level_min": "BattMind never plans below this level (the reserve you keep in the battery).",
+          "powerwall_battery_level_max": "BattMind never plans charging above this level.",
+          "powerwall_charging_power_limit": "Highest power the battery charges with. Used to calculate how many kWh can be charged per hour.",
+          "powerwall_discharging_power": "Highest power the battery discharges with. Limits how much can be sold per hour.",
+          "powerwall_charge_discharge_loss": "Round-trip loss as a fraction: 0.1 = 10 % loss. Added to the price of the energy in the battery.",
+          "use_charge_discharge_loss_from_history": "Calculate the loss from the charging history instead (used after 6 full charge cycles of history).",
+          "powerwall_wear_cost_per_kwh": "Cost of wear per kWh taken from the battery (battery price / expected lifetime in kWh). Discharging must earn more than this."
+        }
+      },
+      "consumption": {
+        "title": "House consumption",
+        "description": "BattMind stores the consumption per hour and predicts how much the battery must cover the next days.",
+        "data": {
+          "power_consumption_entity_id": "House consumption",
+          "power_consumption_entity_id_include_powerwall_charging": "Includes battery charging",
+          "power_consumption_entity_id_include_powerwall_discharging": "Includes battery discharging",
+          "ignore_consumption_from_entity_ids": "Ignore consumption from"
+        },
+        "data_description": {
+          "power_consumption_entity_id": "Sensor with the house consumption (W/kW) - not the grid import. The history is used to predict the consumption per hour.",
+          "power_consumption_entity_id_include_powerwall_charging": "Enable if the consumption sensor includes the power used to charge the battery.",
+          "power_consumption_entity_id_include_powerwall_discharging": "Enable if the consumption sensor already includes the consumption covered by the battery.",
+          "ignore_consumption_from_entity_ids": "Power sensors that are subtracted from the house consumption, e.g. EV chargers that should not be covered by the battery."
+        }
+      },
+      "prices_energidataservice": {
+        "title": "Energi Data Service",
+        "description": "Sensors from the [Energi Data Service](https://github.com/MTrab/energidataservice) integration. Enable Carnot (AI price forecast) in Energi Data Service to plan more than the published prices.",
+        "data": {
+          "energidataservice_buy_entity_id": "Buy price",
+          "energidataservice_sell_entity_id": "Sell price (optional)"
+        },
+        "data_description": {
+          "energidataservice_buy_entity_id": "The Energi Data Service sensor with the total price incl. tariffs (attributes raw_today/raw_tomorrow/forecast).",
+          "energidataservice_sell_entity_id": "A separate Energi Data Service sensor for the sell price. Empty = the buy price minus tariffs is used."
+        }
+      },
+      "prices_stromligning": {
+        "title": "Strømligning",
+        "description": "Sensors from the Strømligning integration. The buy price is required; the sell sensors are needed to calculate an accurate sell price.",
+        "data": {
+          "stromligning_buy_current_price": "Buy price",
+          "stromligning_buy_tomorrow_available": "Buy price tomorrow",
+          "stromligning_buy_forecasts": "Buy price forecasts",
+          "stromligning_sell_current_price": "Sell price (optional)",
+          "stromligning_sell_tomorrow_available": "Sell price tomorrow (optional)",
+          "stromligning_sell_forecasts": "Sell price forecasts (optional)"
+        },
+        "data_description": {
+          "stromligning_buy_current_price": "Strømligning current price incl. VAT (e.g. sensor.stromligning_current_price_vat).",
+          "stromligning_buy_tomorrow_available": "Strømligning ’tomorrow available’ entity for the buy price.",
+          "stromligning_buy_forecasts": "Strømligning forecast sensor - used for the hours where no real price is published yet.",
+          "stromligning_sell_current_price": "Strømligning current price excl. VAT for selling (e.g. the 15 min ex_vat sensor). Enables the tariff page.",
+          "stromligning_sell_tomorrow_available": "Strømligning ’tomorrow available’ entity for the sell price.",
+          "stromligning_sell_forecasts": "Strømligning forecast sensor for the sell price."
+        }
+      },
+      "prices_stromligning_tariffs": {
+        "title": "Strømligning - tariffs for selling",
+        "description": "When selling, tariffs and taxes are removed from the price and the transmission/system tariff and sell fee are added. Leave a field empty to use 0.",
+        "data": {
+          "stromligning_sell_distribution": "Transmission tariff",
+          "stromligning_sell_electricity_tax": "Electricity tax",
+          "stromligning_sell_nettariff": "Net tariff",
+          "stromligning_sell_systemtariff": "System tariff",
+          "stromligning_sell_surcharge": "Supplier surcharge"
+        },
+        "data_description": {
+          "stromligning_sell_distribution": "Distribution (transport) tariff sensor. Added back to the sell price.",
+          "stromligning_sell_electricity_tax": "Electricity tax sensor. Subtracted when the sell price is calculated.",
+          "stromligning_sell_nettariff": "Net tariff sensor. Subtracted when the sell price is calculated.",
+          "stromligning_sell_systemtariff": "System tariff sensor. Added back to the sell price.",
+          "stromligning_sell_surcharge": "The supplier surcharge on the spot price. Subtracted when the sell price is calculated."
+        }
+      },
+      "price_fees": {
+        "title": "Refund and fees",
+        "description": "Amounts per kWh that change what charging and selling is worth.",
+        "data": {
+          "refund": "Refund",
+          "sell_fee": "Sell fee"
+        },
+        "data_description": {
+          "refund": "Refund per kWh from state/grid company/supplier, subtracted from the buy price in the price history. 0 if none.",
+          "sell_fee": "Fee per kWh when selling to the grid. Included in the calculated sell price."
+        }
+      },
+      "solar": {
+        "title": "Solar panels",
+        "description": "Optional. With solar, BattMind predicts the surplus that charges the battery for free, can move solar charging to cheaper hours and accumulates `sensor.{prefix}_kwh_charged_by_solar`. Leave empty without solar.",
+        "data": {
+          "production_entity_id": "Solar production",
+          "inverter_discharging_power_limit": "Inverter power limit",
+          "production_price": "Fixed sell price for solar surplus",
+          "forecast_entity_id": "Solar forecast (optional)"
+        },
+        "data_description": {
+          "production_entity_id": "Sensor with the current solar production (W/kW). Leave empty if you have no solar panels.",
+          "inverter_discharging_power_limit": "Max AC power of the inverter. Limits how much solar + battery power is available at the same time.",
+          "production_price": "Price in kr/kWh used to value solar surplus that is sold, e.g. a fixed price from your electricity company. Set to -1 to use the hourly sell price.",
+          "forecast_entity_id": "Solcast PV Forecast sensor, e.g. sensor.solcast_pv_forecast_forecast_today. The days ahead are found automatically."
+        }
+      },
+      "weather": {
+        "title": "Weather forecast",
+        "description": "Used together with the stored solar history to predict the solar surplus. Any weather integration supporting `weather.get_forecasts` works (Met.no, AccuWeather, OpenWeather, ...).",
+        "data": {
+          "hourly_service_entity_id": "Hourly forecast",
+          "daily_service_entity_id": "Daily forecast"
+        },
+        "data_description": {
+          "hourly_service_entity_id": "Weather entity supporting hourly forecasts. Cloud cover, UV and temperature are used to estimate the solar surplus.",
+          "daily_service_entity_id": "Weather entity supporting daily forecasts. Used for the hours the hourly forecast does not cover."
+        }
+      },
+      "advanced": {
+        "title": "Planning",
+        "description": "The planner, rules and thresholds are controlled from the BattMind entities (switches and numbers) - these are the technical settings.",
+        "data": {
+          "days_to_predict": "Days to plan",
+          "cron_interval": "Planning interval",
+          "dashboard": "Dashboard in the sidebar",
+          "enable_diagnostic_file_log": "Diagnostic file log",
+          "testing_mode": "Testing mode"
+        },
+        "data_description": {
+          "days_to_predict": "Number of days (incl. today) the charging plan, the consumption prediction and the solar prediction cover. More days give better decisions about storing energy, but cost more CPU and depend on price forecasts.",
+          "cron_interval": "Minutes between each check of the plan. The plan is only recalculated when prices, battery level or settings changed.",
+          "dashboard": "Adds a ready-made BattMind dashboard to the sidebar with the plan, prices, history and all settings for this instance. Needs the HACS cards apexcharts-card, mushroom, stack-in-card and config-template-card.",
+          "enable_diagnostic_file_log": "Write a detailed log to battmind_{prefix}.log in the config folder (2 MB per file, 3 rotations). For troubleshooting.",
+          "testing_mode": "Marks the charging rule with 🧪 so a test instance can be told apart from the real one."
+        }
+      },
+      "database": {
+        "title": "Data storage",
+        "description": "How much history BattMind keeps. More history gives more stable predictions but adapts slower to changes.",
+        "data": {
+          "power_values_db_data_to_save": "Consumption history",
+          "solar_available_db_data_to_save": "Solar history per weather type",
+          "kwh_avg_prices_db_data_to_save": "Price history",
+          "charging_history_db_data_to_save": "Charging history"
+        },
+        "data_description": {
+          "power_values_db_data_to_save": "Number of days of consumption per hour kept for the consumption prediction.",
+          "solar_available_db_data_to_save": "Number of measurements of solar surplus kept per hour and weather score.",
+          "kwh_avg_prices_db_data_to_save": "Number of days of prices kept. Used as fallback prices when the price integration is offline.",
+          "charging_history_db_data_to_save": "Number of months of charging history kept (shown in the history and used for the battery cost)."
+        }
+      }
+    },
+    "error": {
+      "invalid_prefix": "Use 1-50 lowercase letters, digits or underscores, starting with a letter.",
+      "prefix_in_use": "This prefix is already used by another BattMind entry.",
+      "prefix_entities_exist": "Entities with this prefix already exist (e.g. from the PyScript version). Choose another prefix to run both at the same time.",
+      "min_above_max": "The minimum level must be lower than the maximum level.",
+      "no_price_provider": "Choose at least one price provider.",
+      "production_required": "A solar forecast requires a solar production sensor."
+    }
+  },
+  "selector": {
+    "import_source": {
+      "options": {
+        "none": "Do not import"
+      }
+    },
+    "price_providers": {
+      "options": {
+        "energidataservice": "Energi Data Service",
+        "stromligning": "Strømligning"
+      }
+    }
+  },
+  "services": {
+    "debug_info": {
+      "name": "Show debug info",
+      "description": "Shows the BattMind state as a persistent notification (also returned as response).",
+      "fields": {
+        "config_entry_id": {
+          "name": "Config entry",
+          "description": "Only run for this BattMind entry (default: all)."
+        }
+      }
+    },
+    "recalc_charging_history_today": {
+      "name": "Recalculate charging history today",
+      "description": "Recalculates today’s charging history hour by hour.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Config entry",
+          "description": "Only run for this BattMind entry (default: all)."
+        }
+      }
+    },
+    "enforce_planning": {
+      "name": "Enforce planning",
+      "description": "Recalculates the charging plan now.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Config entry",
+          "description": "Only run for this BattMind entry (default: all)."
+        }
+      }
+    }
+  },
+  "entity": {
+    "switch": {
+      "deactivate_script": {
+        "name": "Deactivate script"
+      },
+      "solar_charging": {
+        "name": "Solar surplus charging"
+      },
+      "cheapest_hour_fill_planner": {
+        "name": "Charging: Cheapest periods planner"
+      },
+      "cheapest_hour_fill_up": {
+        "name": "Charging: Fill up during cheapest period"
+      },
+      "most_expensive_planner": {
+        "name": "Charging: Most expensive periods planner"
+      },
+      "needed_before_max_level_planner": {
+        "name": "Charging: Required before max level planner"
+      },
+      "only_discharge_on_profit": {
+        "name": "Discharging: Profit only"
+      },
+      "prioritize_discharge_hours_by_energy_cost": {
+        "name": "Discharging: Prioritise by energy cost"
+      },
+      "sell_excess_kwh_available": {
+        "name": "Discharging: Sell excess kWh"
+      },
+      "use_midnight_battery_level": {
+        "name": "Use midnight battery level"
+      },
+      "most_profit": {
+        "name": "Discharging: Maximise profit"
+      },
+      "force_powerwall_max_hours_old_discharge": {
+        "name": "Forced discharge: Max. kWh age in hours"
+      },
+      "optimize_solar_charging": {
+        "name": "Optimise solar charging"
+      }
+    },
+    "number": {
+      "cheap_price_periods": {
+        "name": "Cheap price periods"
+      },
+      "cheapest_price_rise_threshold": {
+        "name": "Increase for cheapest price"
+      },
+      "cheap_price_period_rise_threshold": {
+        "name": "Increase for cheap periods"
+      },
+      "min_profit_per_kwh": {
+        "name": "Min. profit per kWh when discharging"
+      },
+      "min_total_profit": {
+        "name": "Min. total profit from discharging"
+      },
+      "min_sell_kwh": {
+        "name": "Minimum excess kWh for export"
+      },
+      "powerwall_max_hours_old": {
+        "name": "Max. age of kWh in home battery"
+      }
+    },
+    "select": {
+      "forecast_type": {
+        "name": "Select forecast type"
+      }
+    },
+    "text": {
+      "exclude_sell_hours": {
+        "name": "Exclude selling hours"
+      }
+    },
+    "button": {
+      "enforce_planning": {
+        "name": "Force planning"
+      },
+      "restart_script": {
+        "name": "Restart script"
+      }
+    },
+    "sensor": {
+      "current_charging_rule": {
+        "name": "Current charging rule"
+      },
+      "powerwall_action": {
+        "name": "Powerwall action"
+      },
+      "overview": {
+        "name": "Overview"
+      },
+      "charging_history": {
+        "name": "Charging history"
+      },
+      "emoji_description": {
+        "name": "Emoji explanation"
+      },
+      "battery_level_needed": {
+        "name": "Required battery level until next charge"
+      },
+      "kwh_charged_by_solar": {
+        "name": "kWh charged by solar"
+      }
+    }
+  },
+  "runtime": {
+    "charging_type": {
+      "error": {
+        "description": "Critical error, emergency charging"
+      },
+      "no_rule": {
+        "description": "Charging without rule"
+      },
+      "cheapest_hour_fill_planner": {
+        "description": "Charging during the cheapest periods"
+      },
+      "most_expensive_planner": {
+        "description": "Prioritise charging for the most expensive periods"
+      },
+      "needed_before_max_level_planner": {
+        "description": "Charging during required periods before the maximum battery level is reached"
+      },
+      "charging": {
+        "description": "Charging"
+      },
+      "discharging": {
+        "description": "Discharging"
+      },
+      "balance": {
+        "description": "Charge and discharge balance"
+      },
+      "solar": {
+        "description": "Solar charging / excess production"
+      },
+      "solar_corrected": {
+        "description": "Maximum charge reached – solar surplus"
+      },
+      "powerwall": {
+        "description": "Charging from home battery"
+      },
+      "powerwall_avg_symbol": {
+        "description": "Average home battery charging"
+      },
+      "sunrise": {
+        "description": "Sunrise"
+      },
+      "sunset": {
+        "description": "Sunset"
+      },
+      "charging_problem": {
+        "description": "Charging issues"
+      },
+      "charging_error": {
+        "description": "Charging failed completely"
+      },
+      "blocked": {
+        "description": "Charging blocked"
+      },
+      "profit": {
+        "description": "Savings and revenue from discharging"
+      },
+      "average": {
+        "description": "Average consumption"
+      },
+      "force_discharge": {
+        "description": "Sell excess kWh to the grid during the most expensive hours"
+      },
+      "bundle": {
+        "description": "Group of periods"
+      }
+    },
+    "ui": {
+      "common": {
+        "valuta": "£",
+        "valuta_kwh": "£/kWh",
+        "valuta_percentage": "£/%",
+        "time": "Time",
+        "price": "Price",
+        "total": "Total",
+        "expense": "Cost",
+        "reason": "Reason"
+      },
+      "entity_unavailable": {
+        "title": "Entity unavailable",
+        "message": "Entity ’{entity}’ unavailable since {timestamp}",
+        "restart_integration": "Restarting integration"
+      },
+      "validation_procedure": {
+        "entity_validation": "Validating entities",
+        "entity_missing_try_again": "Some entities are missing\nRetrying in 2 minutes",
+        "entity_ids_missing": "Some entity IDs are missing\n- {entity_ids}",
+        "entity_unavailable_try_again": "Some entities are unavailable\nRetrying in 2 minutes",
+        "unavailable_entity_ids_title": "Some entity IDs are unavailable",
+        "check_entity_ids": "Check entity IDs"
+      },
+      "init": {
+        "script_starting": "Starting Battmind",
+        "script_stopped": "Script stopped",
+        "check_log": "Please check the log for more information"
+      },
+      "emoji_description": {
+        "header": "Emoji description",
+        "markdown_hint": "Use a Markdown card with: {{{{ states.sensor.{name}_emoji_description.attributes.description }}}}"
+      },
+      "set_default_entity_states": {
+        "markdown_guide": "Use a Markdown card with: {{{{ states.sensor.{name}_overview.attributes.overview }}}}",
+        "no_overview": "No overview yet"
+      },
+      "load_charging_history": {
+        "default_state": "Use a Markdown card with: {{{{ states.sensor.{name}_charging_history.attributes.history }}}}"
+      },
+      "charging_history_combine_and_set": {
+        "too_big_warning": "Home Assistant does not allow displaying more history",
+        "more_history": "View more history",
+        "month": "Month"
+      },
+      "cheap_grid_charge_hours": {
+        "entity_not_in_domain": "Unable to fetch electricity prices, {entity} is not in the sensor domain",
+        "battery_level_expenses": {
+          "title": "Battery level costs",
+          "current_battery_level": "Current battery level",
+          "solar_share": "Solar share",
+          "estimated_loss": "Charging loss cost",
+          "charging_loss": "Charging loss percentage",
+          "estimated_wear_cost": "Battery wear cost",
+          "expense": "Cost<br>(excluding charging losses and wear)",
+          "unit_price": "Unit price<br>(excluding charging losses and wear)"
+        },
+        "charging_overview_title": "Charging overview",
+        "offline_prices": "Using offline prices for some hours",
+        "no_upcoming_charging_planned": "No upcoming charging planned",
+        "enough_solar_production": "Sufficient solar production for charging",
+        "solar_production_title": "Excess solar production available",
+        "no_solar_production": "No excess solar production available",
+        "last_scheduled": "Last scheduled",
+        "no_charging_sessions": "No charging sessions planned",
+        "no_blocked_discharging_planned": "No blocked discharging planned"
+      },
+      "charge_if_needed": {
+        "script_deactivated": "Deactivated",
+        "no_charging_modes_active": "No charging modes active\nCharging {watt}W",
+        "planned_charging": "Charging up to {emoji}",
+        "not_charging": "Not charging",
+        "force_solar_only_charging": "Solar-only charging allowed",
+        "grid_charging": "Charging from grid",
+        "discharge_allowed": "Discharging allowed",
+        "force_discharge": "Forced discharging",
+        "charging_watt": "Charging {watt}W",
+        "discharging_watt": "Discharging {watt}W",
+        "force_powerwall_max_hours_old_discharge": "Discharging older kWh allowed",
+        "blocked_solar_charge": "Blocked solar charging"
+      },
+      "startup": {
+        "configuration": {
+          "header": "Configuration",
+          "solar": "Solar configured",
+          "powerwall": "Home battery configured",
+          "configured": "Yes",
+          "not_configured": "No"
+        },
+        "setting_entities": "Setting up entities",
+        "loading_db": "Loading databases",
+        "loading_history": "Loading charging history",
+        "almost_ready": "Almost ready",
+        "calc_charging_plan": "Calculating charging plan"
+      }
+    }
+  }
+}
