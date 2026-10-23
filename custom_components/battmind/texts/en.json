@@ -1,0 +1,163 @@
+{
+  "charging_type": {
+    "error": {
+      "description": "Critical error, emergency charging"
+    },
+    "no_rule": {
+      "description": "Charging without rule"
+    },
+    "cheapest_hour_fill_planner": {
+      "description": "Charging during the cheapest periods"
+    },
+    "most_expensive_planner": {
+      "description": "Prioritise charging for the most expensive periods"
+    },
+    "needed_before_max_level_planner": {
+      "description": "Charging during required periods before the maximum battery level is reached"
+    },
+    "charging": {
+      "description": "Charging"
+    },
+    "discharging": {
+      "description": "Discharging"
+    },
+    "balance": {
+      "description": "Charge and discharge balance"
+    },
+    "solar": {
+      "description": "Solar charging / excess production"
+    },
+    "solar_corrected": {
+      "description": "Maximum charge reached – solar surplus"
+    },
+    "powerwall": {
+      "description": "Charging from home battery"
+    },
+    "powerwall_avg_symbol": {
+      "description": "Average home battery charging"
+    },
+    "sunrise": {
+      "description": "Sunrise"
+    },
+    "sunset": {
+      "description": "Sunset"
+    },
+    "charging_problem": {
+      "description": "Charging issues"
+    },
+    "charging_error": {
+      "description": "Charging failed completely"
+    },
+    "blocked": {
+      "description": "Charging blocked"
+    },
+    "profit": {
+      "description": "Savings and revenue from discharging"
+    },
+    "average": {
+      "description": "Average consumption"
+    },
+    "force_discharge": {
+      "description": "Sell excess kWh to the grid during the most expensive hours"
+    },
+    "bundle": {
+      "description": "Group of periods"
+    }
+  },
+  "ui": {
+    "common": {
+      "valuta": "£",
+      "valuta_kwh": "£/kWh",
+      "valuta_percentage": "£/%",
+      "time": "Time",
+      "price": "Price",
+      "total": "Total",
+      "expense": "Cost",
+      "reason": "Reason"
+    },
+    "entity_unavailable": {
+      "title": "Entity unavailable",
+      "message": "Entity ’{entity}’ unavailable since {timestamp}",
+      "restart_integration": "Restarting integration"
+    },
+    "validation_procedure": {
+      "entity_validation": "Validating entities",
+      "entity_missing_try_again": "Some entities are missing\nRetrying in 2 minutes",
+      "entity_ids_missing": "Some entity IDs are missing\n- {entity_ids}",
+      "entity_unavailable_try_again": "Some entities are unavailable\nRetrying in 2 minutes",
+      "unavailable_entity_ids_title": "Some entity IDs are unavailable",
+      "check_entity_ids": "Check entity IDs"
+    },
+    "init": {
+      "script_starting": "Starting Battmind",
+      "script_stopped": "Script stopped",
+      "check_log": "Please check the log for more information"
+    },
+    "emoji_description": {
+      "header": "Emoji description",
+      "markdown_hint": "Use a Markdown card with: {{{{ states.sensor.{name}_emoji_description.attributes.description }}}}"
+    },
+    "set_default_entity_states": {
+      "markdown_guide": "Use a Markdown card with: {{{{ states.sensor.{name}_overview.attributes.overview }}}}",
+      "no_overview": "No overview yet"
+    },
+    "load_charging_history": {
+      "default_state": "Use a Markdown card with: {{{{ states.sensor.{name}_charging_history.attributes.history }}}}"
+    },
+    "charging_history_combine_and_set": {
+      "too_big_warning": "Home Assistant does not allow displaying more history",
+      "more_history": "View more history",
+      "month": "Month"
+    },
+    "cheap_grid_charge_hours": {
+      "entity_not_in_domain": "Unable to fetch electricity prices, {entity} is not in the sensor domain",
+      "battery_level_expenses": {
+        "title": "Battery level costs",
+        "current_battery_level": "Current battery level",
+        "solar_share": "Solar share",
+        "estimated_loss": "Charging loss cost",
+        "charging_loss": "Charging loss percentage",
+        "estimated_wear_cost": "Battery wear cost",
+        "expense": "Cost<br>(excluding charging losses and wear)",
+        "unit_price": "Unit price<br>(excluding charging losses and wear)"
+      },
+      "charging_overview_title": "Charging overview",
+      "offline_prices": "Using offline prices for some hours",
+      "no_upcoming_charging_planned": "No upcoming charging planned",
+      "enough_solar_production": "Sufficient solar production for charging",
+      "solar_production_title": "Excess solar production available",
+      "no_solar_production": "No excess solar production available",
+      "last_scheduled": "Last scheduled",
+      "no_charging_sessions": "No charging sessions planned",
+      "no_blocked_discharging_planned": "No blocked discharging planned"
+    },
+    "charge_if_needed": {
+      "script_deactivated": "Deactivated",
+      "no_charging_modes_active": "No charging modes active\nCharging {watt}W",
+      "planned_charging": "Charging up to {emoji}",
+      "not_charging": "Not charging",
+      "force_solar_only_charging": "Solar-only charging allowed",
+      "grid_charging": "Charging from grid",
+      "discharge_allowed": "Discharging allowed",
+      "force_discharge": "Forced discharging",
+      "charging_watt": "Charging {watt}W",
+      "discharging_watt": "Discharging {watt}W",
+      "force_powerwall_max_hours_old_discharge": "Discharging older kWh allowed",
+      "blocked_solar_charge": "Blocked solar charging"
+    },
+    "startup": {
+      "configuration": {
+        "header": "Configuration",
+        "solar": "Solar configured",
+        "powerwall": "Home battery configured",
+        "configured": "Yes",
+        "not_configured": "No"
+      },
+      "setting_entities": "Setting up entities",
+      "loading_db": "Loading databases",
+      "loading_history": "Loading charging history",
+      "almost_ready": "Almost ready",
+      "calc_charging_plan": "Calculating charging plan"
+    }
+  }
+}

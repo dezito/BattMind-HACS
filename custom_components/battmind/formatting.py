@@ -1,6 +1,9 @@
 """Emoji and text formatting helpers shared by the engine modules."""
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 from .const import CHARGING_TYPES
 
 
@@ -54,7 +57,7 @@ def get_list_values(data) -> list:
 
 
 def translate(texts: dict[str, str], key: str, default: str | None = None, **fmt) -> str:
-    """Runtime text from translations/<language>.json ("runtime" section, flattened keys).
+    """Runtime text from texts/<language>.json (flattened keys, see load_texts).
 
     Placeholders use str.format, so a literal { or } is written as {{ or }} in the json.
     """
@@ -63,3 +66,25 @@ def translate(texts: dict[str, str], key: str, default: str | None = None, **fmt
         return value.format(**fmt) if fmt else value
     except (KeyError, IndexError, ValueError):
         return value
+
+
+def load_texts(language: str) -> dict[str, str]:
+    """Flattened runtime texts of texts/<language>.json, English is the fallback for missing keys.
+
+    Blocking file I/O, run it in the executor.
+    """
+    texts: dict[str, str] = {}
+
+    def flatten(data: dict, prefix: str = "") -> None:
+        for key, value in data.items():
+            if isinstance(value, dict):
+                flatten(value, f"{prefix}{key}.")
+            else:
+                texts[f"{prefix}{key}"] = value
+
+    folder = Path(__file__).parent / "texts"
+    for name in dict.fromkeys(("en", language)):
+        path = folder / f"{name}.json"
+        if path.is_file():
+            flatten(json.loads(path.read_text(encoding="utf-8")))
+    return texts

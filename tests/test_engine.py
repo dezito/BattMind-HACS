@@ -32,7 +32,7 @@ OPTIONS = {
 
 def _texts() -> dict[str, str]:
     """The Danish runtime texts, flattened like the coordinator does."""
-    path = Path(__file__).parents[1] / "custom_components" / "battmind" / "translations" / "da.json"
+    path = Path(__file__).parents[1] / "custom_components" / "battmind" / "texts" / "da.json"
     texts: dict[str, str] = {}
 
     def flatten(data: dict, prefix: str = "") -> None:
@@ -42,7 +42,7 @@ def _texts() -> dict[str, str]:
             else:
                 texts[f"{prefix}{key}"] = value
 
-    flatten(json.loads(path.read_text(encoding="utf-8"))["runtime"])
+    flatten(json.loads(path.read_text(encoding="utf-8")))
     return texts
 
 

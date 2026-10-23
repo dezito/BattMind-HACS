@@ -31,12 +31,10 @@ from homeassistant.helpers.event import (
     async_track_time_change,
 )
 from homeassistant.helpers.sun import get_astral_event_date
-from homeassistant.helpers.translation import async_get_translations
 from homeassistant.util import dt as dt_util
 
 from .const import (
     CONF_ENTITY_PREFIX,
-    DOMAIN,
     ENTITY_UNAVAILABLE_STATES,
     HISTORY_BUFFER_HOURS,
     SIGNAL_UPDATE,
@@ -45,7 +43,7 @@ from .const import (
     normalize_language,
 )
 from .engine import BattMindEngine, JobResult, Snapshot
-from .formatting import format_charging_rule, translate
+from .formatting import format_charging_rule, load_texts, translate
 from .helpers import float_or_none
 from .power import merge_rows
 from .prices import TARIFF_STATE_KEYS
@@ -150,12 +148,10 @@ class BattMindCoordinator:
         return translate(self.texts, key, default, **fmt)
 
     async def async_setup(self) -> None:
-        # texts for the overview, history, charging rule and notifications ("runtime" in
-        # translations/<language>.json, English is the fallback for missing keys)
+        # texts for the overview, history, charging rule and notifications (texts/<language>.json,
+        # English is the fallback for missing keys)
         language = normalize_language(self.config.get("language"), normalize_language(self.hass.config.language))
-        prefix = f"component.{DOMAIN}.runtime."
-        translations = await async_get_translations(self.hass, language, "runtime", [DOMAIN])
-        self.texts = {key.removeprefix(prefix): value for key, value in translations.items() if key.startswith(prefix)}
+        self.texts = await self.hass.async_add_executor_job(load_texts, language)
         self.engine = BattMindEngine(self.config, self.prefix, self.texts)
 
         if self.config.get("enable_diagnostic_file_log"):

@@ -37,6 +37,7 @@ PREFIX_RE = re.compile(r"^[a-z][a-z0-9_]{0,49}$")
 IMPORT_NONE = "none"
 CRON_INTERVALS = ["1", "2", "3", "4", "5", "6", "10", "12", "15", "20", "30"]
 PRICE_PROVIDERS = ["energidataservice", "stromligning"]
+ENERGIDATASERVICE_URL = "https://github.com/MTrab/energidataservice"  # {eds_url} in the step descriptions
 
 CONFIG_FLOW_STEPS = [
     "battery_entities",
@@ -319,7 +320,7 @@ class BattMindFlowPages:
             step_id=step,
             data_schema=build_schema(keys, values_for_form),
             errors=errors,
-            description_placeholders=self._placeholders(),
+            description_placeholders={**self._placeholders(), "eds_url": ENERGIDATASERVICE_URL},
         )
 
     async def async_step_price_provider(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:

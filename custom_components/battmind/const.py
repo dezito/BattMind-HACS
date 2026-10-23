@@ -36,7 +36,7 @@ POWERWALL_ACTION_STATES = (
     "blocked_solar_charge",
 )
 
-# Languages with runtime texts in translations/<language>.json
+# Languages with runtime texts in texts/<language>.json
 LANGUAGES = {
     "da": "Dansk",
     "en": "English",
