@@ -42,7 +42,7 @@ class BattMindText(BattMindEntity, TextEntity, RestoreEntity):
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()
         value = None
-        if (last := await self.async_get_last_state()) is not None:
+        if (last := await self.async_get_restored_state()) is not None:
             value = self._valid(last.state)
         if value is None and (legacy := self.legacy_state()) is not None:
             value = self._valid(legacy.state)

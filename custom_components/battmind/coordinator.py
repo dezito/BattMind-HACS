@@ -43,10 +43,12 @@ from .const import (
     normalize_language,
 )
 from .engine import BattMindEngine, JobResult, Snapshot
+from .engine_analysis import ANALYSIS_DAYS
 from .formatting import format_charging_rule, load_texts, translate
 from .helpers import float_or_none
 from .power import merge_rows
 from .prices import TARIFF_STATE_KEYS
+from .backup import async_load_backup, async_restore_databases, pending_restores
 from .storage import DB_NAMES, BattMindStorage, load_legacy_databases
 
 _LOGGER = logging.getLogger(__name__)
@@ -82,6 +84,8 @@ class BattMindCoordinator:
         self.data: dict[str, Any] = {}
         self.attributes: dict[str, dict[str, Any]] = {}
         self.settings: dict[str, Any] = {}
+        # platform.key -> state from an imported backup, used by the entities instead of their last state
+        self.restore_settings: dict[str, str] = {}
         self.solar_kwh_total: float | None = None
         self.started = False
 
@@ -162,7 +166,34 @@ class BattMindCoordinator:
             entry = ent_reg.async_get(entity_id)
             self._entity_platforms[entity_id] = entry.platform if entry else None
 
+        await self._async_apply_restore()
         self.set_charging_rule(f"📟{self.t('ui.init.script_starting')}")
+
+    async def _async_apply_restore(self) -> None:
+        """Databases and settings of a backup imported or chosen in the config flow (backup.py)."""
+        name = pending_restores(self.hass).pop(self.entry.entry_id, None)
+        if name is None and (name := self.entry.data.get("restore_backup")):
+            # only once, the restored databases are saved from now on
+            data = {key: value for key, value in self.entry.data.items() if key != "restore_backup"}
+            self.hass.config_entries.async_update_entry(self.entry, data=data)
+        if not name:
+            return
+        try:
+            backup = await async_load_backup(self.hass, name)
+        except HomeAssistantError as err:
+            _LOGGER.error("Could not restore the BattMind backup: %s", err)
+            return
+        restored = await async_restore_databases(self.storage, backup)
+        self.restore_settings = dict(backup.get("settings") or {})
+        _LOGGER.info(
+            "Restored backup %s: databases %s, %s settings", name, ", ".join(restored) or "none", len(self.restore_settings)
+        )
+        persistent_notification.async_create(
+            self.hass,
+            self.t("ui.backup.imported", file=name, databases=", ".join(restored) or "-"),
+            title=f"📟BattMind ({self.prefix})",
+            notification_id=f"{self.prefix}_backup",
+        )
 
     @callback
     def async_start(self) -> None:
@@ -269,6 +300,10 @@ class BattMindCoordinator:
             self.started = True
             await self._async_charge_if_needed(force=True)
             await self.async_run_job("charging_history", self._local_now().replace(minute=0, second=0))
+            if not self.engine.analysis_backfilled():
+                self.entry.async_create_background_task(
+                    self.hass, self._async_analysis_backfill(), name=f"battmind_{self.prefix}_analysis_backfill"
+                )
             if self.last_job.get("worker_thread"):
                 log_lines.append(f"📟Worker: {self.last_job['worker_thread']}")
         except Exception as err:  # noqa: BLE001
@@ -341,8 +376,6 @@ class BattMindCoordinator:
 
     @callback
     def _handle_cron(self, _now: datetime.datetime) -> None:
-        if self.settings.get("deactivate_script"):
-            return
         self.async_request_charge()
 
     @callback
@@ -407,9 +440,6 @@ class BattMindCoordinator:
         old = self.settings.get(key)
         self.settings[key] = value
         if initial or old == value or not self.started:
-            return
-        if key == "deactivate_script":
-            self.async_request_charge()
             return
         if self._settings_debounce:
             self._settings_debounce()
@@ -696,6 +726,44 @@ class BattMindCoordinator:
                 del rows[: index - 1]
         for rows in self._statistics.values():
             del rows[: bisect.bisect_left(rows, (cutoff - 3600,))]
+
+    async def _async_analysis_backfill(self) -> None:
+        """The first time: the energy per hour of the last year from the long-term statistics (engine_analysis.py)."""
+        if "recorder" not in self.hass.config.components:
+            return
+        from homeassistant.components.recorder import get_instance
+        from homeassistant.components.recorder.statistics import statistics_during_period
+
+        prices = self.config["prices"]["entity_ids"]
+        price_id = prices["energidataservice_buy_entity_id"] or prices["stromligning_buy_current_price"]
+        home = self.config["home"]["entity_ids"]
+        entities = {e for e in (*self.buffered_entities, price_id) if e}
+        end = dt_util.utcnow().replace(minute=0, second=0, microsecond=0)
+        try:
+            stats = await get_instance(self.hass).async_add_executor_job(
+                statistics_during_period, self.hass, end - datetime.timedelta(days=ANALYSIS_DAYS), end, entities, "hour", None, {"mean", "state"}
+            )
+        except Exception as err:  # noqa: BLE001
+            _LOGGER.warning("Analysis: could not read the long-term statistics: %s", err)
+            return
+        data = {
+            "price_entity_id": price_id,
+            "stats": {
+                # power and battery level: the mean of the hour; prices (state_class total, e.g.
+                # Energi Data Service and Strømligning) only have the state at the end of the hour
+                entity_id: [
+                    (
+                        row["start"].timestamp() if isinstance(row["start"], datetime.datetime) else float(row["start"]),
+                        row["mean"] if row.get("mean") is not None else row["state"],
+                    )
+                    for row in rows if row.get("mean") is not None or row.get("state") is not None
+                ]
+                for entity_id, rows in stats.items()
+            },
+        }
+        if not data["stats"].get(home["power_consumption_entity_id"]):
+            _LOGGER.info("Analysis: no long-term statistics of %s, the analysis starts from now", home["power_consumption_entity_id"])
+        await self.async_run_job("analysis_update", data)
 
     # ------------------------------------------------------------------ #
     # Services

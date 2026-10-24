@@ -2,7 +2,9 @@
   "domain": "battmind",
   "name": "BattMind",
   "after_dependencies": [
+    "blueprint",
     "recorder",
+    "repairs",
     "sun",
     "weather"
   ],

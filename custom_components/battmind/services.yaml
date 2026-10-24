@@ -18,3 +18,27 @@ enforce_planning:
       selector:
         config_entry:
           integration: battmind
+
+export_data:
+  fields:
+    config_entry_id:
+      selector:
+        config_entry:
+          integration: battmind
+
+import_data:
+  fields:
+    config_entry_id:
+      required: true
+      selector:
+        config_entry:
+          integration: battmind
+    file:
+      required: true
+      example: battmind_20261024_120000.json
+      selector:
+        text:
+    restore_configuration:
+      default: false
+      selector:
+        boolean:

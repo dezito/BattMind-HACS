@@ -1,230 +1,264 @@
 <img src="custom_components/battmind/brand/icon.png" alt="BattMind" width="128" align="right">
 
-# BattMind🤵‍♂️🔋⚡ til Home Assistant
+# BattMind🤵‍♂️🔋⚡ for Home Assistant
 
 [![HACS Custom](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://hacs.xyz/docs/faq/custom_repositories/)
 [![GitHub Release](https://img.shields.io/github/v/release/dezito/BattMind-HACS)](https://github.com/dezito/BattMind-HACS/releases)
 [![License](https://img.shields.io/github/license/dezito/BattMind-HACS)](LICENSE)
 
-Planlægning af husbatteri ud fra elpriser, husets forbrug, solcelleprognose og vejret.
+Home battery planning based on electricity prices, house consumption, solar forecast and the weather.
 
-BattMind udregner hvornår husbatteriet skal lade fra nettet, hvornår det må aflade, og hvornår
-det kan betale sig at sælge strøm. Resultatet udstilles som en handling
-(`sensor.battmind_powerwall_action`), som du selv styrer din inverter med.
+BattMind works out when the home battery should charge from the grid, when it may discharge, and when
+it pays to sell power. The result is exposed as an action
+(`sensor.battmind_powerwall_action`) that you use to control your inverter yourself.
 
 > [!NOTE]
-> Dette er **integrationsudgaven** af BattMind, som installeres via HACS. Den erstatter
-> [PyScript-udgaven](https://github.com/dezito/BattMind) og kan importere dens konfiguration og
-> databaser. Se [Skift fra PyScript-udgaven](#skift-fra-pyscript-udgaven).
+> This is the **integration version** of BattMind, installed via HACS. It replaces the
+> [PyScript version](https://github.com/dezito/BattMind) and can import its configuration and
+> databases. See [Switching from the PyScript version](#switching-from-the-pyscript-version).
 
 > [!IMPORTANT]
-> Første HACS-udgave. Opret gerne et [issue](https://github.com/dezito/BattMind-HACS/issues), hvis noget ikke virker.
+> First HACS release. Please open an [issue](https://github.com/dezito/BattMind-HACS/issues) if something doesn't work.
 
 ---
 
-## Funktioner
+## Features
 
-- **Ladeplan for flere dage** (1–7 dage) ud fra elpriser, prognoser og forbrugshistorik
-- **Planlæggere, som slås til og fra hver for sig:**
-  - **Billigste perioder:** lad i de billigste perioder (antal perioder og prisgrænser kan indstilles)
-  - **Fyld op i billigste periode:** lad batteriet helt op i den billigste periode
-  - **Dyreste perioder:** prioritér at have strøm på batteriet til de dyreste perioder
-  - **Nødvendig før max niveau:** lad kun det, der er brug for, før solcellerne fylder batteriet
-- **Afladning og salg**
-  - Aflad kun, når det giver profit (min. profit pr. kWh og i alt)
-  - Prioritér afladningstimer efter energiens kostpris
-  - Sælg overskydende kWh til nettet i de dyreste timer (tvangsafladning)
-  - Maksimer profit, og udeluk bestemte salgstimer
-  - Tvangsafladning af "gamle" kWh, der har ligget for længe i batteriet
-- **Solceller (valgfrit):** solcelleoverskud til opladning, optimeret solcelleopladning og
-  prognose fra [Solcast PV Forecast](https://github.com/BJReplay/ha-solcast-solar) og/eller egen historik pr. skydække
-- **Prisudbydere:** [Energi Data Service](https://github.com/MTrab/energidataservice) og/eller
-  [Strømligning](https://github.com/MTrab/stromligning), inkl. salgspris, tariffer, salgsgebyr og refusion
-- **Kostpris på batteriets strøm:** hvad energien på batteriet har kostet (net, sol, lade-/afladningstab og slitage)
-- **Detaljeret ladehistorik og oversigt** som markdown og et færdigt dashboard i sidepanelet
-- **Fail-safe:** mangler priserne, planlægges der ud fra den interne prisdatabase
-- **Flere instanser:** hver instans har sit eget prefix (f.eks. ét pr. batteri)
-- **Sprog:** dansk, engelsk, tysk, polsk og ukrainsk
+- **Charging plan for several days** (1–7 days) based on electricity prices, forecasts and consumption history
+- **Planners that can be switched on and off individually:**
+  - **Cheapest periods:** charge in the cheapest periods (number of periods and price limits are configurable)
+  - **Fill up during cheapest period:** charge the battery fully in the cheapest period
+  - **Most expensive periods:** make sure there is power in the battery for the most expensive periods
+  - **Required before max level:** only charge what is needed before the solar panels fill the battery
+- **Discharging and selling**
+  - Only discharge when it is profitable (min. profit per kWh and in total)
+  - Prioritise discharge hours by the cost price of the energy
+  - Sell excess kWh to the grid in the most expensive hours (forced discharge)
+  - Maximise profit, and exclude specific selling hours
+  - Forced discharge of "old" kWh that have been in the battery for too long
+- **Solar (optional):** solar surplus charging, optimised solar charging and forecast from
+  [Solcast PV Forecast](https://github.com/BJReplay/ha-solcast-solar) and/or own history per cloud cover
+- **Price providers:** [Energi Data Service](https://github.com/MTrab/energidataservice) and/or
+  [Strømligning](https://github.com/MTrab/stromligning), incl. sell price, tariffs, selling fee and refund
+- **Cost price of the battery's energy:** what the energy in the battery has cost (grid, solar, charge/discharge loss and wear)
+- **Detailed charging history and overview** as markdown and a ready-made dashboard in the sidebar
+- **Fail-safe:** if prices are missing, planning falls back to the internal price database
+- **Multiple instances:** each instance has its own prefix (e.g. one per battery)
+- **Languages:** Danish, English, German, Polish and Ukrainian
 
-### Kører ikke i Home Assistants hovedtråd
+### Does not run in Home Assistant's main thread
 
-Alle beregninger kører i BattMinds egen worker-tråd. Home Assistant bliver altså ikke
-blokeret, mens planen regnes ud, sådan som det skete med PyScript-udgaven. Attributterne
-`worker_thread` og `calculation_seconds` på `sensor.battmind_current_charging_rule` viser,
-hvor beregningen kørte, og hvor lang tid den tog.
+All calculations run in BattMind's own worker thread, so Home Assistant is not blocked while
+the plan is calculated, as it was with the PyScript version. The attributes
+`worker_thread` and `calculation_seconds` on `sensor.battmind_current_charging_rule` show
+where the calculation ran and how long it took.
 
 ---
 
-## Sådan styrer du husbatteriet
+## How to control the home battery
 
-BattMind sender **ingen kommandoer** til din inverter. Den udstiller hvad batteriet skal gøre lige nu:
+BattMind sends **no commands** to your inverter. It exposes what the battery should do right now:
 
-| `sensor.battmind_powerwall_action` | Betydning |
+| `sensor.battmind_powerwall_action` | Meaning |
 |---|---|
-| `grid_charging` | Lad batteriet fra nettet nu |
-| `discharge_allowed` | Batteriet må aflade til huset |
-| `force_discharge` | Aflad / sælg til nettet nu (de dyreste timer) |
-| `force_solar_only_charging` | Lad kun fra solcellerne, ingen afladning |
-| `blocked_solar_charge` | Lad ikke fra solcellerne (overskuddet sælges i stedet) |
+| `grid_charging` | Charge the battery from the grid now |
+| `discharge_allowed` | The battery may discharge to the house |
+| `force_discharge` | Discharge / sell to the grid now (the most expensive hours) |
+| `force_solar_only_charging` | Charge from solar only, no discharging |
+| `blocked_solar_charge` | Don't charge from solar (the surplus is sold instead) |
 
-Det nemmeste er den færdige [blueprint](#blueprint-styr-husbatteriet), der virker med alle
-invertere. Vil du hellere skrive automationen selv, er eksemplet nedenfor en skabelon, hvor du
-indsætter dine egne handlinger:
+The easiest way is the ready-made [blueprint](#blueprint-control-the-home-battery), which works with all
+inverters. If you'd rather write the automation yourself, the example below is a template where you
+insert your own actions:
 
 ```yaml
-alias: BattMind - styr husbatteri
+alias: BattMind - control home battery
 triggers:
   - trigger: state
     entity_id: sensor.battmind_powerwall_action
 actions:
   - choose:
       - conditions: "{{ trigger.to_state.state == 'grid_charging' }}"
-        sequence: []  # f.eks. tving opladning fra nettet
+        sequence: []  # e.g. force charging from the grid
       - conditions: "{{ trigger.to_state.state == 'discharge_allowed' }}"
-        sequence: []  # f.eks. maksimer eget forbrug
+        sequence: []  # e.g. maximise self-consumption
       - conditions: "{{ trigger.to_state.state == 'force_discharge' }}"
-        sequence: []  # f.eks. tving afladning til nettet
+        sequence: []  # e.g. force discharge to the grid
       - conditions: "{{ trigger.to_state.state in ['force_solar_only_charging', 'blocked_solar_charge'] }}"
-        sequence: []  # f.eks. stop afladning
+        sequence: []  # e.g. stop discharging
 ```
 
-`sensor.battmind_current_charging_rule` viser hvorfor (f.eks. *Lader op til 💸*), og
-`sensor.battmind_battery_level_needed` viser hvor meget batteri, der er brug for indtil næste ladning.
+`sensor.battmind_current_charging_rule` shows why (e.g. *Charging up to 💸*), and
+`sensor.battmind_battery_level_needed` shows how much battery is needed until the next charge.
 
 ---
 
-## Krav
+## Requirements
 
-- Home Assistant **2025.1** eller nyere med recorder (standard)
-- En sensor for husbatteriets **batteriniveau** (%) og **effekt** (W)
-- En sensor for **husets forbrug** (W)
-- Prisintegration: [Energi Data Service](https://github.com/MTrab/energidataservice) og/eller [Strømligning](https://github.com/MTrab/stromligning)
-- Valgfrit:
-  - solcelleproduktion (W)
+- Home Assistant **2025.1** or newer with recorder (default)
+- A sensor for the home battery's **battery level** (%) and **power** (W)
+- A sensor for the **house consumption** (W)
+- Price integration: [Energi Data Service](https://github.com/MTrab/energidataservice) and/or [Strømligning](https://github.com/MTrab/stromligning)
+- Optional:
+  - solar production (W)
   - [Solcast PV Forecast](https://github.com/BJReplay/ha-solcast-solar)
-  - en vejr-integration, der understøtter `weather.get_forecasts` med skydække, f.eks.
+  - a weather integration that supports `weather.get_forecasts` with cloud cover, e.g.
     [Meteorologisk institutt](https://www.home-assistant.io/integrations/met/),
-    [AccuWeather](https://www.home-assistant.io/integrations/accuweather/) eller
+    [AccuWeather](https://www.home-assistant.io/integrations/accuweather/) or
     [OpenWeather](https://www.home-assistant.io/integrations/openweathermap/)
-- Til dashboardet (HACS frontend): `apexcharts-card`, `mushroom`, `stack-in-card` og `config-template-card`
+- For the dashboard (HACS frontend): `apexcharts-card`, `mushroom`, `config-template-card` and `card-mod`
 
 ---
 
 ## Installation
 
-### HACS (anbefalet)
+### HACS (recommended)
 
-[![Åbn dit Home Assistant og tilføj repoet i HACS.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=dezito&repository=BattMind-HACS&category=integration)
+[![Open your Home Assistant and add the repository in HACS.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=dezito&repository=BattMind-HACS&category=integration)
 
-1. **HACS** → ⋮ → **Custom repositories**: tilføj `https://github.com/dezito/BattMind-HACS` som **Integration**.
-2. Søg efter **BattMind**, installer den, og genstart Home Assistant.
-3. Tilføj integrationen:
+1. **HACS** → ⋮ → **Custom repositories**: add `https://github.com/dezito/BattMind-HACS` as **Integration**.
+2. Search for **BattMind**, install it, and restart Home Assistant.
+3. Add the integration:
 
-   [![Åbn dit Home Assistant og tilføj BattMind.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=battmind)
+   [![Open your Home Assistant and add BattMind.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=battmind)
 
-   eller **Indstillinger → Enheder og tjenester → Tilføj integration → BattMind**.
-4. Lav automationen, der styrer husbatteriet, f.eks. med [blueprinten](#blueprint-styr-husbatteriet).
+   or **Settings → Devices & services → Add integration → BattMind**.
+4. Create the automation that controls the home battery, e.g. with the [blueprint](#blueprint-control-the-home-battery).
 
-### Manuelt
+### Manual
 
-Kopiér `custom_components/battmind` til `config/custom_components/battmind`, og genstart Home Assistant.
-
----
-
-## Opsætning
-
-Opsætningen sker i brugerfladen, fordelt på små sider med hjælpetekster:
-
-1. **Prefix og sprog:** prefixet bliver starten på alle entity id'er (standard `battmind`)
-2. **Husbatteri:** batteriniveau, effekt (evt. omvendt fortegn), størrelse, min./maks. niveau,
-   lade-/afladeeffekt, lade-/afladningstab og slitage pr. kWh
-3. **Forbrug:** husets forbrug, og om det indeholder batteriets op-/afladning. Du kan også
-   ignorere forbrugere, f.eks. elbilladeren.
-4. **Prisudbydere:** Energi Data Service og/eller Strømligning (køb, salg og tariffer), refusion og salgsgebyr
-5. **Solceller:** produktion, inverterens maks. effekt, fast salgspris eller timepris, og Solcast
-6. **Vejr:** time- og dagsprognose (kun med solceller)
-7. **Avanceret:** antal dage der planlægges, interval, dashboard, diagnostisk fil-log og testtilstand
-8. **Database:** hvor meget historik der gemmes
-
-Entitetsvælgerne viser kun relevante entiteter. Batteriniveau viser kun `battery`-sensorer,
-effekt kun `power`-sensorer, priserne kun entiteter fra prisintegrationerne og prognosen kun Solcast.
-
-Alt kan ændres bagefter under **Konfigurer** på integrationen. Integrationen genindlæses, når du gemmer.
+Copy `custom_components/battmind` to `config/custom_components/battmind` and restart Home Assistant.
 
 ---
 
-## Entiteter
+## Setup
 
-Entity id'erne starter med prefixet, her `battmind`.
+Setup is done in the UI, split into small pages with help texts:
 
-### Indstillinger (ændres fra dashboardet)
+1. **Prefix and language:** the prefix becomes the start of all entity ids (default `battmind`)
+2. **Home battery:** battery level, power (optionally inverted sign), size, min./max. level,
+   charge/discharge power, charge/discharge loss and wear per kWh
+3. **Consumption:** the house consumption, and whether it includes the battery's charging/discharging. You can also
+   ignore consumers, e.g. the EV charger.
+4. **Price providers:** Energi Data Service and/or Strømligning (buy, sell and tariffs), refund and selling fee
+5. **Solar panels:** production, the inverter's max. power, fixed sell price or hourly price, and Solcast
+6. **Weather:** hourly and daily forecast (only with solar panels)
+7. **Advanced:** number of days to plan, interval, dashboard, diagnostic file log and testing mode
+8. **Database:** how much history is stored
 
-| Type | Entiteter |
+The entity selectors only show relevant entities. Battery level only shows `battery` sensors,
+power only `power` sensors, prices only entities from the price integrations and the forecast only Solcast.
+
+Everything can be changed afterwards under **Configure** on the integration. The integration reloads when you save.
+
+---
+
+## Entities
+
+The entity ids start with the prefix, here `battmind`.
+
+### Settings (changed from the dashboard)
+
+| Type | Entities |
 |---|---|
-| `switch` | Deaktiver scriptet, solcelleoverskud til opladning, billigste perioder, fyld op i billigste periode, dyreste perioder, nødvendig før max niveau, kun afladning ved profit, prioritér afladning efter energikost, sælg overskydende kWh, brug midnat batteriniveau, maksimer profit, tvangsafladning af gamle kWh, optimer solcelleopladning |
-| `number` | Billige prisperioder, stigning for billigste pris / billige perioder, min. profit pr. kWh, min. total profit, min. kWh til salg, maks. timer gamle kWh |
-| `select` | Prognosetype (gennemsnit, EMA eller trend) |
-| `text` | Ekskluder salgstimer (f.eks. `17,18,19`) |
-| `button` | Gennemtving planlægning, genstart (genindlæser integrationen) |
+| `switch` | Solar surplus charging, cheapest periods, fill up during cheapest period, most expensive periods, required before max level, discharge only at profit, prioritise discharging by energy cost, sell excess kWh, use midnight battery level, maximise profit, forced discharge of old kWh, optimise solar charging, negative prices, buy to sell, discharge before the sun, optimise the whole period (shadow plan) |
+| `number` | Cheap price periods, increase for cheapest price / cheap periods, min. profit per kWh, min. total profit, min. kWh for export, max. hours for old kWh |
+| `select` | Forecast type (average, EMA or trend) |
+| `text` | Exclude selling hours (e.g. `17,18,19`) |
+| `button` | Force planning, export data (a [backup](#backup-export-and-import-of-data)) |
 
-Planen beregnes igen 5 sekunder efter en indstilling er ændret. Værdierne huskes ved genstart.
+The plan is recalculated 5 seconds after a setting is changed. The values are kept across restarts.
 
-### Resultater
+### Results
 
-| Entitet | Indhold |
+| Entity | Content |
 |---|---|
-| `sensor.battmind_powerwall_action` | Hvad batteriet skal gøre nu (se [ovenfor](#sådan-styrer-du-husbatteriet)) |
-| `sensor.battmind_current_charging_rule` | Nuværende regel som tekst |
-| `sensor.battmind_battery_level_needed` | Nødvendigt batteriniveau indtil næste ladning (%) |
-| `sensor.battmind_kwh_charged_by_solar` | kWh ladet af solcellerne (kun med solceller) |
-| `sensor.battmind_overview` | Oversigt og plan (markdown i attributten `overview`) |
-| `sensor.battmind_charging_history` | Ladehistorik (markdown i attributten `history`) |
-| `sensor.battmind_emoji_description` | Forklaring på emojis (markdown i attributten `description`) |
+| `sensor.battmind_powerwall_action` | What the battery should do now (see [above](#how-to-control-the-home-battery)) |
+| `sensor.battmind_current_charging_rule` | Current rule as text |
+| `sensor.battmind_battery_level_needed` | Required battery level until the next charge (%) |
+| `sensor.battmind_kwh_charged_by_solar` | kWh charged by solar (only with solar panels) |
+| `sensor.battmind_analysis` | Savings this month; the analysis per month and day as attributes (used by the dashboard) |
+| `sensor.battmind_overview` | Overview and plan (markdown in the `overview` attribute) |
+| `sensor.battmind_charging_history` | Charging history (markdown in the `history` attribute) |
+| `sensor.battmind_emoji_description` | Emoji explanation (markdown in the `description` attribute) |
 
-Store attributter (markdown, planer) gemmes ikke i recorder-databasen.
+Large attributes (markdown, plans) are not stored in the recorder database.
 
 ---
 
 ## Dashboard
 
-Med **Dashboard i sidepanelet** slået til (standard) får hver instans sit eget dashboard,
-f.eks. `/battmind-dashboard`. Det bygges ved hver opstart ud fra din opsætning. Kort for
-prisudbydere og solprognose, du ikke bruger, bliver fjernet.
+With **Dashboard in the sidebar** enabled (default), each instance gets its own dashboard,
+e.g. `/battmind-dashboard`. It is built on every startup from your setup. Cards for
+price providers and solar forecast that you don't use are removed.
 
-Det genererede dashboard kan ikke redigeres i brugerfladen. Vil du tilpasse det, så kopiér
-indholdet over i et almindeligt dashboard (**Rediger → Raw configuration editor**), og slå
-**Dashboard i sidepanelet** fra.
+- **Overview:** the battery level forecast with the planned charging and discharging, the electricity
+  prices with sell price and solar forecast, the current rule and action, the charging history and the overview
+- **Settings:** the planners and their limits, grouped (control, profit, charging, discharging, selling,
+  solar), each with a "Read more"
+- **Analysis:** what the battery earns and how well BattMind plans:
+  - economy per month: charged (grid/solar), discharged, charge price, value of a discharged kWh, spread and savings
+  - charged and discharged per rule (the last 12 months)
+  - cycles, wear and savings per month
+  - the measured round trip loss compared with the configured loss
+  - self-sufficiency: where the house got its energy from (solar, battery, grid)
+  - the error of each consumption forecast type (average, EMA, trend), with a hint when another type is more accurate
+  - a hindsight score: how much of the best possible saving was reached each day
+  - the grid charging and sale planned the evening before against what happened
+  - days where the battery was empty in the most expensive hours
+  - the planned solar surplus against the measured surplus
+
+  The first time, the energy per hour of the last year is read from Home Assistant's long-term
+  statistics. Forecast errors, plans and scores are collected from then on.
+
+The generated dashboard cannot be edited in the UI. If you want to customise it, copy
+the content into a regular dashboard (**Edit → Raw configuration editor**) and turn
+**Dashboard in the sidebar** off.
 
 ---
 
-## Blueprint: styr husbatteriet
+## Blueprint: control the home battery
 
-BattMind bestemmer *hvad* batteriet skal gøre (`sensor.<prefix>_powerwall_action`), men styrer
-ikke selv inverteren. Det klarer blueprinten – den virker med alle invertere, fordi du selv
-vælger hvad der skal ske med Home Assistants almindelige handlings-editor.
+BattMind decides *what* the battery should do (`sensor.<prefix>_powerwall_action`), but does not
+control the inverter itself. The blueprint does that – it works with all inverters because you
+choose what should happen using Home Assistant's regular action editor.
 
-Blueprinten installeres automatisk sammen med integrationen: ved opstart lægges den i
-`config/blueprints/automation/battmind/battery_control.yaml` og findes derefter under
-*Indstillinger → Automatiseringer og scener → Blueprints* som **BattMind - styr husbatteriet**.
-Kommer der en ny version med en HACS-opdatering, erstattes filen kun, hvis du ikke selv har
-rettet i den. Kilden er [`battery_control.yaml`](custom_components/battmind/blueprints/battery_control.yaml).
+The blueprint is installed automatically with the integration: on startup it is placed in
+`config/blueprints/automation/battmind/battery_control.yaml` and can then be found under
+*Settings → Automations & scenes → Blueprints* as **BattMind - control the home battery**.
+The file is never overwritten on its own. If a new version arrives with a HACS update (or
+you have edited the file yourself), a repair shows up after restart under *Settings →
+System → Repairs*. If you choose to update, the file is replaced with the bundled version, and
+automations using it are reloaded. If you ignore it, you keep your own file. If the file is
+deleted, the latest version is put back on the next restart.
+The source is [`battery_control.yaml`](custom_components/battmind/blueprints/battery_control.yaml).
 
-1. Klik på blueprinten → **Opret automatisering** og vælg BattMind-sensoren.
-2. Under **Handlinger** tilføjer du for hver BattMind handling det, din inverter skal gøre –
-   typisk *Tal: Indstil værdi* på batteriets maks. lade-/afladeeffekt, *Kontakt: Tænd/Sluk* eller
-   en service fra inverter-integrationen. Felter du lader stå tomme, gør ingenting.
-3. Har du en elbil, så vælg laderens effektsensor under **Elbil** og hvad der skal ske, mens
-   bilen lader (f.eks. afladeeffekt 0, så batteriet ikke tømmes ind i bilen).
-4. Slå **Gentag hver halve time** til, hvis inverterens tvungne op-/afladning selv stopper
-   efter et stykke tid (f.eks. Huawei Solar efter 2 timer).
+1. Click the blueprint → **Create automation** and select the BattMind sensor.
+2. Under **Actions**, add what your inverter should do for each BattMind action –
+   typically *Number: Set value* on the battery's max. charge/discharge power, *Switch: Turn on/off* or
+   a service from the inverter integration. Fields left empty do nothing.
+3. If you have an EV, select the charger's power sensor under **EV (optional)** and what should happen while
+   the car is charging (e.g. discharge power 0, so the battery isn't drained into the car). If the battery is still
+   allowed to charge the car, select an entity under **Allow discharging into the car when** – e.g. Cable Juice
+   Planner's `switch.cjp_<car>_powerwall_discharge_above_needed` – and optionally only above a battery level
+   (**Only above this battery level**, e.g. `number.cjp_<car>_ev_charge_after_powerwall_battery_level`,
+   together with the home battery's level sensor).
+4. Set **Repeat interval** (hours, minutes and seconds, 0 = off) if the action should be run
+   again and again – e.g. 30 minutes, because the inverter's forced charge/discharge stops by itself after
+   a while (Huawei Solar after 2 hours), or 30 seconds if the battery is controlled via
+   Modbus and needs a command at fixed intervals. The repetition starts over every time
+   BattMind changes action, and it is also started when Home Assistant starts or automations
+   are reloaded.
+5. If the action should also run on other events, add your own triggers under
+   **Custom triggers** – e.g. when an entity from the inverter changes.
 
 <details>
-<summary><b>Eksempel: Huawei Solar (LUNA2000, 5000 W)</b></summary>
+<summary><b>Example: Huawei Solar (LUNA2000, 5000 W)</b></summary>
 
-Vælg *Rediger i YAML* i hvert handlingsfelt og indsæt. Udskift `DIN_BATTERI_DEVICE_ID` med
-batteri-enhedens id (ses i adresselinjen på enhedens side).
+Choose *Edit in YAML* in each action field and paste. Replace `YOUR_BATTERY_DEVICE_ID` with
+the battery device's id (shown in the address bar on the device's page).
 
-**Lad fra elnettet**
+**Charge from grid**
 ```yaml
 - action: number.set_value
   target:
@@ -238,12 +272,12 @@ batteri-enhedens id (ses i adresselinjen på enhedens side).
     entity_id: switch.batteries_charge_from_grid
 - action: huawei_solar.forcible_charge
   data:
-    device_id: DIN_BATTERI_DEVICE_ID
+    device_id: YOUR_BATTERY_DEVICE_ID
     duration: 120
     power: 5000
 ```
 
-**Tvungen afladning**
+**Forced discharge**
 ```yaml
 - action: number.set_value
   target:
@@ -255,16 +289,16 @@ batteri-enhedens id (ses i adresselinjen på enhedens side).
     value: 5000
 - action: huawei_solar.forcible_discharge
   data:
-    device_id: DIN_BATTERI_DEVICE_ID
+    device_id: YOUR_BATTERY_DEVICE_ID
     duration: 120
     power: 5000
 ```
 
-**Afladning tilladt**
+**Discharge allowed (normal operation)**
 ```yaml
 - action: huawei_solar.stop_forcible_charge
   data:
-    device_id: DIN_BATTERI_DEVICE_ID
+    device_id: YOUR_BATTERY_DEVICE_ID
 - action: number.set_value
   target:
     entity_id:
@@ -275,11 +309,11 @@ batteri-enhedens id (ses i adresselinjen på enhedens side).
     value: 5000
 ```
 
-**Kun solcelleopladning**
+**Solar charging only**
 ```yaml
 - action: huawei_solar.stop_forcible_charge
   data:
-    device_id: DIN_BATTERI_DEVICE_ID
+    device_id: YOUR_BATTERY_DEVICE_ID
 - action: number.set_value
   target:
     entity_id:
@@ -294,11 +328,11 @@ batteri-enhedens id (ses i adresselinjen på enhedens side).
     value: 5000
 ```
 
-**Solcelleopladning blokeret**
+**Solar charging blocked**
 ```yaml
 - action: huawei_solar.stop_forcible_charge
   data:
-    device_id: DIN_BATTERI_DEVICE_ID
+    device_id: YOUR_BATTERY_DEVICE_ID
 - action: number.set_value
   target:
     entity_id:
@@ -313,11 +347,11 @@ batteri-enhedens id (ses i adresselinjen på enhedens side).
     value: 5000
 ```
 
-**Når bilen lader**
+**While the car is charging**
 ```yaml
 - action: huawei_solar.stop_forcible_charge
   data:
-    device_id: DIN_BATTERI_DEVICE_ID
+    device_id: YOUR_BATTERY_DEVICE_ID
 - action: number.set_value
   target:
     entity_id:
@@ -332,70 +366,83 @@ batteri-enhedens id (ses i adresselinjen på enhedens side).
     value: 0
 ```
 
-Slå **Gentag hver halve time** til.
+Set **Repeat interval** to e.g. 30 minutes (`00:30:00`).
 
 </details>
 
 ## Services
 
-| Service | Beskrivelse |
+| Service | Description |
 |---|---|
-| `battmind.enforce_planning` | Beregn planen igen nu |
-| `battmind.recalc_charging_history_today` | Genberegn dagens ladehistorik |
-| `battmind.debug_info` | Returnerer intern status til fejlfinding |
+| `battmind.enforce_planning` | Recalculate the plan now |
+| `battmind.recalc_charging_history_today` | Recalculate today's charging history |
+| `battmind.debug_info` | Returns internal state for troubleshooting |
+| `battmind.export_data` | Save a backup of data and settings (see below) |
+| `battmind.import_data` | Replace data and settings with a backup |
 
-Alle services tager valgfrit `config_entry_id`, så de kun rammer én instans.
+All services optionally take `config_entry_id` so they only affect one instance (`import_data` requires it).
 
 ---
 
-## Skift fra PyScript-udgaven
+## Backup: export and import of data
 
-BattMind læser PyScript-filerne, men ændrer dem aldrig. Integrationens egne data gemmes i `.storage`.
+A backup is one JSON file in `/config/battmind_backups/` with the databases, the settings (switches, numbers, ...) and the configuration from the setup. The folder is included in Home Assistant's own backups.
 
-1. Tilføj integrationen. Findes `battmind_config.yaml` i konfigurationsmappen, spørger
-   opsætningen om den skal importeres:
-   - værdierne fra `battmind_config.yaml` udfyldes på siderne
-   - `battmind_*_db.yaml` (ladehistorik, effektværdier, kWh-priser, solproduktion) importeres ved første start
-   - findes de gamle `input_boolean` / `input_number` / … `battmind_*` stadig, kopieres deres værdier til de nye entiteter
-2. Vil du køre de to udgaver side om side, så vælg et andet prefix, f.eks. `battmind_ha`.
-   Opsætningen afviser et prefix, hvis PyScript-udgaven allerede har entiteter med det navn.
-3. Når du er tilfreds, så fjern `pyscript/battmind.py` og `packages/battmind.yaml`, og genstart.
+- **When you delete an instance**, a backup is saved automatically (`…_deleted.json`) before the databases are removed.
+- **Export** with the *Export data* button on the device, under **Configure → Backup** or with `battmind.export_data`.
+- **Import into a new instance**: when you create a new one, the setup offers to restore one of the backups. The configuration is pre-filled, and databases and settings are restored on first start.
+- **Import into an existing instance** under **Configure → Backup** or with `battmind.import_data` (`file: battmind_20261024_120000.json`). Databases and settings are replaced, and the integration is reloaded. The current data is first saved as `…_before_import.json`, so an import can be undone. With `restore_configuration` the configuration is also taken over. Leave it off when the backup comes from another Home Assistant.
+
+---
+
+## Switching from the PyScript version
+
+BattMind reads the PyScript files but never changes them. The integration's own data is stored in `.storage`.
+
+1. Add the integration. If `battmind_config.yaml` exists in the config folder, the setup
+   asks whether it should be imported:
+   - the values from `battmind_config.yaml` are filled in on the pages
+   - `battmind_*_db.yaml` (charging history, power values, kWh prices, solar production) are imported on first start
+   - if the old `input_boolean` / `input_number` / … `battmind_*` still exist, their values are copied to the new entities
+2. If you want to run the two versions side by side, choose a different prefix, e.g. `battmind_ha`.
+   The setup rejects a prefix if the PyScript version already has entities with that name.
+3. When you are satisfied, remove `pyscript/battmind.py` and `packages/battmind.yaml`, and restart.
 
 | PyScript | Integration |
 |---|---|
-| `battmind_config.yaml` | Opsætning / **Konfigurer** i brugerfladen |
+| `battmind_config.yaml` | Setup / **Configure** in the UI |
 | `input_boolean.battmind_*` | `switch.battmind_*` |
-| `input_number.battmind_*` | `number.battmind_*` (fast solcelle-salgspris ligger nu i opsætningen) |
+| `input_number.battmind_*` | `number.battmind_*` (fixed solar sell price is now in the setup) |
 | `input_select.battmind_forecast_type` | `select.battmind_forecast_type` |
 | `input_text.battmind_exclude_sell_hours` | `text.battmind_exclude_sell_hours` |
 | `input_button.battmind_*` | `button.battmind_*` |
 | `pyscript.battmind_debug_info` | `battmind.debug_info` |
-| Opdateringsscripts og `shell_command` | HACS |
+| Update scripts and `shell_command` | HACS |
 
-### Rettelser i forhold til PyScript-udgaven
+### Fixes compared to the PyScript version
 
-- Forbrugshistorik gemmes også uden solceller og solprognose, så forbrugsprognosen ikke er tom.
-- "Billigste timer" planlægger ikke længere i timer, der allerede er gået.
-- "Sælg overskydende kWh" tæller ikke længere den samme salgsperiode med flere gange.
-- En fejl i én regel stopper ikke længere hele planlægningen.
-- Historikken læses fra en buffer i hukommelsen i stedet for 70+ recorder-opslag pr. planlægning.
+- Consumption history is also stored without solar panels and solar forecast, so the consumption forecast isn't empty.
+- "Cheapest hours" no longer plans in hours that have already passed.
+- "Sell excess kWh" no longer counts the same selling period multiple times.
+- An error in one rule no longer stops the whole planning.
+- History is read from an in-memory buffer instead of 70+ recorder queries per planning run.
 
 ---
 
-## Fejlfinding
+## Troubleshooting
 
-- Slå **Diagnostisk fil-log** til under **Konfigurer → Avanceret**. Loggen skrives til
-  `battmind_<prefix>.log` i konfigurationsmappen (2 MB, 3 roterede filer).
-- Eller slå debug-log til i `configuration.yaml`:
+- Turn on **Diagnostic file log** under **Configure → Advanced**. The log is written to
+  `battmind_<prefix>.log` in the config folder (2 MB, 3 rotated files).
+- Or enable debug logging in `configuration.yaml`:
   ```yaml
   logger:
     logs:
       custom_components.battmind: debug
   ```
-- Kald `battmind.debug_info` under **Udviklerværktøjer → Handlinger**, og vedhæft svaret, når du opretter et issue.
+- Call `battmind.debug_info` under **Developer tools → Actions**, and attach the response when you open an issue.
 
 ---
 
-## Licens
+## License
 
-GPL-3.0, se [LICENSE](LICENSE).
+GPL-3.0, see [LICENSE](LICENSE).

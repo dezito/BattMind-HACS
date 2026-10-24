@@ -7,7 +7,7 @@ import voluptuous as vol
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, ServiceCall, ServiceResponse, SupportsResponse
-from homeassistant.exceptions import ServiceValidationError
+from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.typing import ConfigType
 
@@ -16,8 +16,11 @@ from .const import (
     PLATFORMS,
     SERVICE_DEBUG_INFO,
     SERVICE_ENFORCE_PLANNING,
+    SERVICE_EXPORT_DATA,
+    SERVICE_IMPORT_DATA,
     SERVICE_RECALC_HISTORY_TODAY,
 )
+from .backup import BACKUP_DIR, async_export, async_import
 from .blueprint_install import async_install_blueprints
 from .coordinator import BattMindCoordinator
 from .dashboard import async_remove_dashboard_file, async_setup_dashboard
@@ -29,6 +32,13 @@ CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 BattMindConfigEntry = ConfigEntry[BattMindCoordinator]
 
 SERVICE_SCHEMA = vol.Schema({vol.Optional("config_entry_id"): cv.string})
+IMPORT_SCHEMA = vol.Schema(
+    {
+        vol.Required("config_entry_id"): cv.string,
+        vol.Required("file"): cv.string,
+        vol.Optional("restore_configuration", default=False): cv.boolean,
+    }
+)
 
 
 def _coordinators(hass: HomeAssistant, call: ServiceCall) -> list[BattMindCoordinator]:
@@ -58,6 +68,25 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         for coordinator in _coordinators(hass, call):
             coordinator.async_request_charge(force=True)
 
+    async def _export_data(call: ServiceCall) -> ServiceResponse:
+        files = {}
+        for coordinator in _coordinators(hass, call):
+            files[coordinator.prefix] = f"{BACKUP_DIR}/{await async_export(hass, coordinator.entry)}"
+        return {"files": files} if call.return_response else None
+
+    async def _import_data(call: ServiceCall) -> None:
+        entry = hass.config_entries.async_get_entry(call.data["config_entry_id"])
+        if entry is None or entry.domain != DOMAIN:
+            raise ServiceValidationError(f"{call.data['config_entry_id']} is not a BattMind config entry")
+        try:
+            await async_import(hass, entry, call.data["file"].split("/")[-1], call.data["restore_configuration"])
+        except HomeAssistantError as err:
+            raise ServiceValidationError(str(err)) from err
+
+    hass.services.async_register(
+        DOMAIN, SERVICE_EXPORT_DATA, _export_data, schema=SERVICE_SCHEMA, supports_response=SupportsResponse.OPTIONAL
+    )
+    hass.services.async_register(DOMAIN, SERVICE_IMPORT_DATA, _import_data, schema=IMPORT_SCHEMA)
     hass.services.async_register(
         DOMAIN, SERVICE_DEBUG_INFO, _debug_info, schema=SERVICE_SCHEMA, supports_response=SupportsResponse.OPTIONAL
     )
@@ -89,6 +118,12 @@ async def async_unload_entry(hass: HomeAssistant, entry: BattMindConfigEntry) ->
 async def async_remove_entry(hass: HomeAssistant, entry: BattMindConfigEntry) -> None:
     from .storage import BattMindStorage
 
+    # the data can be imported again (config flow of a new entry, or import_data)
+    try:
+        await async_export(hass, entry, "deleted")
+    except Exception:  # noqa: BLE001
+        _LOGGER.exception("Could not back up BattMind %s, its databases are kept in .storage", entry.title)
+        return
     await BattMindStorage(hass, entry.entry_id).async_remove()
     await async_remove_dashboard_file(hass, entry.entry_id)
 

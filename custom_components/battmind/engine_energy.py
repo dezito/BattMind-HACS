@@ -32,6 +32,24 @@ POWER_VALUE_KEYS = (
 )
 
 
+def derive_power_values(home: dict, consumption: float, ignored: float, charging: float, discharging: float, solar: float) -> dict:
+    """POWER_VALUE_KEYS from the measured W (house consumption corrected for the battery like configured)."""
+    if not home["power_consumption_entity_id_include_powerwall_discharging"]:
+        consumption += discharging
+    if home["power_consumption_entity_id_include_powerwall_charging"]:
+        consumption -= charging
+    without_ignored = round(consumption - ignored, 2)
+    return {
+        "power_consumption": consumption,
+        "ignored_consumption": ignored,
+        "powerwall_charging_consumption": charging,
+        "powerwall_discharging_consumption": discharging,
+        "solar_production": solar,
+        "power_consumption_without_ignored": without_ignored,
+        "power_consumption_without_all_exclusion": max(round(without_ignored - charging, 2), 0.0),
+    }
+
+
 class EnergyMixin:
     """Power measurements, solar prediction and the databases filled every hour."""
 
@@ -83,22 +101,7 @@ class EnergyMixin:
             charging = self._charging_watt(powerwall_values)
             discharging = self._discharging_watt(powerwall_values)
             solar = abs(round(float(average_w(self.config["solar"]["entity_ids"]["production_entity_id"], from_timestamp, to_timestamp)), 2))
-
-            if not home["power_consumption_entity_id_include_powerwall_discharging"]:
-                consumption += discharging
-            if home["power_consumption_entity_id_include_powerwall_charging"]:
-                consumption -= charging
-            without_ignored = round(consumption - ignored, 2)
-
-            result.update(
-                power_consumption=consumption,
-                ignored_consumption=ignored,
-                powerwall_charging_consumption=charging,
-                powerwall_discharging_consumption=discharging,
-                solar_production=solar,
-                power_consumption_without_ignored=without_ignored,
-                power_consumption_without_all_exclusion=max(round(without_ignored - charging, 2), 0.0),
-            )
+            result.update(derive_power_values(home, consumption, ignored, charging, discharging, solar))
         except Exception as err:  # noqa: BLE001
             _LOGGER.error("Failed to get power values from %s to %s: %s", from_timestamp, to_timestamp, err)
             self.notify(

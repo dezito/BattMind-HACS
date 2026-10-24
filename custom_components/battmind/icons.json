@@ -21,12 +21,12 @@
       },
       "kwh_charged_by_solar": {
         "default": "mdi:white-balance-sunny"
+      },
+      "analysis": {
+        "default": "mdi:chart-box-outline"
       }
     },
     "switch": {
-      "deactivate_script": {
-        "default": "mdi:cancel"
-      },
       "solar_charging": {
         "default": "mdi:brain"
       },
@@ -62,6 +62,18 @@
       },
       "optimize_solar_charging": {
         "default": "mdi:solar-power"
+      },
+      "negative_price_planner": {
+        "default": "mdi:cash-minus"
+      },
+      "grid_charge_to_sell": {
+        "default": "mdi:swap-horizontal"
+      },
+      "discharge_before_solar": {
+        "default": "mdi:weather-sunset-up"
+      },
+      "optimizer_control": {
+        "default": "mdi:robot-outline"
       }
     },
     "number": {
@@ -101,8 +113,8 @@
       "enforce_planning": {
         "default": "mdi:calendar-refresh"
       },
-      "restart_script": {
-        "default": "mdi:restart"
+      "export_data": {
+        "default": "mdi:database-export"
       }
     }
   },
@@ -115,6 +127,12 @@
     },
     "enforce_planning": {
       "service": "mdi:calendar-refresh"
+    },
+    "export_data": {
+      "service": "mdi:database-export"
+    },
+    "import_data": {
+      "service": "mdi:database-import"
     }
   }
 }

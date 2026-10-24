@@ -65,8 +65,8 @@ class BattMindSolarKwhSensor(BattMindUpdatingEntity, RestoreSensor):
 
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()
-        value = None
-        if (last := await self.async_get_last_sensor_data()) is not None:
+        value = self.coordinator.restore_settings.get("sensor.kwh_charged_by_solar")
+        if value is None and (last := await self.async_get_last_sensor_data()) is not None:
             value = last.native_value
         if value is None and (legacy := self.legacy_state()) is not None:
             value = legacy.state

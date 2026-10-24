@@ -32,7 +32,7 @@ class BattMindSelect(BattMindEntity, SelectEntity, RestoreEntity):
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()
         value = self._default
-        if (last := await self.async_get_last_state()) is not None and last.state in self.options:
+        if (last := await self.async_get_restored_state()) is not None and last.state in self.options:
             value = last.state
         elif (legacy := self.legacy_state()) is not None and legacy.state in self.options:
             value = legacy.state

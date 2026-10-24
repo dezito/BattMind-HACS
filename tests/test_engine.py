@@ -123,15 +123,27 @@ def test_action_is_always_valid(hour: int, battery_level: float) -> None:
     assert 0 <= result.states["battery_level_needed"] <= 100
 
 
+# only the rules that charge for the own consumption from the cheap hours
+CHEAPEST_ONLY = {"optimizer_control": False, "most_expensive_planner": False, "grid_charge_to_sell": False, "most_profit": False}
+
+
 @pytest.mark.parametrize("battery_level", [5, 50])
 def test_grid_charging_only_in_cheap_hours(battery_level: float) -> None:
     now = datetime.datetime.combine(DAY, datetime.time(3, 30))
     engine = started_engine(now, battery_level)
-    plan(engine, now, battery_level)
+    plan(engine, now, battery_level, CHEAPEST_ONLY)
     hours = charge_hours(engine)
     assert hours, "an empty battery and 1.5 kr/kWh price spread should give grid charging"
     assert not [ts for ts in hours if ts.hour not in CHEAP_HOURS]
     assert not [ts for ts in hours if ts.hour in EXPENSIVE_HOURS]
+
+
+def test_default_rules_never_charge_in_the_expensive_hours() -> None:
+    now = datetime.datetime.combine(DAY, datetime.time(3, 30))
+    engine = started_engine(now, 5)
+    plan(engine, now, 5)
+    assert charge_hours(engine)
+    assert not [ts for ts in charge_hours(engine) if ts.hour in EXPENSIVE_HOURS]
 
 
 def test_low_battery_charges_before_the_morning_price_rise() -> None:
@@ -145,26 +157,113 @@ def test_low_battery_charges_before_the_morning_price_rise() -> None:
 def test_full_battery_does_not_charge_today() -> None:
     now = datetime.datetime.combine(DAY, datetime.time(5, 30))
     engine = started_engine(now, 100)
-    result = plan(engine, now, 100)
+    result = plan(engine, now, 100, CHEAPEST_ONLY)
     assert result.states["powerwall_action"] != "grid_charging"
     assert not [ts for ts in charge_hours(engine) if ts.date() == DAY]
 
 
-def test_no_history_means_no_grid_charging() -> None:
-    """Without consumption history there is nothing to cover with cheap grid power."""
+def test_full_battery_is_not_charged_now_with_the_default_rules() -> None:
+    """Later top ups for the expensive evening are fine, but there is no room right now."""
+    now = datetime.datetime.combine(DAY, datetime.time(5, 30))
+    engine = started_engine(now, 100)
+    result = plan(engine, now, 100)
+    assert result.states["powerwall_action"] != "grid_charging"
+
+
+def test_no_history_means_no_grid_charging_for_the_own_consumption() -> None:
+    """Without consumption history there is nothing to cover - only buy-to-sell charges, each for a sale."""
     now = datetime.datetime.combine(DAY, datetime.time(3, 30))
     engine = started_engine(now, 5, with_history=False)
-    plan(engine, now, 5)
+    plan(engine, now, 5, {"optimizer_control": False})
+    assert all(engine.charge_hours[ts].get("grid_charge_to_sell") for ts in charge_hours(engine))
+    sales = [sale for day in engine.plan if isinstance(day, int) for sale in engine.plan[day]["force_discharge_timestamps"].values()]
+    assert bool(charge_hours(engine)) == any(sale["title"] == "Sælger strøm købt billigt" for sale in sales)
+    plan(engine, now, 5, CHEAPEST_ONLY)
     assert charge_hours(engine) == []
 
 
-def test_deactivated_script_keeps_last_action() -> None:
-    now = datetime.datetime.combine(DAY, datetime.time(5, 30))
+@pytest.mark.parametrize("settings", [{"min_profit_per_kwh": 5.0}, {"min_total_profit": 100.0}])
+def test_min_profit_applies_to_grid_charging_without_the_profit_switch(settings: dict) -> None:
+    """min_profit_per_kwh / min_total_profit apply to every rule, not only to only_discharge_on_profit."""
+    now = datetime.datetime.combine(DAY, datetime.time(3, 30))
     engine = started_engine(now, 5)
+    plan(engine, now, 5, {"only_discharge_on_profit": False, **settings})
+    assert charge_hours(engine) == []
+
+
+def test_round_trip_loss_in_price_and_battery_level() -> None:
+    """1 kWh out of the battery costs price / (1 - loss); a grid kWh adds only sqrt(1 - loss) kWh."""
+    now = datetime.datetime.combine(DAY, datetime.time(3, 30))
+    engine = BattMindEngine(
+        build_config({**OPTIONS, "powerwall_charge_discharge_loss": 0.2, "use_charge_discharge_loss_from_history": False}), "test", TEXTS
+    )
+    assert engine.run_job(snapshot(now, 5), engine.startup, {"power_values": _power_values_db()}).error is None
     plan(engine, now, 5)
-    result = plan(engine, now, 5, {"deactivate_script": True})
-    assert "powerwall_action" not in result.states
-    assert result.states["current_charging_rule"].startswith("⛔")
+    assert engine.calc_battery_loss_cost(1.0) == pytest.approx(0.25)
+    assert engine.battery_efficiency() == pytest.approx(0.8**0.5)
+    hours = charge_hours(engine)
+    assert hours
+    for ts in hours:
+        session = engine.charge_hours[ts]
+        assert session["battery_level"] == pytest.approx(engine.kwh_to_percentage(session["kWh"]) * 0.8**0.5, abs=0.05)
+
+
+ALL_RULES = {
+    key: True
+    for key in (
+        "cheapest_hour_fill_planner", "most_expensive_planner", "needed_before_max_level_planner", "only_discharge_on_profit",
+        "prioritize_discharge_hours_by_energy_cost", "sell_excess_kwh_available", "most_profit",
+        "force_powerwall_max_hours_old_discharge", "optimize_solar_charging",
+    )
+}
+SOLAR_SURPLUS = [0.0] * 9 + [3.0] * 7 + [0.0] * 8  # 3 kWh/h 09-15 fills the battery on its own
+
+
+def solar_engine(now: datetime.datetime, battery_level: float, solar: bool) -> tuple[BattMindEngine, Snapshot]:
+    """Engine with a sell price entity (buy - 0.9 kr) and optionally a solar surplus prediction."""
+    options = {**OPTIONS, "energidataservice_sell_entity_id": "sensor.sell"}
+    engine = BattMindEngine(build_config(options), "test", TEXTS)
+
+    def with_sell_prices(snap: Snapshot) -> Snapshot:
+        buy = snap.price_data["attributes"]["sensor.price"]
+        snap.price_data["attributes"]["sensor.sell"] = {
+            key: [{**row, "price": round(max(row["price"] - 0.9, 0.1), 3)} for row in rows] if isinstance(rows, list) else rows
+            for key, rows in buy.items()
+        }
+        snap.entity_states["sensor.sell"] = "0.3"
+        return snap
+
+    assert engine.run_job(with_sell_prices(snapshot(now, battery_level)), engine.startup, {"power_values": _power_values_db()}).error is None
+    if solar:
+        engine.solar_prediction_db = {day: {"total": SOLAR_SURPLUS, "total_sell": [0.5] * 24} for day in range(8)}
+    return engine, with_sell_prices(snapshot(now, battery_level, ALL_RULES))
+
+
+@pytest.mark.parametrize("solar", [False, True])
+@pytest.mark.parametrize("hour", [0, 7, 15, 19])
+@pytest.mark.parametrize("battery_level", [5, 95])
+def test_all_rules_plan_without_errors(solar: bool, hour: int, battery_level: float) -> None:
+    """The rules catch their exceptions and notify, so check the notifications."""
+    now = datetime.datetime.combine(DAY, datetime.time(hour, 30))
+    engine, snap = solar_engine(now, battery_level, solar)
+    result = engine.run_job(snap, engine.charge_if_needed, True)
+    assert result.error is None, result.error
+    assert not [message for message, title, _ in result.notifications if "error" in title.lower()]
+
+
+def test_solar_surplus_has_priority_over_grid_charging() -> None:
+    """Only the morning shortfall is bought before the sun fills the battery."""
+    now = datetime.datetime.combine(DAY, datetime.time(3, 30))
+    morning_kwh = {}
+    for solar in (False, True):
+        engine, snap = solar_engine(now, 30, solar)
+        assert engine.run_job(snap, engine.charge_if_needed, True).error is None
+        morning_kwh[solar] = sum(engine.charge_hours[ts]["kWh"] for ts in charge_hours(engine) if ts.date() == DAY and ts.hour < 9)
+        if solar:
+            # the sun still fills the battery completely
+            assert max(sum(engine.plan[0]["battery_level_flow"][hour]) for hour in range(9, 16)) == pytest.approx(100.0)
+    assert morning_kwh[True] < 2.0
+    assert morning_kwh[False] > 5.0
 
 
 def test_hour_end_stores_power_values() -> None:
@@ -182,7 +281,7 @@ def test_startup_saves_every_database_losslessly() -> None:
     engine = BattMindEngine(build_config(OPTIONS), "test", TEXTS)
     history = _power_values_db()
     result = engine.run_job(snapshot(now, 50), engine.startup, {"power_values": history})
-    assert set(result.db_saves) == {"charging_history", "power_values", "kwh_avg_prices", "solar_available"}
+    assert set(result.db_saves) == {"charging_history", "power_values", "kwh_avg_prices", "solar_available", "analysis"}
     assert decode(json.loads(json.dumps(result.db_saves["power_values"]))) == history
 
 

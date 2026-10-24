@@ -1,19 +1,19 @@
 views:
   - type: sections
-    path: ''
+    path: overview
     sections:
       - type: grid
         cards:
           - type: custom:apexcharts-card
-            graph_span: 2.5d
+            graph_span: '@@forecast_span@@'
             experimental:
               brush: true
               hidden_by_default: true
             brush:
-              selection_span: 2.5d
+              selection_span: '@@forecast_span@@'
             header:
               show: true
-              title: Husbatteri SOC prognose 🟢Lade 🟡Aflade 🔴Stop
+              title: '@@soc_chart_title@@'
               show_states: false
             span:
               start: hour
@@ -51,7 +51,7 @@ views:
             series:
               - entity: sensor.battmind_powerwall_action
                 type: area
-                name: Batteri prognose
+                name: '@@battery_forecast@@'
                 yaxis_id: soc
                 color: blue
                 data_generator: >
@@ -66,7 +66,7 @@ views:
                   legend_value: false
                   in_header: true
               - entity: sensor.battmind_powerwall_action
-                name: Charge
+                name: '@@charge@@'
                 type: area
                 yaxis_id: state
                 color: green
@@ -111,7 +111,7 @@ views:
                   in_brush: true
                   legend_value: false
               - entity: sensor.battmind_powerwall_action
-                name: Force discharge
+                name: '@@force_discharge@@'
                 type: area
                 yaxis_id: state
                 color: orange
@@ -180,7 +180,7 @@ views:
                   in_brush: true
                   legend_value: false
               - entity: sensor.battmind_powerwall_action
-                name: Discharge
+                name: '@@discharge@@'
                 type: area
                 yaxis_id: state
                 color: yellow
@@ -260,7 +260,7 @@ views:
                   in_brush: true
                   legend_value: false
               - entity: sensor.battmind_powerwall_action
-                name: Kun solcelle ladning tilladt
+                name: '@@solar_only@@'
                 type: area
                 yaxis_id: state
                 color: red
@@ -333,7 +333,7 @@ views:
                   type: horizontal-stack
                   cards:
                     - type: markdown
-                      content: '# Energi Data Service er nede <font color=red>!!!</font>'
+                      content: '# Energi Data Service @@is_down@@ <font color=red>!!!</font>'
                     - show_name: true
                       show_icon: true
                       type: button
@@ -346,7 +346,7 @@ views:
                       hold_action:
                         action: none
                       icon: mdi:reload
-                      name: Genstart Energi Data Service
+                      name: '@@restart@@ Energi Data Service'
                       show_state: true
               - type: conditional
                 conditions:
@@ -446,7 +446,7 @@ views:
                       selection_span: ${total_span + "h"}
                     header:
                       title: >-
-                        ${"Elpriser pr. time (kr/kWh) 🔵" +
+                        ${"@@price_chart_title@@ 🔵" +
                         vars.lowest_price.toFixed(2) + " 🟢" +
                         vars.mean_price.toFixed(2) + " 🟣" +
                         vars.highest_price.toFixed(2)}
@@ -456,7 +456,7 @@ views:
                       colorize_states: true
                     now:
                       show: true
-                      label: Nu
+                      label: '@@now@@'
                     graph_span: ${total_span +"h"}
                     span:
                       start: day
@@ -474,7 +474,7 @@ views:
                       - entity: sensor.energi_data_service
                         yaxis_id: price
                         type: column
-                        name: Inkl. afgifter
+                        name: '@@incl_taxes@@'
                         unit: kr.
                         color: green
                         data_generator: |
@@ -532,7 +532,7 @@ views:
                       - entity: sensor.energi_data_service_salg
                         yaxis_id: price
                         type: area
-                        name: Salgspris
+                        name: '@@sell_price@@'
                         unit: kr.
                         color: white
                         stroke_width: 0
@@ -568,7 +568,7 @@ views:
                       - entity: sensor.solcast_pv_forecast_forecast_today
                         yaxis_id: solar
                         type: area
-                        name: Solcelle prognose
+                        name: '@@solar_forecast@@'
                         data_generator: >
                           const toUTC00 = (d) => {
                             const x = new Date(d);
@@ -630,7 +630,7 @@ views:
                       - entity: sensor.energi_data_service
                         yaxis_id: price
                         type: area
-                        name: Prognose
+                        name: '@@forecast@@'
                         unit: ''
                         stroke_width: 0
                         opacity: 0.25
@@ -718,7 +718,7 @@ views:
                   type: horizontal-stack
                   cards:
                     - type: markdown
-                      content: '# Strømligning er nede <font color=red>!!!</font>'
+                      content: '# Strømligning @@is_down@@ <font color=red>!!!</font>'
                     - show_name: true
                       show_icon: true
                       type: button
@@ -731,7 +731,7 @@ views:
                       hold_action:
                         action: none
                       icon: mdi:reload
-                      name: Genstart Strømligning
+                      name: '@@restart@@ Strømligning'
                       show_state: true
               - type: conditional
                 conditions:
@@ -919,7 +919,7 @@ views:
                       selection_span: ${total_span + "h"}
                     header:
                       title: >-
-                        ${"Elpriser pr. time (kr/kWh) 🔵" +
+                        ${"@@price_chart_title@@ 🔵" +
                         vars.lowest_price.toFixed(2) + " 🟢" +
                         vars.mean_price.toFixed(2) + " 🟣" +
                         vars.highest_price.toFixed(2)}
@@ -929,7 +929,7 @@ views:
                       colorize_states: true
                     now:
                       show: true
-                      label: Nu
+                      label: '@@now@@'
                     graph_span: ${total_span + "h"}
                     span:
                       start: day
@@ -947,7 +947,7 @@ views:
                       - entity: sensor.stromligning_current_price_vat
                         yaxis_id: price
                         type: column
-                        name: Inkl. afgifter
+                        name: '@@incl_taxes@@'
                         unit: kr.
                         color: green
                         data_generator: |
@@ -1124,7 +1124,7 @@ views:
                       - entity: sensor.stromligning_15min_spotprice_ex_vat
                         yaxis_id: price
                         type: area
-                        name: Salgspris
+                        name: '@@sell_price@@'
                         unit: kr.
                         color: white
                         stroke_width: 0
@@ -1256,7 +1256,7 @@ views:
                       - entity: sensor.solcast_pv_forecast_forecast_today
                         yaxis_id: solar
                         type: area
-                        name: Solcelle prognose
+                        name: '@@solar_forecast@@'
                         data_generator: |
                           const toUTC00 = (d) => {
                             const x = new Date(d);
@@ -1402,7 +1402,7 @@ views:
                       - entity: sensor.stromligning_forecasts_vat
                         yaxis_id: price
                         type: area
-                        name: Prognose
+                        name: '@@forecast@@'
                         unit: ''
                         stroke_width: 0
                         opacity: 0.25
@@ -1681,11 +1681,11 @@ views:
         column_span: 1
     max_columns: 5
     cards: []
-    title: Hjem
+    title: '@@view_overview@@'
     dense_section_placement: true
     badges:
       - type: custom:mushroom-template-badge
-        content: Debug info
+        content: '@@debug_info@@'
         icon: mdi:mushroom
         color: yellow
         tap_action:
@@ -1693,11 +1693,16 @@ views:
           perform_action: battmind.debug_info
           target: {}
         label: ''
+        visibility:
+          - condition: state
+            entity: input_boolean.dezito_show_debug_button
+            state: 'on'
       - type: entity
         show_name: false
         show_state: true
         show_icon: true
         entity: button.battmind_enforce_planning
+        name: '@@enforce_planning@@'
         state_content: name
         tap_action:
           action: perform-action
@@ -1705,115 +1710,948 @@ views:
           target:
             entity_id: button.battmind_enforce_planning
   - type: sections
-    path: ''
-    max_columns: 5
+    path: settings
+    title: '@@view_settings@@'
+    max_columns: 4
+    dense_section_placement: true
+    badges:
+      - type: entity
+        entity: button.battmind_enforce_planning
+        name: '@@enforce_planning@@'
+        show_name: true
+        show_state: false
+        show_icon: true
+        tap_action:
+          action: perform-action
+          perform_action: button.press
+          target:
+            entity_id: button.battmind_enforce_planning
     sections:
       - type: grid
         cards:
-          - color: state
-            type: entities
-            entities:
-              - entity: select.battmind_forecast_type
-              - entity: number.battmind_min_profit_per_kwh
-              - entity: number.battmind_min_sell_kwh
-              - entity: switch.battmind_solar_charging
-              - entity: switch.battmind_most_expensive_planner
-              - entity: switch.battmind_needed_before_max_level_planner
-              - entity: switch.battmind_only_discharge_on_profit
-              - entity: >-
-                  switch.battmind_prioritize_discharge_hours_by_energy_cost
-              - entity: switch.battmind_most_profit
-              - entity: switch.battmind_force_powerwall_max_hours_old_discharge
-              - entity: number.battmind_powerwall_max_hours_old
-            grid_options:
-              columns: 18
-              rows: auto
-            title: Generelle indstillinger
-            show_header_toggle: false
-          - type: entities
-            entities:
-              - entity: switch.battmind_cheapest_hour_fill_planner
-              - entity: switch.battmind_cheapest_hour_fill_up
-              - entity: number.battmind_cheap_price_periods
-              - entity: number.battmind_cheap_price_period_rise_threshold
-              - entity: number.battmind_cheapest_price_rise_threshold
-            grid_options:
-              columns: 18
-              rows: auto
-            title: 'Ladning: Billigste regler'
-            show_header_toggle: false
-            state_color: true
-          - color: state
-            type: entities
-            entities:
-              - entity: switch.battmind_sell_excess_kwh_available
-              - entity: switch.battmind_use_midnight_battery_level
-              - entity: number.battmind_min_total_profit
-              - entity: text.battmind_exclude_sell_hours
-            grid_options:
-              columns: 18
-              rows: auto
-            title: 'Afladning: Sælg overskydence kWh regler'
-            show_header_toggle: false
-        column_span: 3
-      - type: grid
-        cards:
-          - type: vertical-stack
-            cards:
-              - type: custom:stack-in-card
-                mode: vertical
-                cards:
-                  - type: horizontal-stack
-                    cards:
-                      - type: custom:mushroom-entity-card
-                        entity: switch.battmind_deactivate_script
-                        icon_color: red
-                        double_tap_action:
-                          action: none
-                        hold_action:
-                          action: more-info
-                        tap_action:
-                          action: toggle
-                        secondary_info: none
-                  - type: markdown
-                    content: >-
-                      # 📎 {{
-                      states.switch.battmind_deactivate_script.name }}
-
-
-                      <details>
-
-                      <summary><b>Læs mere</b></summary>
-
-                      Laderen og elbilen, bliver ikke styret af scriptet, og
-                      fungere normalt
-
-
-                      </details>
+          - type: heading
+            heading: '@@section_control@@'
+            icon: mdi:tune-variant
+          - type: markdown
+            content: "<details><summary>@@read_more@@</summary>\n\n@@help_control@@\n\n</details>"
             grid_options:
               columns: full
-              rows: auto
-          - type: history-graph
+          - type: entities
+            state_color: true
+            show_header_toggle: false
             entities:
-              - entity: sensor.battmind_battery_level_needed
-            max_y_axis: 100
-            min_y_axis: 0
-        column_span: 1
+              - entity: switch.battmind_optimizer_control
+                name:
+                  type: entity
+              - entity: select.battmind_forecast_type
+                name:
+                  type: entity
+            grid_options:
+              columns: full
+          - type: heading
+            heading: '@@section_profit@@'
+            icon: mdi:cash-check
+          - type: markdown
+            content: "<details><summary>@@read_more@@</summary>\n\n@@help_profit@@\n\n</details>"
+            grid_options:
+              columns: full
+          - type: entities
+            state_color: true
+            show_header_toggle: false
+            entities:
+              - entity: number.battmind_min_profit_per_kwh
+                name:
+                  type: entity
+              - entity: number.battmind_min_total_profit
+                name:
+                  type: entity
+              - entity: number.battmind_min_sell_kwh
+                name:
+                  type: entity
+              - entity: text.battmind_exclude_sell_hours
+                name:
+                  type: entity
+            grid_options:
+              columns: full
       - type: grid
         cards:
+          - type: heading
+            heading: '@@section_charging@@'
+            icon: mdi:battery-charging-high
+          - type: markdown
+            content: "<details><summary>@@read_more@@</summary>\n\n@@help_charging@@\n\n</details>"
+            grid_options:
+              columns: full
+          - type: entities
+            state_color: true
+            show_header_toggle: false
+            entities:
+              - entity: switch.battmind_cheapest_hour_fill_planner
+                name:
+                  type: entity
+              - entity: switch.battmind_cheapest_hour_fill_up
+                name:
+                  type: entity
+              - entity: number.battmind_cheap_price_periods
+                name:
+                  type: entity
+              - entity: number.battmind_cheap_price_period_rise_threshold
+                name:
+                  type: entity
+              - entity: number.battmind_cheapest_price_rise_threshold
+                name:
+                  type: entity
+              - type: divider
+              - entity: switch.battmind_most_expensive_planner
+                name:
+                  type: entity
+              - entity: switch.battmind_needed_before_max_level_planner
+                name:
+                  type: entity
+              - entity: switch.battmind_negative_price_planner
+                name:
+                  type: entity
+            grid_options:
+              columns: full
+      - type: grid
+        cards:
+          - type: heading
+            heading: '@@section_discharging@@'
+            icon: mdi:battery-arrow-down
+          - type: markdown
+            content: "<details><summary>@@read_more@@</summary>\n\n@@help_discharging@@\n\n</details>"
+            grid_options:
+              columns: full
+          - type: entities
+            state_color: true
+            show_header_toggle: false
+            entities:
+              - entity: switch.battmind_only_discharge_on_profit
+                name:
+                  type: entity
+              - entity: switch.battmind_prioritize_discharge_hours_by_energy_cost
+                name:
+                  type: entity
+              - entity: switch.battmind_discharge_before_solar
+                name:
+                  type: entity
+              - type: divider
+              - entity: switch.battmind_force_powerwall_max_hours_old_discharge
+                name:
+                  type: entity
+              - entity: number.battmind_powerwall_max_hours_old
+                name:
+                  type: entity
+            grid_options:
+              columns: full
+          - type: heading
+            heading: '@@section_selling@@'
+            icon: mdi:transmission-tower-export
+          - type: markdown
+            content: "<details><summary>@@read_more@@</summary>\n\n@@help_selling@@\n\n</details>"
+            grid_options:
+              columns: full
+          - type: entities
+            state_color: true
+            show_header_toggle: false
+            entities:
+              - entity: switch.battmind_most_profit
+                name:
+                  type: entity
+              - entity: switch.battmind_sell_excess_kwh_available
+                name:
+                  type: entity
+              - entity: switch.battmind_use_midnight_battery_level
+                name:
+                  type: entity
+              - entity: switch.battmind_grid_charge_to_sell
+                name:
+                  type: entity
+            grid_options:
+              columns: full
+      - type: grid
+        cards:
+          - type: heading
+            heading: '@@section_solar@@'
+            icon: mdi:solar-power-variant
+          - type: markdown
+            content: "<details><summary>@@read_more@@</summary>\n\n@@help_solar@@\n\n</details>"
+            grid_options:
+              columns: full
+          - type: entities
+            state_color: true
+            show_header_toggle: false
+            entities:
+              - entity: switch.battmind_solar_charging
+                name:
+                  type: entity
+              - entity: switch.battmind_optimize_solar_charging
+                name:
+                  type: entity
+            grid_options:
+              columns: full
+  - type: sections
+    path: analysis
+    title: '@@view_analysis@@'
+    max_columns: 4
+    dense_section_placement: true
+    badges:
+      - type: custom:mushroom-template-badge
+        content: '@@recalc_history@@'
+        icon: mdi:database-sync
+        color: yellow
+        tap_action:
+          action: perform-action
+          perform_action: battmind.recalc_charging_history_today
+          target: {}
+        label: ''
+    sections:
+      # economy per month (engine_analysis.py: the charging history per month)
+      - type: grid
+        column_span: 2
+        cards:
+          - type: heading
+            heading: '@@section_economy@@'
+            icon: mdi:cash-multiple
+          - type: markdown
+            content: "<details><summary>@@read_more@@</summary>\n\n@@economy_explain@@\n\n</details>"
+            grid_options:
+              columns: full
+          - type: markdown
+            card_mod:
+              style: |
+                ha-card {
+                  --markdown-table-border-color: transparent
+                }
+            content: |-
+              {% macro n(v, d=2) %}{{ v | round(d) if v is number else '–' }}{% endmacro %}
+              {% set a = states.sensor.battmind_analysis.attributes %}
+              {% if a.months -%}
+              @@economy_intro@@
+
+              | @@month@@ | @@charged@@<br>kWh (☀️) | @@charge_price@@<br>kr/kWh | @@discharged@@<br>kWh | @@value@@<br>kr/kWh | @@spread@@<br>kr/kWh | @@avg_price@@<br>kr/kWh | @@savings@@<br>kr |
+              |:---|---:|---:|---:|---:|---:|---:|---:|
+              {% for m in a.months | reverse -%}
+              | **{{ m.label }}** | {{ m.charged }}{% if m.charged_solar %} ({{ m.charged_solar }}){% endif %} | {{ n(m.charge_unit) }} | {{ m.discharged }} | {{ n(m.value_unit) }} | {{ n(m.spread) }} | {{ n(m.get('avg_price')) }} | {{ n(m.savings) }} |
+              {% endfor %}
+              **@@total@@:** {{ a.total.charged }} kWh @@charged_lower@@, {{ a.total.discharged }} kWh @@discharged_lower@@ · @@savings@@ **{{ n(a.total.savings) }} kr**
+              {%- else -%}
+              <ha-alert alert-type="info">@@no_data@@</ha-alert>
+              {%- endif %}
+            grid_options:
+              columns: full
           - type: custom:apexcharts-card
             header:
               show: true
-              title: Powerwall prediction
+              title: '@@economy_energy_title@@'
+              show_states: false
+            graph_span: 400d
+            span:
+              end: month
+            stacked: true
+            now:
+              show: false
+            yaxis:
+              - min: 0
+                decimals: 0
+            all_series_config:
+              type: column
+              unit: ' kWh'
+              float_precision: 1
+              show:
+                legend_value: false
+                in_header: false
+            apex_config:
+              chart:
+                height: 260px
+              dataLabels:
+                enabled: false
+              xaxis:
+                labels:
+                  format: MMM yy
+            series:
+              - entity: sensor.battmind_analysis
+                name: '@@grid@@'
+                color: '#2a78d6'
+                data_generator: |
+                  return (entity.attributes.months || []).map(m => [new Date(m.month + '-15T12:00:00').getTime(), m.charged_grid]);
+              - entity: sensor.battmind_analysis
+                name: '@@solar@@'
+                color: '#eda100'
+                data_generator: |
+                  return (entity.attributes.months || []).map(m => [new Date(m.month + '-15T12:00:00').getTime(), m.charged_solar]);
+            grid_options:
+              columns: full
+          - type: custom:apexcharts-card
+            header:
+              show: true
+              title: '@@economy_prices_title@@'
+              show_states: false
+            graph_span: 400d
+            span:
+              end: month
+            now:
+              show: false
+            yaxis:
+              - decimals: 2
+            all_series_config:
+              type: line
+              unit: ' kr/kWh'
+              float_precision: 2
+              stroke_width: 2
+              show:
+                legend_value: false
+                in_header: false
+            apex_config:
+              chart:
+                height: 260px
+              markers:
+                size: 4
+              xaxis:
+                labels:
+                  format: MMM yy
+            series:
+              - entity: sensor.battmind_analysis
+                name: '@@charge_price@@'
+                color: '#1baf7a'
+                data_generator: |
+                  return (entity.attributes.months || []).filter(m => m.charge_unit !== null).map(m => [new Date(m.month + '-15T12:00:00').getTime(), m.charge_unit]);
+              - entity: sensor.battmind_analysis
+                name: '@@value@@'
+                color: '#e34948'
+                data_generator: |
+                  return (entity.attributes.months || []).filter(m => m.value_unit !== null).map(m => [new Date(m.month + '-15T12:00:00').getTime(), m.value_unit]);
+              - entity: sensor.battmind_analysis
+                name: '@@avg_price@@'
+                color: '#6250d6'
+                data_generator: |
+                  return (entity.attributes.months || []).filter(m => m.avg_price !== undefined && m.avg_price !== null).map(m => [new Date(m.month + '-15T12:00:00').getTime(), m.avg_price]);
+            grid_options:
+              columns: full
+      # charged and discharged per rule, the last 12 months
+      - type: grid
+        column_span: 1
+        cards:
+          - type: heading
+            heading: '@@section_rules@@'
+            icon: mdi:format-list-checks
+          - type: markdown
+            content: "<details><summary>@@read_more@@</summary>\n\n@@rules_explain@@\n\n</details>"
+            grid_options:
+              columns: full
+          - type: markdown
+            card_mod:
+              style: |
+                ha-card {
+                  --markdown-table-border-color: transparent
+                }
+            content: |-
+              {% macro n(v, d=2) %}{{ v | round(d) if v is number else '–' }}{% endmacro %}
+              {% set rules = states.sensor.battmind_analysis.attributes.rules or [] %}
+              {% set charging = rules | selectattr('charged', 'gt', 0) | list %}
+              {% set discharging = rules | selectattr('discharged', 'gt', 0) | list %}
+              {% if rules -%}
+              **@@rules_charging@@**
+
+              | @@rule@@ | kWh | kr/kWh | @@estimated@@ |
+              |:---|---:|---:|---:|
+              {% for r in charging -%}
+              | {{ r.emoji }} {{ r.name }} | {{ r.charged }} | {{ n(r.charge_unit) }} | {{ n(r.estimated) }} |
+              {% endfor %}
+
+              **@@rules_discharging@@**
+
+              | @@rule@@ | kWh | @@savings@@ kr |
+              |:---|---:|---:|
+              {% for r in discharging -%}
+              | {{ r.emoji }} {{ r.name }} | {{ r.discharged }} | {{ n(r.savings) }} |
+              {% endfor %}
+              {%- else -%}
+              <ha-alert alert-type="info">@@no_data@@</ha-alert>
+              {%- endif %}
+            grid_options:
+              columns: full
+      # cycles, wear and the savings per month
+      - type: grid
+        column_span: 2
+        cards:
+          - type: heading
+            heading: '@@section_cycles@@'
+            icon: mdi:battery-sync
+          - type: markdown
+            content: "<details><summary>@@read_more@@</summary>\n\n@@cycles_explain@@\n\n</details>"
+            grid_options:
+              columns: full
+          - type: markdown
+            card_mod:
+              style: |
+                ha-card {
+                  --markdown-table-border-color: transparent
+                }
+            content: |-
+              {% macro n(v, d=2) %}{{ v | round(d) if v is number else '–' }}{% endmacro %}
+              {% set a = states.sensor.battmind_analysis.attributes %}
+              {% if a.months -%}
+              @@cycles_intro_1@@ **{{ a.total.cycles }}** @@cycles_intro_2@@ ({{ a.battery_size }} kWh) · @@wear@@ **{{ n(a.total.wear) }} kr**
+
+              | @@month@@ | @@cycles@@ | @@savings@@ kr | @@wear@@ kr | kr/@@cycle@@ |
+              |:---|---:|---:|---:|---:|
+              {% for m in a.months | reverse -%}
+              | **{{ m.label }}** | {{ m.cycles }} | {{ n(m.savings) }} | {{ n(m.wear) }} | {{ n(m.savings_per_cycle) }} |
+              {% endfor %}
+              {%- else -%}
+              <ha-alert alert-type="info">@@no_data@@</ha-alert>
+              {%- endif %}
+            grid_options:
+              columns: full
+          - type: custom:apexcharts-card
+            header:
+              show: true
+              title: '@@cycles_savings_title@@'
+              show_states: false
+            graph_span: 400d
+            span:
+              end: month
+            stacked: true
+            now:
+              show: false
+            yaxis:
+              - decimals: 0
+            all_series_config:
+              type: column
+              unit: ' kr'
+              float_precision: 2
+              show:
+                legend_value: false
+                in_header: false
+            apex_config:
+              chart:
+                height: 240px
+              dataLabels:
+                enabled: false
+              xaxis:
+                labels:
+                  format: MMM yy
+            series:
+              - entity: sensor.battmind_analysis
+                name: '@@savings_home@@'
+                color: '#1baf7a'
+                data_generator: |
+                  return (entity.attributes.months || []).map(m => [new Date(m.month + '-15T12:00:00').getTime(), m.savings_home]);
+              - entity: sensor.battmind_analysis
+                name: '@@savings_sale@@'
+                color: '#6250d6'
+                data_generator: |
+                  return (entity.attributes.months || []).map(m => [new Date(m.month + '-15T12:00:00').getTime(), m.savings_sale]);
+              - entity: sensor.battmind_analysis
+                name: '@@wear@@'
+                color: '#e34948'
+                data_generator: |
+                  return (entity.attributes.months || []).map(m => [new Date(m.month + '-15T12:00:00').getTime(), -m.wear]);
+            grid_options:
+              columns: full
+      # measured round trip loss
+      - type: grid
+        column_span: 2
+        cards:
+          - type: heading
+            heading: '@@section_loss@@'
+            icon: mdi:battery-arrow-down-outline
+          - type: markdown
+            content: "<details><summary>@@read_more@@</summary>\n\n@@loss_explain@@\n\n</details>"
+            grid_options:
+              columns: full
+          - type: markdown
+            card_mod:
+              style: |
+                ha-card {
+                  --markdown-table-border-color: transparent
+                }
+            content: |-
+              {% macro p(v) %}{{ (v * 100) | round(1) ~ ' %' if v is number else '–' }}{% endmacro %}
+              {% set a = states.sensor.battmind_analysis.attributes %}
+              {% set l = a.loss or {} %}
+              | @@loss_configured@@ | @@loss_used@@ | @@loss_30@@ | @@loss_all@@ |
+              |---:|---:|---:|---:|
+              | {{ p(l.configured) }} | {{ p(l.used) }} | **{{ p(l.last_30) }}** | {{ p(l.all) }} |
+
+              {% set months = (a.months or []) | selectattr('measured_charged', 'defined') | list -%}
+              {% if months -%}
+              | @@month@@ | @@charged@@ kWh | @@discharged@@ kWh | @@loss@@ |
+              |:---|---:|---:|---:|
+              {% for m in months | reverse -%}
+              | **{{ m.label }}** | {{ m.measured_charged }} | {{ m.measured_discharged }} | {{ p(m.loss) }} |
+              {% endfor %}
+              {%- endif %}
+            grid_options:
+              columns: full
+          - type: custom:apexcharts-card
+            header:
+              show: true
+              title: '@@loss_title@@'
+              show_states: false
+            graph_span: 400d
+            span:
+              end: month
+            now:
+              show: false
+            yaxis:
+              - min: 0
+                decimals: 0
+            all_series_config:
+              type: line
+              unit: ' %'
+              float_precision: 1
+              stroke_width: 2
+              show:
+                legend_value: false
+                in_header: false
+            apex_config:
+              chart:
+                height: 240px
+              markers:
+                size: 4
+              xaxis:
+                labels:
+                  format: MMM yy
+            series:
+              - entity: sensor.battmind_analysis
+                name: '@@loss_measured@@'
+                color: '#eb6834'
+                data_generator: |
+                  return (entity.attributes.months || []).filter(m => m.loss !== undefined && m.loss !== null).map(m => [new Date(m.month + '-15T12:00:00').getTime(), m.loss * 100]);
+              - entity: sensor.battmind_analysis
+                name: '@@loss_configured@@'
+                color: '#8a8a8a'
+                data_generator: |
+                  const c = (entity.attributes.loss || {}).configured;
+                  return (entity.attributes.months || []).map(m => [new Date(m.month + '-15T12:00:00').getTime(), c * 100]);
+            grid_options:
+              columns: full
+      # where the house got its energy from
+      - type: grid
+        column_span: 2
+        cards:
+          - type: heading
+            heading: '@@section_sufficiency@@'
+            icon: mdi:home-lightning-bolt-outline
+          - type: markdown
+            content: "<details><summary>@@read_more@@</summary>\n\n@@sufficiency_explain@@\n\n</details>"
+            grid_options:
+              columns: full
+          - type: markdown
+            card_mod:
+              style: |
+                ha-card {
+                  --markdown-table-border-color: transparent
+                }
+            content: |-
+              {% macro p(v) %}{{ (v * 100) | round(0) | int ~ ' %' if v is number else '–' }}{% endmacro %}
+              {% set a = states.sensor.battmind_analysis.attributes %}
+              {% set s = a.self_sufficiency or {} %}
+              {% set months = (a.months or []) | selectattr('home', 'defined') | list -%}
+              {% if months -%}
+              @@sufficiency_intro@@ **{{ p(s.last_30) }}** (7 @@days@@: {{ p(s.last_7) }}, @@all@@: {{ p(s.all) }})
+
+              | @@month@@ | @@home@@ kWh | ☀️ | 🔋 | 🔌 | @@export@@ kWh |
+              |:---|---:|---:|---:|---:|---:|
+              {% for m in months | reverse -%}
+              | **{{ m.label }}** | {{ m.home }} | {{ p(m.solar_share) }} | {{ p(m.battery_share) }} | {{ p(1 - m.self_sufficiency if m.self_sufficiency is number else none) }} | {{ m.export }} |
+              {% endfor %}
+              {%- else -%}
+              <ha-alert alert-type="info">@@no_data@@</ha-alert>
+              {%- endif %}
+            grid_options:
+              columns: full
+          - type: custom:apexcharts-card
+            header:
+              show: true
+              title: '@@sufficiency_title@@'
+              show_states: false
+            graph_span: 400d
+            span:
+              end: month
+            stacked: true
+            now:
+              show: false
+            yaxis:
+              - min: 0
+                decimals: 0
+            all_series_config:
+              type: column
+              unit: ' kWh'
+              float_precision: 0
+              show:
+                legend_value: false
+                in_header: false
+            apex_config:
+              chart:
+                height: 260px
+              dataLabels:
+                enabled: false
+              xaxis:
+                labels:
+                  format: MMM yy
+            series:
+              - entity: sensor.battmind_analysis
+                name: '@@solar@@'
+                color: '#eda100'
+                data_generator: |
+                  return (entity.attributes.months || []).filter(m => m.home !== undefined).map(m => [new Date(m.month + '-15T12:00:00').getTime(), m.solar_home]);
+              - entity: sensor.battmind_analysis
+                name: '@@battery@@'
+                color: '#1baf7a'
+                data_generator: |
+                  return (entity.attributes.months || []).filter(m => m.home !== undefined).map(m => [new Date(m.month + '-15T12:00:00').getTime(), m.battery_home]);
+              - entity: sensor.battmind_analysis
+                name: '@@grid@@'
+                color: '#2a78d6'
+                data_generator: |
+                  return (entity.attributes.months || []).filter(m => m.home !== undefined).map(m => [new Date(m.month + '-15T12:00:00').getTime(), m.grid_home]);
+            grid_options:
+              columns: full
+      # the consumption forecast per forecast type
+      - type: grid
+        column_span: 2
+        cards:
+          - type: heading
+            heading: '@@section_forecast@@'
+            icon: mdi:chart-timeline-variant
+          - type: markdown
+            content: "<details><summary>@@read_more@@</summary>\n\n@@forecast_explain@@\n\n</details>"
+            grid_options:
+              columns: full
+          - type: markdown
+            card_mod:
+              style: |
+                ha-card {
+                  --markdown-table-border-color: transparent
+                }
+            content: |-
+              {% macro n(v, d=2) %}{{ v | round(d) if v is number else '–' }}{% endmacro %}
+              {% set f = states.sensor.battmind_analysis.attributes.forecast or {} %}
+              {% if f.last_30 -%}
+              @@forecast_intro@@ ({{ f.last_30.hours }} @@hours@@)
+
+              | @@forecast_type@@ | @@mae@@ 7 @@days@@ | @@mae@@ 30 @@days@@ | @@relative@@ | @@bias@@ |
+              |:---|---:|---:|---:|---:|
+              {% for kind, label in [('ema', 'EMA'), ('trend', 'Trend'), ('average', '@@average@@')] -%}
+              | {{ '✅ ' if kind == f.selected }}{{ '⭐ ' if kind == f.best }}{{ label }} | {{ n(f.last_7[kind].mae if f.last_7 else none) }} | {{ n(f.last_30[kind].mae) }} | {{ (f.last_30[kind].relative * 100) | round(0) | int ~ ' %' if f.last_30[kind].relative is number else '–' }} | {{ n(f.last_30[kind].bias) }} |
+              {% endfor %}
+              {% if f.best and f.best != f.selected %}
+              <ha-alert alert-type="warning">@@forecast_better@@</ha-alert>
+              {% endif %}
+              {%- else -%}
+              <ha-alert alert-type="info">@@no_data_yet@@</ha-alert>
+              {%- endif %}
+            grid_options:
+              columns: full
+          - type: custom:apexcharts-card
+            header:
+              show: true
+              title: '@@forecast_title@@'
+              show_states: false
+            graph_span: 31d
+            span:
+              end: day
+            now:
+              show: false
+            yaxis:
+              - min: 0
+                decimals: 2
+            all_series_config:
+              type: line
+              unit: ' kWh'
+              float_precision: 3
+              stroke_width: 2
+              show:
+                legend_value: false
+                in_header: false
+            apex_config:
+              chart:
+                height: 240px
+              markers:
+                size: 3
+            series:
+              - entity: sensor.battmind_analysis
+                name: EMA
+                color: '#2a78d6'
+                data_generator: |
+                  return ((entity.attributes.forecast || {}).days || []).map(d => [new Date(d.date + 'T12:00:00').getTime(), d.ema]);
+              - entity: sensor.battmind_analysis
+                name: Trend
+                color: '#1baf7a'
+                data_generator: |
+                  return ((entity.attributes.forecast || {}).days || []).map(d => [new Date(d.date + 'T12:00:00').getTime(), d.trend]);
+              - entity: sensor.battmind_analysis
+                name: '@@average@@'
+                color: '#eb6834'
+                data_generator: |
+                  return ((entity.attributes.forecast || {}).days || []).map(d => [new Date(d.date + 'T12:00:00').getTime(), d.average]);
+            grid_options:
+              columns: full
+      # hindsight score
+      - type: grid
+        column_span: 1
+        cards:
+          - type: heading
+            heading: '@@section_score@@'
+            icon: mdi:target
+          - type: markdown
+            content: "<details><summary>@@read_more@@</summary>\n\n@@score_explain@@\n\n</details>"
+            grid_options:
+              columns: full
+          - type: markdown
+            card_mod:
+              style: |
+                ha-card {
+                  --markdown-table-border-color: transparent
+                }
+            content: |-
+              {% macro n(v, d=2) %}{{ v | round(d) if v is number else '–' }}{% endmacro %}
+              {% set a = states.sensor.battmind_analysis.attributes %}
+              {% if a.scores -%}
+              @@score_intro_1@@ **{{ (a.score_30 * 100) | round(0) | int ~ ' %' if a.score_30 is number else '–' }}** @@score_intro_2@@ ({{ a.score_days }} @@days@@)
+
+              | @@day@@ | Score | @@saved@@ kr | @@possible@@ kr |
+              |:---|---:|---:|---:|
+              {% for d in a.scores | reverse -%}
+              | {{ d.date[8:10] }}/{{ d.date[5:7] }} | {{ (d.score * 100) | round(0) | int ~ ' %' if d.score is number else '–' }} | {{ n(d.saved) }} | {{ n(d.possible) }} |
+              {% endfor %}
+              {%- else -%}
+              <ha-alert alert-type="info">@@no_data_yet@@</ha-alert>
+              {%- endif %}
+            grid_options:
+              columns: full
+      # planned against actual
+      - type: grid
+        column_span: 2
+        cards:
+          - type: heading
+            heading: '@@section_planned@@'
+            icon: mdi:calendar-check
+          - type: markdown
+            content: "<details><summary>@@read_more@@</summary>\n\n@@planned_explain@@\n\n</details>"
+            grid_options:
+              columns: full
+          - type: markdown
+            content: |-
+              {% set plans = states.sensor.battmind_analysis.attributes.plans or [] %}
+              {% if plans -%}
+              @@planned_summary_1@@ **{{ plans | sum(attribute='plan_grid') | round(1) }} kWh** @@planned_summary_2@@ **{{ plans | sum(attribute='grid') | round(1) }} kWh** · @@planned_summary_3@@ **{{ plans | sum(attribute='plan_sale') | round(1) }} kWh** @@planned_summary_4@@ **{{ plans | sum(attribute='sale') | round(1) }} kWh** ({{ plans | length }} @@days@@)
+              {%- else -%}
+              <ha-alert alert-type="info">@@no_data_yet@@</ha-alert>
+              {%- endif %}
+            grid_options:
+              columns: full
+          - type: custom:apexcharts-card
+            header:
+              show: true
+              title: '@@planned_title@@'
+              show_states: false
+            graph_span: 31d
+            span:
+              end: day
+            now:
+              show: false
+            yaxis:
+              - min: 0
+                decimals: 0
+            all_series_config:
+              type: column
+              unit: ' kWh'
+              float_precision: 1
+              show:
+                legend_value: false
+                in_header: false
+            apex_config:
+              chart:
+                height: 260px
+              dataLabels:
+                enabled: false
+            series:
+              - entity: sensor.battmind_analysis
+                name: '@@planned_grid@@'
+                color: '#9ec2ef'
+                data_generator: |
+                  return (entity.attributes.plans || []).map(d => [new Date(d.date + 'T12:00:00').getTime(), d.plan_grid]);
+              - entity: sensor.battmind_analysis
+                name: '@@actual_grid@@'
+                color: '#2a78d6'
+                data_generator: |
+                  return (entity.attributes.plans || []).map(d => [new Date(d.date + 'T12:00:00').getTime(), d.grid]);
+              - entity: sensor.battmind_analysis
+                name: '@@planned_sale@@'
+                color: '#b8afef'
+                data_generator: |
+                  return (entity.attributes.plans || []).map(d => [new Date(d.date + 'T12:00:00').getTime(), d.plan_sale]);
+              - entity: sensor.battmind_analysis
+                name: '@@actual_sale@@'
+                color: '#6250d6'
+                data_generator: |
+                  return (entity.attributes.plans || []).map(d => [new Date(d.date + 'T12:00:00').getTime(), d.sale]);
+            grid_options:
+              columns: full
+      # expensive hours with an empty battery
+      - type: grid
+        column_span: 1
+        cards:
+          - type: heading
+            heading: '@@section_expensive@@'
+            icon: mdi:battery-alert-variant-outline
+          - type: markdown
+            content: "<details><summary>@@read_more@@</summary>\n\n@@expensive_explain@@\n\n</details>"
+            grid_options:
+              columns: full
+          - type: markdown
+            card_mod:
+              style: |
+                ha-card {
+                  --markdown-table-border-color: transparent
+                }
+            content: |-
+              {% set a = states.sensor.battmind_analysis.attributes %}
+              {% set e = a.expensive_30 or {} %}
+              {% if a.expensive -%}
+              @@expensive_intro_1@@ **{{ e.days_empty }}** @@expensive_intro_2@@ {{ e.days }} @@days@@ ({{ e.hours }} @@hours@@, {{ e.kwh }} kWh, {{ e.cost | round(2) }} kr)
+
+              | @@day@@ | @@hours@@ | kWh | kr |
+              |:---|---:|---:|---:|
+              {% for d in a.expensive | reverse -%}
+              | {{ d.date[8:10] }}/{{ d.date[5:7] }} | {{ '✅' if d.hours == 0 else d.hours }} | {{ d.kwh | round(1) }} | {{ d.cost | round(2) }} |
+              {% endfor %}
+              {%- else -%}
+              <ha-alert alert-type="info">@@no_data_yet@@</ha-alert>
+              {%- endif %}
+            grid_options:
+              columns: full
+      # the solar surplus forecast against the measured surplus
+      - type: grid
+        column_span: 2
+        cards:
+          - type: heading
+            heading: '@@section_solar_forecast@@'
+            icon: mdi:solar-power-variant-outline
+          - type: markdown
+            content: "<details><summary>@@read_more@@</summary>\n\n@@solar_forecast_explain@@\n\n</details>"
+            grid_options:
+              columns: full
+          - type: markdown
+            card_mod:
+              style: |
+                ha-card {
+                  --markdown-table-border-color: transparent
+                }
+            content: |-
+              {% macro n(v, d=2) %}{{ v | round(d) if v is number else '–' }}{% endmacro %}
+              {% set s = states.sensor.battmind_analysis.attributes.solar_forecast or {} %}
+              {% if s.plan -%}
+              @@solar_forecast_intro@@
+
+              | @@source@@ | @@days@@ | @@mae@@ kWh | @@bias@@ kWh |
+              |:---|---:|---:|---:|
+              {% for key, label in [('plan', '@@solar_plan@@'), ('database', '@@solar_database@@'), ('forecast', 'Solcast')] if s[key] -%}
+              | {{ label }} | {{ s[key].days }} | {{ n(s[key].mae) }} | {{ n(s[key].bias) }} |
+              {% endfor %}
+              {%- else -%}
+              <ha-alert alert-type="info">@@no_data_yet@@</ha-alert>
+              {%- endif %}
+            grid_options:
+              columns: full
+          - type: custom:apexcharts-card
+            header:
+              show: true
+              title: '@@solar_forecast_title@@'
+              show_states: false
+            graph_span: 31d
+            span:
+              end: day
+            now:
+              show: false
+            yaxis:
+              - min: 0
+                decimals: 0
+            all_series_config:
+              unit: ' kWh'
+              float_precision: 1
+              show:
+                legend_value: false
+                in_header: false
+            apex_config:
+              chart:
+                height: 240px
+              dataLabels:
+                enabled: false
+              markers:
+                size: 3
+            series:
+              - entity: sensor.battmind_analysis
+                name: '@@solar_actual@@'
+                type: column
+                color: '#eda100'
+                data_generator: |
+                  return (entity.attributes.plans || []).filter(d => d.plan_solar !== undefined && d.plan_solar !== null).map(d => [new Date(d.date + 'T12:00:00').getTime(), d.solar]);
+              - entity: sensor.battmind_analysis
+                name: '@@solar_plan@@'
+                type: line
+                stroke_width: 2
+                color: '#2a78d6'
+                data_generator: |
+                  return (entity.attributes.plans || []).filter(d => d.plan_solar !== undefined && d.plan_solar !== null).map(d => [new Date(d.date + 'T12:00:00').getTime(), d.plan_solar]);
+            grid_options:
+              columns: full
+      - type: grid
+        cards:
+          - type: heading
+            heading: '@@section_history@@'
+            icon: mdi:chart-line
+          - type: markdown
+            content: "<details><summary>@@read_more@@</summary>\n\n@@history_explain@@\n\n</details>"
+            grid_options:
+              columns: full
+          - type: history-graph
+            title: '@@history_title@@'
+            hours_to_show: 48
+            entities:
+              - entity: sensor.battmind_battery_level_needed
+                name:
+                  type: entity
+            min_y_axis: 0
+            max_y_axis: 100
+            grid_options:
+              columns: full
+          - type: history-graph
+            hours_to_show: 168
+            entities:
+              - entity: sensor.battmind_kwh_charged_by_solar
+                name:
+                  type: entity
+            grid_options:
+              columns: full
+        column_span: 1
+      - type: grid
+        cards:
+          - type: heading
+            heading: '@@consumption_forecast@@'
+            icon: mdi:home-lightning-bolt
+          - type: markdown
+            content: "<details><summary>@@read_more@@</summary>\n\n@@consumption_forecast_explain@@\n\n</details>"
+            grid_options:
+              columns: full
+          - type: custom:apexcharts-card
+            header:
+              show: true
+              title: '@@consumption_forecast@@'
             experimental:
               brush: true
             brush:
-              selection_span: 2.5d
-            graph_span: 2.5d
+              selection_span: '@@forecast_span@@'
+            graph_span: '@@forecast_span@@'
             span:
               start: hour
             now:
               show: true
+              label: '@@now@@'
             apex_config:
               tooltip:
                 fixed:
@@ -1888,10 +2726,8 @@ views:
                 yaxis_id: sum
                 opacity: 0.25
                 stroke_width: 4
-                data_generator: >
-                  const d = entity.attributes.hour_cost_prediction_sum_avg ||
-                  {};
-
+                data_generator: |
+                  const d = entity.attributes.hour_cost_prediction_sum_avg || {};
                   return Object.entries(d)
                     .map(([ts, v]) => {
                     const d = new Date(ts);
@@ -1906,10 +2742,8 @@ views:
                 yaxis_id: sum
                 opacity: 0.25
                 stroke_width: 4
-                data_generator: >
-                  const d = entity.attributes.hour_cost_prediction_sum_ema ||
-                  {};
-
+                data_generator: |
+                  const d = entity.attributes.hour_cost_prediction_sum_ema || {};
                   return Object.entries(d)
                     .map(([ts, v]) => {
                     const d = new Date(ts);
@@ -1924,10 +2758,8 @@ views:
                 yaxis_id: sum
                 opacity: 0.25
                 stroke_width: 4
-                data_generator: >
-                  const d = entity.attributes.hour_cost_prediction_sum_trend ||
-                  {};
-
+                data_generator: |
+                  const d = entity.attributes.hour_cost_prediction_sum_trend || {};
                   return Object.entries(d)
                     .map(([ts, v]) => {
                     const d = new Date(ts);
@@ -1937,30 +2769,6 @@ views:
                     .filter(([t, v]) => Number.isFinite(t) && Number.isFinite(v))
                     .sort((a,b) => a[0]-b[0]);
             grid_options:
-              columns: 60
+              columns: full
               rows: auto
-        column_span: 5
-    cards: []
-    title: Indstillinger
-    dense_section_placement: true
-    badges:
-      - type: custom:mushroom-template-badge
-        content: Recalc charging history today
-        icon: mdi:database-sync
-        color: yellow
-        tap_action:
-          action: perform-action
-          perform_action: battmind.recalc_charging_history_today
-          target: {}
-        label: ''
-      - type: entity
-        show_name: true
-        show_state: false
-        show_icon: true
-        entity: button.battmind_restart_script
-        show_entity_picture: false
-        tap_action:
-          action: perform-action
-          perform_action: button.press
-          target:
-            entity_id: button.battmind_restart_script
+        column_span: 4

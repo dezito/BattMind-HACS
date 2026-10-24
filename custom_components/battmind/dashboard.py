@@ -6,6 +6,8 @@ author's price/solar entities. At setup it is rewritten for this config entry:
 * own entities ``<platform>.battmind_*`` -> ``<platform>.<prefix>_*``
 * external entities (Energi Data Service, Strømligning, Solcast) -> the configured ones
 * cards bound to an external entity that is not configured are removed
+* ``@@key@@`` placeholders -> ``dashboard.key`` of texts/<language>.json (BattMind's language),
+  ``@@forecast_span@@`` -> days_to_predict - 0.5 days
 
 The result is written to .storage and served as a YAML mode Lovelace dashboard.
 """
@@ -24,7 +26,8 @@ from homeassistant.components.lovelace.const import LOVELACE_DATA
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 
-from .const import DOMAIN
+from .const import DOMAIN, normalize_language
+from .formatting import load_texts
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -32,6 +35,7 @@ TEMPLATE = Path(__file__).parent / "dashboard" / "battmind.yaml"
 ICON = "mdi:home-battery"
 
 _OWN_ENTITY = re.compile(r"\b(sensor|binary_sensor|switch|number|select|text|button)\.battmind_")
+_PLACEHOLDER = re.compile(r"@@(\w+)@@")
 _SOLCAST_DAYS = ("tomorrow", "day_3", "day_4", "day_5", "day_6", "day_7")
 _DROP = object()
 
@@ -66,6 +70,10 @@ def external_entities(config: dict[str, Any]) -> dict[str, str]:
         "sensor.stromligning_15min_forecasts_ex_vat": prices["stromligning_sell_forecasts"],
         "binary_sensor.stromligning_15min_tomorrow_available_ex_vat": prices["stromligning_sell_tomorrow_available"],
     }
+    if sl_buy:
+        # one price chart: Strømligning is preferred, the Energi Data Service chart is removed
+        mapping["sensor.energi_data_service"] = ""
+        mapping["sensor.energi_data_service_salg"] = ""
     # Solcast: forecast_today plus the per-day sensors next to it
     forecast = config["solar"]["entity_ids"]["forecast_entity_id"]
     base = forecast[: -len("today")] if forecast.endswith("_today") else ""
@@ -73,6 +81,9 @@ def external_entities(config: dict[str, Any]) -> dict[str, str]:
     for day in _SOLCAST_DAYS:
         mapping[f"sensor.solcast_pv_forecast_forecast_{day}"] = f"{base}{day}" if base else ""
     return mapping
+
+
+DEBUG_BUTTON_SWITCH = "input_boolean.dezito_show_debug_button"
 
 
 def _prune(node: Any, missing: set[str]) -> Any:
@@ -89,7 +100,8 @@ def _prune(node: Any, missing: set[str]) -> Any:
     if isinstance(node, dict):
         if node.get("entity") in missing:
             return _DROP
-        if any(isinstance(cond, dict) and cond.get("entity") in missing for cond in node.get("conditions") or ()):
+        # (also visibility: without its entity the card must not end up always visible)
+        if any(isinstance(cond, dict) and cond.get("entity") in missing for key in ("conditions", "visibility") for cond in node.get(key) or ()):
             return _DROP
         result = {}
         for key, value in node.items():
@@ -100,6 +112,17 @@ def _prune(node: Any, missing: set[str]) -> Any:
                 return _DROP
             result[key] = pruned
         return result
+    return node
+
+
+def _translate(node: Any, texts: dict[str, str]) -> Any:
+    """Replace @@key@@ in every string with the dashboard text of the language (the key if missing)."""
+    if isinstance(node, list):
+        return [_translate(item, texts) for item in node]
+    if isinstance(node, dict):
+        return {key: _translate(value, texts) for key, value in node.items()}
+    if isinstance(node, str) and "@@" in node:
+        return _PLACEHOLDER.sub(lambda match: texts.get(f"dashboard.{match.group(1)}", match.group(1)), node)
     return node
 
 
@@ -115,11 +138,20 @@ def _represent_str(dumper: yaml.SafeDumper, value: str) -> yaml.ScalarNode:
 _Dumper.add_representer(str, _represent_str)
 
 
-def render_dashboard(config: dict[str, Any], prefix: str) -> str:
-    """Build the dashboard YAML for one instance (blocking file I/O)."""
+def render_dashboard(config: dict[str, Any], prefix: str, existing: set[str] | None = None) -> str:
+    """Build the dashboard YAML for one instance (blocking file I/O).
+
+    existing: entity ids that exist in Home Assistant; the debug button is removed when its switch is not among them
+    """
     mapping = external_entities(config)
     template = yaml.safe_load(TEMPLATE.read_text(encoding="utf-8"))
+    texts = load_texts(normalize_language(config.get("language")))
+    # the charts show the forecast period: days_to_predict minus the half day already passed
+    texts["dashboard.forecast_span"] = f"{max(float(config['days_to_predict']) - 0.5, 0.5):g}d"
+    template = _translate(template, texts)
     missing = {source for source, target in mapping.items() if not target}
+    if existing is not None and DEBUG_BUTTON_SWITCH not in existing:
+        missing.add(DEBUG_BUTTON_SWITCH)
     content = yaml.dump(_prune(template, missing), Dumper=_Dumper, allow_unicode=True, sort_keys=False, width=1000)
 
     replace = {source: target for source, target in mapping.items() if target and source != target}
@@ -152,8 +184,10 @@ async def async_setup_dashboard(hass: HomeAssistant, entry: ConfigEntry, config:
 
     path = dashboard_file(hass, entry.entry_id)
 
+    existing_ids = set(hass.states.async_entity_ids())
+
     def _render() -> bool:
-        return _write_if_changed(path, render_dashboard(config, prefix))
+        return _write_if_changed(path, render_dashboard(config, prefix, existing_ids))
 
     try:
         changed = await hass.async_add_executor_job(_render)
