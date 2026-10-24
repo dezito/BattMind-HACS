@@ -1019,13 +1019,13 @@ class PlannerMixin:
                 return lowest_timestamp, lowest_battery_level, using_next_day
 
             def sell_prices_for_window(from_timestamp, to_timestamp):
-                prices = {ts: price for ts, price in grid_sell_prices.items() if in_between(ts, from_timestamp, to_timestamp)}
+                """What a sold kWh is worth per sell period (see sell_value - can be negative with a fixed price)."""
                 sell_price = config["solar"]["production_price"]
-                using_grid_sell_price = True
-                if sell_price != -1.0:
-                    using_grid_sell_price = False
-                    for ts in prices:
-                        prices[ts] = max(round(sell_price - prices[ts], 2), 0.0)
+                using_grid_sell_price = sell_price == -1.0
+                prices = {
+                    ts: price if using_grid_sell_price else round(self.sell_value(price), 2)
+                    for ts, price in grid_sell_prices.items() if in_between(ts, from_timestamp, to_timestamp)
+                }
                 return prices, sell_price, using_grid_sell_price
 
             def most_profit(day):
@@ -1449,12 +1449,11 @@ class PlannerMixin:
                     _LOGGER.debug("Optimize solar charging: day %s the battery doesn't reach %s%%, nothing to sell", day, maximum)
                     return
 
-                # Real sell prices when known, else the predicted ones (rounded to 0.1)
+                # What the sold surplus is worth from the real sell prices when known, else the predicted ones (rounded to 0.1)
                 sell_by_hour = defaultdict(list)
-                if cfg["production_price"] == -1.0:
-                    for ts, price in grid_sell_prices.items():
-                        if ts.date() == start.date():
-                            sell_by_hour[ts.hour].append(price)
+                for ts, price in grid_sell_prices.items():
+                    if ts.date() == start.date():
+                        sell_by_hour[ts.hour].append(self.sell_value(price))
                 busy = {
                     ts.hour for ts in [*data.get("charging_sessions", {}), *data["force_discharge_timestamps"]]
                     if ts.date() == start.date()
@@ -2314,7 +2313,8 @@ class PlannerMixin:
                 overview.append(f"**{t('ui.cheap_grid_charge_hours.no_upcoming_charging_planned')}**\n")
             overview.extend(self._plan_summary_lines(valuta, valuta_kwh))
 
-            if self.grid_price_cache.get("using_offline_prices", False) and self.grid_price_cache.get("missing_hours"):
+            # all prices offline, or hours the provider has no price for, filled from the price history
+            if self.grid_price_cache.get("missing_hours"):
                 n_pairs = 4
                 overview.append(f"\n\n<details><summary><b>{t('ui.cheap_grid_charge_hours.offline_prices')}!!!</b></summary>\n")
                 by_day = defaultdict(list)

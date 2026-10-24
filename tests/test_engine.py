@@ -8,6 +8,7 @@ from __future__ import annotations
 import datetime
 import json
 import zoneinfo
+from copy import deepcopy
 from pathlib import Path
 
 import pytest
@@ -219,9 +220,11 @@ ALL_RULES = {
 SOLAR_SURPLUS = [0.0] * 9 + [3.0] * 7 + [0.0] * 8  # 3 kWh/h 09-15 fills the battery on its own
 
 
-def solar_engine(now: datetime.datetime, battery_level: float, solar: bool) -> tuple[BattMindEngine, Snapshot]:
+def solar_engine(
+    now: datetime.datetime, battery_level: float, solar: bool, extra_options: dict | None = None
+) -> tuple[BattMindEngine, Snapshot]:
     """Engine with a sell price entity (buy - 0.9 kr) and optionally a solar surplus prediction."""
-    options = {**OPTIONS, "energidataservice_sell_entity_id": "sensor.sell"}
+    options = {**OPTIONS, "energidataservice_sell_entity_id": "sensor.sell", **(extra_options or {})}
     engine = BattMindEngine(build_config(options), "test", TEXTS)
 
     def with_sell_prices(snap: Snapshot) -> Snapshot:
@@ -266,6 +269,30 @@ def test_solar_surplus_has_priority_over_grid_charging() -> None:
     assert morning_kwh[False] > 5.0
 
 
+def test_sell_value_with_fixed_solar_sell_price() -> None:
+    """A fixed price settles the difference to the hourly price: fixed - hourly, also negative."""
+    engine = BattMindEngine(build_config(OPTIONS), "test", TEXTS)
+    assert engine.sell_value(5.0) == pytest.approx(5.0)
+    engine = BattMindEngine(build_config({**OPTIONS, "production_price": 1.0}), "test", TEXTS)
+    assert engine.sell_value(5.0) == pytest.approx(-4.0)
+    assert engine.sell_value(0.5) == pytest.approx(0.5)
+
+
+def test_fixed_solar_sell_price_values_every_sale_in_the_plan() -> None:
+    """The optimiser sees fixed - hourly sell price per hour, not clamped at 0."""
+    now = datetime.datetime.combine(DAY, datetime.time(3, 30))
+    hourly, hourly_snap = solar_engine(now, 50, True)
+    fixed, fixed_snap = solar_engine(now, 50, True, {"production_price": 1.0})
+    assert hourly.run_job(hourly_snap, hourly.charge_if_needed, True).error is None
+    assert fixed.run_job(fixed_snap, fixed.charge_if_needed, True).error is None
+    raw = {row["hour"]: row["sell"] for row in hourly.optimizer_shadow["hours"]}
+    values = {row["hour"]: row["sell"] for row in fixed.optimizer_shadow["hours"]}
+    assert values.keys() == raw.keys()
+    for hour, price in raw.items():
+        assert values[hour] == pytest.approx(1.0 - price, abs=0.011)
+    assert min(values.values()) < 0.0  # the evening sell price is above the fixed price
+
+
 def test_hour_end_stores_power_values() -> None:
     now = datetime.datetime.combine(DAY, datetime.time(12, 59))
     engine = started_engine(now, 50)
@@ -296,6 +323,72 @@ def test_missing_prices_fall_back_to_offline_prices() -> None:
     assert result.error is None
     assert engine.grid_price_cache["using_offline_prices"] is True
     assert result.states["powerwall_action"] in POWERWALL_ACTION_STATES
+
+
+def _price_history() -> dict:
+    """Price history where the price tells the weekday: 2.<weekday> kr in every hour."""
+    history = {hour: {dow: [2.0 + dow / 10] * 3 for dow in range(7)} for hour in range(24)}
+    return {"history": history, "history_sell": deepcopy(history)}
+
+
+def test_missing_hours_are_filled_from_the_price_history() -> None:
+    """Only today's prices are published: the rest of the plan uses the price history of that weekday."""
+    now = datetime.datetime.combine(DAY, datetime.time(12, 0))
+    snap = snapshot(now, 50)
+    attributes = snap.price_data["attributes"]["sensor.price"]
+    attributes.update(raw_tomorrow=[], tomorrow_valid=False, forecast=[])
+    engine = BattMindEngine(build_config(OPTIONS), "test", TEXTS)
+    assert engine.run_job(snap, engine.startup, {"power_values": _power_values_db(), "kwh_avg_prices": _price_history()}).error is None
+    result = engine.run_job(snap, engine.charge_if_needed, True)
+    assert result.error is None, result.error
+
+    prices = engine.grid_price_cache["prices"]
+    sources = engine.grid_price_cache["sources"]
+    today_17 = now.replace(hour=17)
+    assert prices[today_17] == pytest.approx(1.0 + 1.5 + 0.17)  # published price kept
+    assert sources[today_17] == "energidataservice:real"
+    for days in (1, 2):
+        timestamp = now.replace(hour=17) + datetime.timedelta(days=days)
+        assert sources[timestamp] == "database"
+        assert prices[timestamp] == pytest.approx(round(2.0 + timestamp.weekday() / 10 + days / 30, 2))
+    assert max(prices) == datetime.datetime.combine(DAY + datetime.timedelta(days=2), datetime.time(23))
+    assert engine.grid_price_cache["using_offline_prices"] is False
+    # the filled hours are planned with, so every hour of the plan has a price
+    assert len(engine.optimizer_shadow["hours"]) == 12 + 24 + 24
+
+
+def test_offline_prices_use_the_same_weekday() -> None:
+    now = datetime.datetime.combine(DAY, datetime.time(12, 0))
+    engine = BattMindEngine(build_config(OPTIONS), "test", TEXTS)
+    empty = snapshot(now, 50)
+    empty.price_data = {"attributes": {}, "values": {}}
+    assert engine.run_job(empty, engine.startup, {"power_values": _power_values_db(), "kwh_avg_prices": _price_history()}).error is None
+    assert engine.run_job(empty, engine.charge_if_needed, True).error is None
+    prices = engine.grid_price_cache["prices"]
+    for days in range(7):
+        timestamp = now + datetime.timedelta(days=days)
+        assert prices[timestamp] == pytest.approx(round(2.0 + timestamp.weekday() / 10 + days / 30, 2))
+
+
+def test_price_history_stores_only_the_providers_prices() -> None:
+    """Estimated hours are never stored as history, and sell prices are stored without solar panels too."""
+    now = datetime.datetime.combine(DAY, datetime.time(12, 0))
+    engine, snap = solar_engine(now, 50, False)
+    engine.kwh_avg_prices_db = {}
+    assert engine.run_job(snap, engine.update_grid_prices).error is None
+    dow = DAY.weekday()
+    history = engine.kwh_avg_prices_db
+    assert history["history"][17][dow][0] == pytest.approx(1.0 + 1.5 + 0.17)
+    assert history["history_sell"][17][dow][0] == pytest.approx(engine.price_provider.sell_prices[now.replace(hour=17)])
+
+    # 3 hours of today missing: they are filled from the history, but the day isn't stored
+    engine, snap = solar_engine(now, 50, False)
+    engine.kwh_avg_prices_db = deepcopy(_price_history())
+    rows = snap.price_data["attributes"]["sensor.price"]["raw_today"]
+    snap.price_data["attributes"]["sensor.price"]["raw_today"] = [row for row in rows if row["hour"][11:13] not in ("14", "15", "16")]
+    assert engine.run_job(snap, engine.update_grid_prices).error is None
+    assert engine.grid_price_cache["sources"][now.replace(hour=15)] == "database"
+    assert engine.kwh_avg_prices_db["history"][15][dow] == _price_history()["history"][15][dow]
 
 
 def test_codec_roundtrip() -> None:
