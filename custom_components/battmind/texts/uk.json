@@ -1,7 +1,7 @@
 {
   "charging_type": {
     "error": {
-      "description": "Критична помилка, аварійне заряджання"
+      "description": "Критична помилка"
     },
     "no_rule": {
       "description": "Заряджання без правила"
@@ -30,26 +30,11 @@
     "solar_corrected": {
       "description": "Досягнуто максимального рівня – надлишок сонячної енергії"
     },
-    "powerwall": {
-      "description": "Заряджання від домашньої батареї"
-    },
-    "powerwall_avg_symbol": {
-      "description": "Середнє заряджання домашньої батареї"
-    },
     "sunrise": {
       "description": "Схід сонця"
     },
     "sunset": {
       "description": "Захід сонця"
-    },
-    "charging_problem": {
-      "description": "Проблеми із заряджанням"
-    },
-    "charging_error": {
-      "description": "Заряджання повністю не вдалося"
-    },
-    "blocked": {
-      "description": "Заряджання заблоковано"
     },
     "profit": {
       "description": "Заощадження та дохід від продажу під час розряджання"
@@ -86,6 +71,9 @@
     },
     "force_powerwall_max_hours_old_discharge": {
       "description": "Стара енергія використана/продана"
+    },
+    "blocked_solar_charge": {
+      "description": "Заблоковане заряджання від сонячної енергії"
     }
   },
   "ui": {
@@ -119,7 +107,13 @@
     },
     "emoji_description": {
       "header": "Опис emoji",
-      "markdown_hint": "Використовуйте картку Markdown з: {{{{ states.sensor.{name}_emoji_description.attributes.description }}}}"
+      "markdown_hint": "Використовуйте картку Markdown з: {{{{ states.sensor.{name}_emoji_description.attributes.description }}}}",
+      "groups": {
+        "charge": "Заряджання",
+        "discharge": "Розряджання / продаж",
+        "status": "Статус",
+        "info": "Інформація"
+      }
     },
     "set_default_entity_states": {
       "markdown_guide": "Використовуйте картку Markdown з: {{{{ states.sensor.{name}_overview.attributes.overview }}}}",

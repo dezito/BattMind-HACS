@@ -1,7 +1,7 @@
 {
   "charging_type": {
     "error": {
-      "description": "Błąd krytyczny, ładowanie awaryjne"
+      "description": "Błąd krytyczny"
     },
     "no_rule": {
       "description": "Ładowanie bez reguły"
@@ -30,26 +30,11 @@
     "solar_corrected": {
       "description": "Osiągnięto maksymalny poziom – nadwyżka energii słonecznej"
     },
-    "powerwall": {
-      "description": "Ładowanie z magazynu energii"
-    },
-    "powerwall_avg_symbol": {
-      "description": "Średnie ładowanie magazynu energii"
-    },
     "sunrise": {
       "description": "Wschód słońca"
     },
     "sunset": {
       "description": "Zachód słońca"
-    },
-    "charging_problem": {
-      "description": "Problemy z ładowaniem"
-    },
-    "charging_error": {
-      "description": "Ładowanie całkowicie nieudane"
-    },
-    "blocked": {
-      "description": "Ładowanie zablokowane"
     },
     "profit": {
       "description": "Oszczędności i przychód ze sprzedaży energii przy rozładowaniu"
@@ -86,6 +71,9 @@
     },
     "force_powerwall_max_hours_old_discharge": {
       "description": "Stara energia zużyta/sprzedana"
+    },
+    "blocked_solar_charge": {
+      "description": "Zablokowane ładowanie z energii słonecznej"
     }
   },
   "ui": {
@@ -119,7 +107,13 @@
     },
     "emoji_description": {
       "header": "Opis emoji",
-      "markdown_hint": "Użyj karty Markdown z: {{{{ states.sensor.{name}_emoji_description.attributes.description }}}}"
+      "markdown_hint": "Użyj karty Markdown z: {{{{ states.sensor.{name}_emoji_description.attributes.description }}}}",
+      "groups": {
+        "charge": "Ładowanie",
+        "discharge": "Rozładowanie / sprzedaż",
+        "status": "Status",
+        "info": "Informacje"
+      }
     },
     "set_default_entity_states": {
       "markdown_guide": "Użyj karty Markdown z: {{{{ states.sensor.{name}_overview.attributes.overview }}}}",

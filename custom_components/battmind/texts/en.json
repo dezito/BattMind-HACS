@@ -1,7 +1,7 @@
 {
   "charging_type": {
     "error": {
-      "description": "Critical error, emergency charging"
+      "description": "Critical error"
     },
     "no_rule": {
       "description": "Charging without rule"
@@ -30,26 +30,11 @@
     "solar_corrected": {
       "description": "Maximum charge reached – solar surplus"
     },
-    "powerwall": {
-      "description": "Charging from home battery"
-    },
-    "powerwall_avg_symbol": {
-      "description": "Average home battery charging"
-    },
     "sunrise": {
       "description": "Sunrise"
     },
     "sunset": {
       "description": "Sunset"
-    },
-    "charging_problem": {
-      "description": "Charging issues"
-    },
-    "charging_error": {
-      "description": "Charging failed completely"
-    },
-    "blocked": {
-      "description": "Charging blocked"
     },
     "profit": {
       "description": "Savings and revenue from discharging"
@@ -86,6 +71,9 @@
     },
     "force_powerwall_max_hours_old_discharge": {
       "description": "Old energy used/sold"
+    },
+    "blocked_solar_charge": {
+      "description": "Blocked solar charging"
     }
   },
   "ui": {
@@ -119,7 +107,13 @@
     },
     "emoji_description": {
       "header": "Emoji description",
-      "markdown_hint": "Use a Markdown card with: {{{{ states.sensor.{name}_emoji_description.attributes.description }}}}"
+      "markdown_hint": "Use a Markdown card with: {{{{ states.sensor.{name}_emoji_description.attributes.description }}}}",
+      "groups": {
+        "charge": "Charging",
+        "discharge": "Discharging / selling",
+        "status": "Status",
+        "info": "Info"
+      }
     },
     "set_default_entity_states": {
       "markdown_guide": "Use a Markdown card with: {{{{ states.sensor.{name}_overview.attributes.overview }}}}",
