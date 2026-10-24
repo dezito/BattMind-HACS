@@ -1,7 +1,7 @@
 {
   "charging_type": {
     "error": {
-      "description": "Kritischer Fehler, Notladung"
+      "description": "Kritischer Fehler"
     },
     "no_rule": {
       "description": "Laden ohne Regel"
@@ -30,26 +30,11 @@
     "solar_corrected": {
       "description": "Maximale Ladung erreicht – Solarüberschuss"
     },
-    "powerwall": {
-      "description": "Laden aus Heimspeicher"
-    },
-    "powerwall_avg_symbol": {
-      "description": "Durchschnittliche Heimspeicher-Ladung"
-    },
     "sunrise": {
       "description": "Sonnenaufgang"
     },
     "sunset": {
       "description": "Sonnenuntergang"
-    },
-    "charging_problem": {
-      "description": "Ladeprobleme"
-    },
-    "charging_error": {
-      "description": "Ladevorgang vollständig fehlgeschlagen"
-    },
-    "blocked": {
-      "description": "Laden blockiert"
     },
     "profit": {
       "description": "Ersparnis und Verkaufserlös durch Entladung"
@@ -86,6 +71,9 @@
     },
     "force_powerwall_max_hours_old_discharge": {
       "description": "Alter Strom genutzt/verkauft"
+    },
+    "blocked_solar_charge": {
+      "description": "Blockiertes Solarladen"
     }
   },
   "ui": {
@@ -119,7 +107,13 @@
     },
     "emoji_description": {
       "header": "Emoji-Beschreibung",
-      "markdown_hint": "Verwende eine Markdown-Karte mit: {{{{ states.sensor.{name}_emoji_description.attributes.description }}}}"
+      "markdown_hint": "Verwende eine Markdown-Karte mit: {{{{ states.sensor.{name}_emoji_description.attributes.description }}}}",
+      "groups": {
+        "charge": "Laden",
+        "discharge": "Entladen / Verkauf",
+        "status": "Status",
+        "info": "Info"
+      }
     },
     "set_default_entity_states": {
       "markdown_guide": "Verwende eine Markdown-Karte mit: {{{{ states.sensor.{name}_overview.attributes.overview }}}}",

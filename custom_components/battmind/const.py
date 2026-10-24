@@ -72,109 +72,133 @@ WEATHER_CONDITION_DICT = {
 CHARGING_TYPES = {
     "error": {
         "priority": 1,
-        "emoji": "☠️"
+        "emoji": "☠️",
+        "group": "status"
     },
     "no_rule": {
         "priority": 2,
-        "emoji": "⚠️"
+        "emoji": "⚠️",
+        "group": "status"
     },
     "cheapest_hour_fill_planner": {
         "priority": 3,
-        "emoji": "💸"
+        "emoji": "💸",
+        "group": "charge"
     },
     "most_expensive_planner": {
         "priority": 3.1,
-        "emoji": "🔥"
+        "emoji": "🔥",
+        "group": "charge"
     },
     "needed_before_max_level_planner": {
         "priority": 3.2,
-        "emoji": "🩹"
+        "emoji": "🩹",
+        "group": "charge"
     },
     "negative_price_planner": {
         "priority": 3.3,
-        "emoji": "🎁"
+        "emoji": "🎁",
+        "group": "charge"
     },
     "grid_charge_to_sell": {
         "priority": 3.4,
-        "emoji": "🔁"
+        "emoji": "🔁",
+        "group": "charge"
     },
     "discharge_before_solar": {
         "priority": 4.3,
-        "emoji": "🌄"
+        "emoji": "🌄",
+        "group": "discharge"
     },
     "only_discharge_on_profit": {
         "priority": 4.4,
-        "emoji": "🚫"
+        "emoji": "🚫",
+        "group": "discharge"
     },
     "prioritize_discharge_hours_by_energy_cost": {
         "priority": 4.5,
-        "emoji": "⏳"
+        "emoji": "⏳",
+        "group": "discharge"
     },
     "most_profit": {
         "priority": 4.6,
-        "emoji": "🤑"
+        "emoji": "🤑",
+        "group": "discharge"
     },
     "sell_excess_kwh_available": {
         "priority": 4.7,
-        "emoji": "📤"
+        "emoji": "📤",
+        "group": "discharge"
     },
     "force_powerwall_max_hours_old_discharge": {
         "priority": 4.8,
-        "emoji": "🕰️"
+        "emoji": "🕰️",
+        "group": "discharge"
     },
     "charging": {
         "priority": 4,
-        "emoji": "📈"
+        "emoji": "📈",
+        "group": "charge"
     },
     "discharging": {
         "priority": 4.1,
-        "emoji": "📉"
-    },
-    "blocked": {
-        "priority": 4.2,
-        "emoji": "❌"
+        "emoji": "📉",
+        "group": "discharge"
     },
     "force_discharge": {
         "priority": 5,
-        "emoji": "🛒"
+        "emoji": "🛒",
+        "group": "discharge"
     },
     "solar": {
         "priority": 6,
-        "emoji": "☀️"
+        "emoji": "☀️",
+        "group": "charge"
     },
     "solar_corrected": {
         "priority": 6.1,
-        "emoji": "🌤️"
+        "emoji": "🌤️",
+        "group": "charge"
     },
     "balance": {
         "priority": 7,
-        "emoji": "⚖️"
+        "emoji": "⚖️",
+        "group": "info"
     },
     "sunrise": {
         "priority": 96,
-        "emoji": "🌅"
+        "emoji": "🌅",
+        "group": "info"
     },
     "sunset": {
         "priority": 97,
-        "emoji": "🌇"
+        "emoji": "🌇",
+        "group": "info"
     },
     "profit": {
         "priority": 100,
-        "emoji": "💰"
+        "emoji": "💰",
+        "group": "info"
     },
     "average": {
         "priority": 999,
-        "emoji": "⌛"
+        "emoji": "⌛",
+        "group": "info"
     },
     "bundle": {
         "priority": 1000,
-        "emoji": "📦"
+        "emoji": "📦",
+        "group": "info"
     },
     "blocked_solar_charge": {
         "priority": 6.2,
-        "emoji": "🎛️"
+        "emoji": "🎛️",
+        "group": "charge"
     },
 }
+
+# the sections of the emoji description, in order; inline = all on one line
+EMOJI_DESCRIPTION_GROUPS = (("charge", False), ("discharge", False), ("status", False), ("info", True))
 
 # Same nested layout as <prefix>_config.yaml in the PyScript version, so the ported
 # algorithm reads CONFIG["solar"]["powerwall_battery_size"] etc. unchanged. Values that

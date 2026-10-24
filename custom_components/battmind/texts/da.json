@@ -1,7 +1,7 @@
 {
   "charging_type": {
     "error": {
-      "description": "Kritisk fejl, nødladning"
+      "description": "Kritisk fejl"
     },
     "no_rule": {
       "description": "Ladning uden grund"
@@ -30,26 +30,11 @@
     "solar_corrected": {
       "description": "Maks. opladning nået - soloverskud"
     },
-    "powerwall": {
-      "description": "Ladning fra husbatteri"
-    },
-    "powerwall_avg_symbol": {
-      "description": "Gennemsnitlig ladning af husbatteri"
-    },
     "sunrise": {
       "description": "Solopgang"
     },
     "sunset": {
       "description": "Solnedgang"
-    },
-    "charging_problem": {
-      "description": "Ladning problemer"
-    },
-    "charging_error": {
-      "description": "Ladning fejlede helt"
-    },
-    "blocked": {
-      "description": "Ladning blokeret"
     },
     "profit": {
       "description": "Besparelse og salgsindtægt ved afladning"
@@ -86,6 +71,9 @@
     },
     "force_powerwall_max_hours_old_discharge": {
       "description": "Gammel strøm bruges/sælges"
+    },
+    "blocked_solar_charge": {
+      "description": "Blokeret solcelle opladning"
     }
   },
   "ui": {
@@ -162,7 +150,13 @@
     },
     "emoji_description": {
       "header": "Emoji beskrivelse",
-      "markdown_hint": "Brug Markdown kort med dette i: {{{{ states.sensor.{name}_emoji_description.attributes.description }}}}"
+      "markdown_hint": "Brug Markdown kort med dette i: {{{{ states.sensor.{name}_emoji_description.attributes.description }}}}",
+      "groups": {
+        "charge": "Ladning",
+        "discharge": "Afladning / salg",
+        "status": "Status",
+        "info": "Info"
+      }
     },
     "set_default_entity_states": {
       "markdown_guide": "Brug Markdown kort med dette i: {{{{ states.sensor.{name}_overview.attributes.overview }}}}",
