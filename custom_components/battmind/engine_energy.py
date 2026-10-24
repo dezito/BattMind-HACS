@@ -282,13 +282,18 @@ class EnergyMixin:
         today = self.now().date()
         if isinstance(db.get("last_save"), datetime.datetime) and db["last_save"].date() == today:
             return
-        solar = self.is_solar_configured()
-        refund = self.price_provider.refund if self.price_provider else 0.0
-        grid = {ts.hour: price for ts, price in self.get_grid_prices().items() if ts.date() == today}
-        sell = {ts.hour: price for ts, price in self.get_sell_prices().items() if ts.date() == today} if solar else {}
-        if len(grid) < 23 or (solar and len(sell) < 23):
+        provider = self.price_provider
+        refund = provider.refund if provider else 0.0
+        # only the provider's prices - the hours filled from the history must not be stored again
+        grid = {ts.hour: price for ts, price in (provider.buy_prices if provider else {}).items() if ts.date() == today}
+        sell = {ts.hour: price for ts, price in (provider.sell_prices if provider else {}).items() if ts.date() == today}
+        if len(grid) < 23:
             _LOGGER.warning("Missing hours in today's prices (buy %s, sell %s), not saving the price history", len(grid), len(sell))
             return
+        if len(sell) < 23:
+            # a day with missing sell hours only stores the buy prices (sell prices are stored also
+            # without solar panels - the battery sells too)
+            sell = {}
 
         keep = self.config["database"]["kwh_avg_prices_db_data_to_save"]
         prices = [price - refund for price in grid.values()]
@@ -323,13 +328,13 @@ class EnergyMixin:
                         self.power_values_db[date.hour].get("power_consumption_without_all_exclusion", [0.0])
                     )
                     surplus_kwh = round(max(data["pv_estimate"] * 1000.0 - consumption, 0.0) / 1000.0, 3)
-                    forecast[date] = (surplus_kwh, sell_prices[date])
+                    forecast[date] = (surplus_kwh, self.sell_value(sell_prices[date]))
             except (KeyError, TypeError, AttributeError) as err:
                 _LOGGER.error("Invalid Solcast data in %s: %s", entity_id, err)
         return forecast
 
-    def _database_solar(self, score: float, date: datetime.datetime, fixed_sell_price: float) -> tuple[float, float]:
-        """(kWh surplus, sell price) for an hour from the stored solar history at a weather score."""
+    def _database_solar(self, score: float, date: datetime.datetime) -> tuple[float, float]:
+        """(kWh surplus, sell value) for an hour from the stored solar history at a weather score."""
         scores = self.solar_available_db.get(date.hour)
         if not scores:
             return 0.0, 0.0
@@ -343,16 +348,13 @@ class EnergyMixin:
             if score <= 80 and (upper := get_closest_key(score + 20, scores)):
                 neighbours.append(self.get_forecast_value(upper))
         values = ([forecast_value] * 3 if power_list else []) + neighbours
-        sell_price = fixed_sell_price
-        if sell_price == -1.0:
-            sell_price = self.get_forecast_value(self.kwh_avg_prices_db["history_sell"][date.hour][day_of_week(date)])
+        sell_price = self.sell_value(self.get_forecast_value(self.kwh_avg_prices_db["history_sell"][date.hour][day_of_week(date)]))
         return max(average(values), 0.0) / 1000, sell_price
 
     def local_energy_prediction(self) -> None:
         """Predict the solar surplus per hour for today + the next days (self.solar_prediction_db)."""
         if not self.inverter_available():
             return
-        fixed_sell_price = self.config["solar"]["production_price"]
         solcast = self.get_solar_kwh_forecast()
         now = self.now()
         today = start_of_day(now)
@@ -367,7 +369,7 @@ class EnergyMixin:
                 hour_kwh = []
                 hour_sell = []
                 if forecast is not None:
-                    kwh, sell = self._database_solar(self.forecast_score(forecast), timestamp, fixed_sell_price)
+                    kwh, sell = self._database_solar(self.forecast_score(forecast), timestamp)
                     weight = (0.5 if timestamp in solcast else 1.0) * factor
                     hour_kwh.append(round(kwh * weight, 1))
                     hour_sell.append(round(sell * weight, 1))

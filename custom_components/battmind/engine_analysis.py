@@ -320,8 +320,9 @@ class AnalysisMixin:
             return None
         solar = self.config["solar"]
         wear = abs(solar["powerwall_wear_cost_per_kwh"])
+        # the hours store the raw sell price, a sale is worth sell_value() of it
         loads = [
-            {"load": _num(row["home"]) - _num(row.get("ignored")) - _num(row["solar"]), "buy": row["buy"], "sell": row["sell"]}
+            {"load": _num(row["home"]) - _num(row.get("ignored")) - _num(row["solar"]), "buy": row["buy"], "sell": self.sell_value(row["sell"])}
             for row in rows
         ]
         no_battery = sum(grid_cost(load["load"], load["buy"], load["sell"]) for load in loads)

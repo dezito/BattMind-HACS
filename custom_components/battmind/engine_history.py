@@ -492,6 +492,7 @@ class HistoryMixin:
 
         if buy_price is None or sell_price is None:
             raise ValueError(f"Buy or sell price not found for timestamp {start}. buy_price: {buy_price}, sell_price: {sell_price}")
+        sell_price = self.sell_value(sell_price)
         if not isinstance(powerwall_kwh_price, (int, float)):
             powerwall_kwh_price = self.get_powerwall_kwh_price()
 

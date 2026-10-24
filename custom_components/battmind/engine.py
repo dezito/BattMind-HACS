@@ -429,13 +429,22 @@ class BattMindEngine(PlannerMixin, HistoryMixin, EnergyMixin, AnalysisMixin):
         provider = self.price_provider
         prices = (provider.sell_prices if sell_prices else provider.buy_prices) if provider else {}
         if prices:
+            # hours of the plan the provider has no price for are filled from the price history
+            missing_hours = self._database_prices(
+                "history_sell" if sell_prices else "history", prices, int(self.config["days_to_predict"])
+            )
+            sources = provider.sell_price_sources if sell_prices else provider.buy_price_sources
+            if missing_hours:
+                _LOGGER.debug("No %s price for %s hours, using the price history", kind, len(missing_hours))
+                prices = dict(sorted({**prices, **missing_hours}.items()))
+                sources = {**sources, **{timestamp: "database" for timestamp in missing_hours}}
             cache.update(
                 prices=prices,
                 last_update=now,
                 using_offline_prices=False,
-                sources=provider.sell_price_sources if sell_prices else provider.buy_price_sources,
+                sources=sources,
+                missing_hours=missing_hours,
             )
-            cache.pop("missing_hours", None)
             return prices
 
         if cache.get("prices") and "last_update" in cache and minutes_between(cache["last_update"], now) <= 120:
@@ -461,18 +470,30 @@ class BattMindEngine(PlannerMixin, HistoryMixin, EnergyMixin, AnalysisMixin):
 
     def _offline_prices(self, history_key: str) -> tuple[dict, dict]:
         """Prices for the next 7 days forecast from the price history per hour and weekday."""
+        prices = self._database_prices(history_key, {}, 7)
+        return prices, prices
+
+    def _database_prices(self, history_key: str, prices: dict, days: int) -> dict:
+        """Prices from the price history for the hours from now until the end of days that have none in prices.
+
+        The forecast of the same hour and weekday, plus the same small daily adder as the
+        provider forecasts. Hours without any history are left out.
+        """
         if not self.kwh_avg_prices_db:
             self.load_kwh_prices(None)
-        current_hour = reset_time_to_hour(self.now())
         history = self.kwh_avg_prices_db[history_key]
-        prices = {}
-        for hour in range(24):
-            for day in range(7):
-                timestamp = current_hour.replace(hour=hour) + datetime.timedelta(days=day)
+        current_hour = reset_time_to_hour(self.now())
+        end = start_of_day(self.now()) + datetime.timedelta(days=days)
+        priced_hours = {reset_time_to_hour(timestamp) for timestamp in prices}
+        missing = {}
+        timestamp = current_hour
+        while timestamp < end:
+            values = history.get(timestamp.hour, {}).get(day_of_week(timestamp), [])
+            if timestamp not in priced_hours and values:
                 adder = days_between(current_hour, timestamp) / PRICE_ADDER_DAY_BETWEEN_DIVIDER
-                prices[timestamp] = round(self.get_forecast_value(history[hour][day]) + adder, 2)
-        prices = dict(sorted(prices.items()))
-        return prices, prices
+                missing[timestamp] = round(self.get_forecast_value(values) + adder, 2)
+            timestamp += datetime.timedelta(hours=1)
+        return missing
 
     def get_grid_prices(self, update_prices: bool = False) -> dict:
         return self.get_hour_prices(update_prices=update_prices)
@@ -480,18 +501,25 @@ class BattMindEngine(PlannerMixin, HistoryMixin, EnergyMixin, AnalysisMixin):
     def get_sell_prices(self, update_prices: bool = False) -> dict:
         return self.get_hour_prices(update_prices=update_prices, sell_prices=True)
 
+    def sell_value(self, price: float) -> float:
+        """What a sold kWh is worth at this hourly sell price.
+
+        With a fixed solar sell price (a production agreement that settles the difference to the
+        spot price) it is the fixed price minus the hourly price - negative when the hourly price
+        is above the fixed price. Without one (-1) it is the hourly price itself.
+        """
+        fixed = self.config["solar"]["production_price"]
+        return price if fixed == -1.0 else fixed - price
+
     def _current_sell_price(self) -> float:
-        """Sell price now (fixed price, provider price or price history)."""
+        """What a sold kWh is worth now (provider price or price history, see sell_value)."""
         if not self.is_solar_configured():
             return 0.0
-        fixed = self.config["solar"]["production_price"]
-        if fixed != -1.0:
-            return fixed
         result = price_at(self.get_sell_prices(), self.now())
         if result is not None:
-            return round(result[1], 3)
+            return round(self.sell_value(result[1]), 3)
         try:
-            return self.get_forecast_value(self.kwh_avg_prices_db["history_sell"][self.now().hour][day_of_week(self.now())])
+            return self.sell_value(self.get_forecast_value(self.kwh_avg_prices_db["history_sell"][self.now().hour][day_of_week(self.now())]))
         except KeyError:
             return 0.0
 
@@ -547,7 +575,7 @@ class BattMindEngine(PlannerMixin, HistoryMixin, EnergyMixin, AnalysisMixin):
                     except (KeyError, IndexError):
                         sell_price = self.get_forecast_value(history["history_sell"][hour][dow])
 
-                kwh_price = grid_price * grid_share + sell_price * solar_share
+                kwh_price = grid_price * grid_share + self.sell_value(sell_price) * solar_share
                 kwh_prices.append(round(kwh_price, 3))
                 charged_kwh.append(round(charged, 3))
                 total_cost.append(round(charged * kwh_price, 3))
