@@ -197,8 +197,8 @@ CHARGING_TYPES = {
     },
 }
 
-# the sections of the emoji description, in order; inline = all on one line
-EMOJI_DESCRIPTION_GROUPS = (("charge", False), ("discharge", False), ("status", False), ("info", True))
+# the sections of the emoji description, in order
+EMOJI_DESCRIPTION_GROUPS = ("charge", "discharge", "status", "info")
 
 # Same nested layout as <prefix>_config.yaml in the PyScript version, so the ported
 # algorithm reads CONFIG["solar"]["powerwall_battery_size"] etc. unchanged. Values that
