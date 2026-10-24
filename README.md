@@ -211,9 +211,10 @@ price providers and solar forecast that you don't use are removed.
   The first time, the energy per hour of the last year is read from Home Assistant's long-term
   statistics. Forecast errors, plans and scores are collected from then on.
 
-The generated dashboard cannot be edited in the UI. If you want to customise it, copy
-the content into a regular dashboard (**Edit → Raw configuration editor**) and turn
-**Dashboard in the sidebar** off.
+You can edit the dashboard like any other (**Edit**, or **⋮ → Raw configuration editor** to copy it).
+Once you save your changes, your version is kept, and changes to the dashboard in later updates of
+the integration no longer show up. Press **Reset dashboard** (on the integration's device) to throw
+your changes away and go back to the generated dashboard.
 
 ---
 

@@ -9,7 +9,9 @@ author's price/solar entities. At setup it is rewritten for this config entry:
 * ``@@key@@`` placeholders -> ``dashboard.key`` of texts/<language>.json (BattMind's language),
   ``@@forecast_span@@`` -> days_to_predict - 0.5 days
 
-The result is written to .storage and served as a YAML mode Lovelace dashboard.
+The result is written to .storage and served as a Lovelace dashboard that can be edited in
+the UI: once the user saves it, the saved copy is shown instead of the generated one until
+it is reset (reset_dashboard button, or deleting the config in the raw configuration editor).
 """
 from __future__ import annotations
 
@@ -22,9 +24,11 @@ import yaml
 
 from homeassistant.components import frontend
 from homeassistant.components.lovelace import dashboard as lovelace_dashboard
-from homeassistant.components.lovelace.const import LOVELACE_DATA
+from homeassistant.components.lovelace.const import LOVELACE_DATA, MODE_STORAGE
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.json import cached_json_fragment, json_fragment
+from homeassistant.helpers.storage import Store
 
 from .const import DOMAIN, normalize_language
 from .formatting import load_texts
@@ -47,6 +51,58 @@ def dashboard_url(prefix: str) -> str:
 
 def dashboard_file(hass: HomeAssistant, entry_id: str) -> Path:
     return Path(hass.config.path(".storage", f"{DOMAIN}.{entry_id}.dashboard.yaml"))
+
+
+def custom_store(hass: HomeAssistant, entry_id: str) -> Store[dict[str, Any]]:
+    """The user's edited copy of the dashboard."""
+    return Store(hass, 1, f"{DOMAIN}.{entry_id}.dashboard_custom")
+
+
+class BattMindDashboard(lovelace_dashboard.LovelaceYAML):
+    """The generated YAML file, but editable: the frontend only offers editing in storage mode."""
+
+    def __init__(self, hass: HomeAssistant, url_path: str, config: dict[str, Any], store: Store[dict[str, Any]], custom: dict[str, Any] | None) -> None:
+        super().__init__(hass, url_path, config)
+        self._store = store
+        self._custom = custom
+        self._custom_json: json_fragment | None = None
+
+    @property
+    def mode(self) -> str:
+        return MODE_STORAGE
+
+    @property
+    def customized(self) -> bool:
+        return self._custom is not None
+
+    async def async_get_info(self) -> dict[str, Any]:
+        info = await super().async_get_info()
+        return {**info, "mode": self.mode}
+
+    async def async_load(self, force: bool) -> dict[str, Any]:
+        if self._custom is not None:
+            return self._custom
+        return await super().async_load(force)
+
+    async def async_json(self, force: bool) -> json_fragment:
+        if self._custom is not None:
+            if self._custom_json is None:
+                self._custom_json = cached_json_fragment(self._custom)
+            return self._custom_json
+        return await super().async_json(force)
+
+    async def async_save(self, config: dict[str, Any]) -> None:
+        self._custom = config
+        self._custom_json = None
+        await self._store.async_save({"config": config})
+        self._config_updated()
+
+    async def async_delete(self) -> None:
+        """Back to the generated dashboard."""
+        self._custom = None
+        self._custom_json = None
+        await self._store.async_remove()
+        self._config_updated()
 
 
 def _derive(entity_id: str, old: str, new: str) -> str:
@@ -166,6 +222,7 @@ def render_dashboard(config: dict[str, Any], prefix: str, existing: set[str] | N
 def _write_if_changed(path: Path, content: str) -> bool:
     if path.is_file() and path.read_text(encoding="utf-8") == content:
         return False
+    path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(content, encoding="utf-8")
     return True
 
@@ -178,7 +235,7 @@ async def async_setup_dashboard(hass: HomeAssistant, entry: ConfigEntry, config:
         return
     url_path = dashboard_url(prefix)
     existing = lovelace.dashboards.get(url_path)
-    if existing is not None and not getattr(existing, "_battmind", False):
+    if existing is not None and not isinstance(existing, BattMindDashboard):
         _LOGGER.warning("A dashboard already uses /%s, the BattMind dashboard is not added", url_path)
         return
 
@@ -195,14 +252,17 @@ async def async_setup_dashboard(hass: HomeAssistant, entry: ConfigEntry, config:
         _LOGGER.error("Could not create the BattMind dashboard: %s", err)
         return
 
+    store = custom_store(hass, entry.entry_id)
+    stored = await store.async_load()
     title = "BattMind" if prefix == "battmind" else f"BattMind ({prefix})"
-    yaml_dashboard = lovelace_dashboard.LovelaceYAML(
+    battmind_dashboard = BattMindDashboard(
         hass,
         url_path,
-        {"mode": "yaml", "filename": str(path), "title": title, "icon": ICON, "show_in_sidebar": True, "require_admin": False},
+        {"mode": MODE_STORAGE, "filename": str(path), "title": title, "icon": ICON, "show_in_sidebar": True, "require_admin": False},
+        store,
+        stored["config"] if stored else None,
     )
-    yaml_dashboard._battmind = True  # marks dashboards owned by this integration
-    lovelace.dashboards[url_path] = yaml_dashboard
+    lovelace.dashboards[url_path] = battmind_dashboard
     frontend.async_register_built_in_panel(
         hass,
         "lovelace",
@@ -210,19 +270,28 @@ async def async_setup_dashboard(hass: HomeAssistant, entry: ConfigEntry, config:
         sidebar_title=title,
         sidebar_icon=ICON,
         require_admin=False,
-        config={"mode": "yaml"},
+        config={"mode": MODE_STORAGE},
         update=existing is not None,
     )
-    _LOGGER.info("Dashboard available at /%s%s", url_path, " (updated)" if changed else "")
+    _LOGGER.info("Dashboard available at /%s%s", url_path, " (edited in the UI)" if battmind_dashboard.customized else " (updated)" if changed else "")
 
     @callback
     def _remove() -> None:
-        if lovelace.dashboards.get(url_path) is yaml_dashboard:
+        if lovelace.dashboards.get(url_path) is battmind_dashboard:
             lovelace.dashboards.pop(url_path)
             frontend.async_remove_panel(hass, url_path)
 
     entry.async_on_unload(_remove)
 
 
+async def async_reset_dashboard(hass: HomeAssistant, prefix: str) -> None:
+    """Drop the user's edits: the generated dashboard is shown again."""
+    lovelace = hass.data.get(LOVELACE_DATA)
+    dashboard = lovelace.dashboards.get(dashboard_url(prefix)) if lovelace else None
+    if isinstance(dashboard, BattMindDashboard):
+        await dashboard.async_delete()
+
+
 async def async_remove_dashboard_file(hass: HomeAssistant, entry_id: str) -> None:
     await hass.async_add_executor_job(dashboard_file(hass, entry_id).unlink, True)
+    await custom_store(hass, entry_id).async_remove()

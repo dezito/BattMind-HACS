@@ -548,6 +548,9 @@
       "enforce_planning": {
         "name": "Wymuś planowanie"
       },
+      "reset_dashboard": {
+        "name": "Resetuj pulpit"
+      },
       "export_data": {
         "name": "Eksportuj dane"
       }

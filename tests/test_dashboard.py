@@ -4,9 +4,13 @@ from __future__ import annotations
 import pytest
 import yaml
 
+from homeassistant.core import HomeAssistant
+from pytest_homeassistant_custom_component.common import MockConfigEntry
+
 from custom_components.battmind.const import LANGUAGES, NUMBER_SETTINGS, SELECT_SETTINGS, SWITCH_SETTINGS, TEXT_SETTINGS, build_config
 from custom_components.battmind.dashboard import render_dashboard
 
+from .conftest import MOCK_OPTIONS, PREFIX, async_unload_and_join, set_source_states
 from .test_engine import OPTIONS
 
 
@@ -79,3 +83,36 @@ def _price_charts(**options) -> list[str]:
 def test_one_price_chart_stromligning_preferred() -> None:
     assert _price_charts() == ["sensor.price"]
     assert _price_charts(stromligning_buy_current_price="sensor.sl_price") == ["sensor.sl_price"]
+
+
+async def test_sidebar_dashboard_can_be_edited_and_reset(hass: HomeAssistant, hass_ws_client, mock_entry: MockConfigEntry, tmp_path) -> None:
+    hass.config.config_dir = str(tmp_path)
+    set_source_states(hass)
+    entry = MockConfigEntry(domain=mock_entry.domain, title=mock_entry.title, data=dict(mock_entry.data), options={**MOCK_OPTIONS, "dashboard": True})
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done(wait_background_tasks=True)
+    client = await hass_ws_client(hass)
+
+    async def command(message: dict) -> dict:
+        await client.send_json_auto_id({"url_path": f"{PREFIX}-dashboard", **message})
+        response = await client.receive_json()
+        assert response["success"], response
+        return response["result"]
+
+    generated = await command({"type": "lovelace/config"})
+    assert generated["views"]
+    # storage mode: the frontend offers the edit UI and the raw configuration editor
+    assert hass.data["frontend_panels"][f"{PREFIX}-dashboard"].config == {"mode": "storage"}
+
+    await command({"type": "lovelace/config/save", "config": {"views": [{"title": "Mine"}]}})
+    assert await command({"type": "lovelace/config"}) == {"views": [{"title": "Mine"}]}
+
+    # the edits survive a reload, the generated dashboard is not shown over them
+    await hass.config_entries.async_reload(entry.entry_id)
+    await hass.async_block_till_done(wait_background_tasks=True)
+    assert await command({"type": "lovelace/config"}) == {"views": [{"title": "Mine"}]}
+
+    await hass.services.async_call("button", "press", {"entity_id": f"button.{PREFIX}_reset_dashboard"}, blocking=True)
+    assert await command({"type": "lovelace/config"}) == generated
+    await async_unload_and_join(hass, entry)
