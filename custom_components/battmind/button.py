@@ -40,7 +40,7 @@ class BattMindEnforcePlanningButton(BattMindEntity, ButtonEntity):
 class BattMindExportButton(BattMindEntity, ButtonEntity):
     """Write a backup of the databases and settings to battmind_backups."""
 
-    _attr_entity_category = EntityCategory.CONFIG
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
 
     async def async_press(self) -> None:
         name = await async_export(self.hass, self.coordinator.entry)
@@ -56,7 +56,7 @@ class BattMindExportButton(BattMindEntity, ButtonEntity):
 class BattMindResetDashboardButton(BattMindEntity, ButtonEntity):
     """Throw away the edits made to the sidebar dashboard in the UI."""
 
-    _attr_entity_category = EntityCategory.CONFIG
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
 
     async def async_press(self) -> None:
         await async_reset_dashboard(self.hass, self.coordinator.prefix)
