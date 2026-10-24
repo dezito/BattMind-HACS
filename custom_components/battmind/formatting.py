@@ -39,6 +39,12 @@ def active_charging_rules(data: dict) -> dict:
     return {key: True for key, value in data.items() if value is True and key in CHARGING_TYPES}
 
 
+def emoji_rules(emojis: str) -> dict:
+    """The rules of an emoji_parse() text."""
+    found = set(str(emojis or "").split())
+    return {key: True for key, entry in CHARGING_TYPES.items() if entry["emoji"] in found}
+
+
 def format_charging_rule(text: str, testing: bool) -> str:
     marker = "🧪" if testing else ""
     return "\n".join(

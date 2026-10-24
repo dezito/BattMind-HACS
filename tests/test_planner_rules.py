@@ -1,0 +1,303 @@
+"""The newer planner rules and the whole horizon optimiser (shadow plan)."""
+from __future__ import annotations
+
+import datetime
+
+import pytest
+
+from custom_components.battmind.const import build_config
+from custom_components.battmind.engine import BattMindEngine, Snapshot
+from custom_components.battmind.engine_optimizer import RULE_SWITCHES, OptimizerConfig, OptimizerHour, optimize, simulate
+
+from .test_engine import DAY, OPTIONS, SOLAR_SURPLUS, TEXTS, _power_values_db, charge_hours, snapshot
+
+NEGATIVE_HOURS = (1, 2, 3, 12, 13)
+OFF = {
+    "optimizer_control": False,
+    "cheapest_hour_fill_planner": False,
+    "needed_before_max_level_planner": False,
+    "only_discharge_on_profit": False,
+}
+
+
+def realistic_snapshot(now: datetime.datetime, battery_level: float, settings: dict | None = None, negative: bool = False) -> Snapshot:
+    """Sell price = buy - 0.9 kr; negative: buy -0.4 kr (sell -0.9 kr) in NEGATIVE_HOURS today."""
+    snap = snapshot(now, battery_level, settings)
+    buy = snap.price_data["attributes"]["sensor.price"]
+    if negative:
+        for row in buy["raw_today"]:
+            if datetime.datetime.fromisoformat(row["hour"]).hour in NEGATIVE_HOURS:
+                row["price"] = -0.4
+    snap.price_data["attributes"]["sensor.sell"] = {
+        key: [{**row, "price": round(row["price"] - (0.9 if row["price"] > 0 else 0.5), 3)} for row in rows] if isinstance(rows, list) else rows
+        for key, rows in buy.items()
+    }
+    snap.entity_states["sensor.sell"] = "0.3"
+    return snap
+
+
+def planned(hour: int, battery_level: float, settings: dict, solar: bool = False, negative: bool = False, days: int | None = None) -> tuple[BattMindEngine, object]:
+    now = datetime.datetime.combine(DAY, datetime.time(hour, 30))
+    options = {**OPTIONS, "energidataservice_sell_entity_id": "sensor.sell"}
+    if days:
+        options["days_to_predict"] = days
+    engine = BattMindEngine(build_config(options), "test", TEXTS)
+    assert engine.run_job(realistic_snapshot(now, battery_level, negative=negative), engine.startup, {"power_values": _power_values_db()}).error is None
+    if solar:
+        engine.solar_prediction_db = {day: {"total": SOLAR_SURPLUS, "total_sell": [0.5] * 24} for day in range(9)}
+    result = engine.run_job(realistic_snapshot(now, battery_level, settings, negative=negative), engine.charge_if_needed, True)
+    assert result.error is None, result.error
+    assert not [message for message, title, _ in result.notifications if "error" in title.lower()]
+    return engine, result
+
+
+def sales(engine: BattMindEngine) -> dict:
+    return {ts: sale for day in engine.plan if isinstance(day, int) for ts, sale in engine.plan[day]["force_discharge_timestamps"].items()}
+
+
+def test_negative_prices_fill_the_battery() -> None:
+    engine, _ = planned(0, 30, {**OFF, "negative_price_planner": True}, negative=True)
+    hours = [ts for ts in charge_hours(engine) if engine.charge_hours[ts].get("negative_price_planner")]
+    assert hours and {ts.hour for ts in hours} <= set(NEGATIVE_HOURS)
+    assert max(sum(engine.plan[0]["battery_level_flow"][hour]) for hour in (1, 2, 3)) == pytest.approx(100.0, abs=1.0)
+
+
+def test_grid_charge_to_sell_buys_cheap_and_sells_expensive() -> None:
+    engine, _ = planned(0, 5, {**OFF, "grid_charge_to_sell": True})
+    bought = [ts for ts in charge_hours(engine) if engine.charge_hours[ts].get("grid_charge_to_sell")]
+    sold = {ts: sale for ts, sale in sales(engine).items() if sale["title"] == "Sælger strøm købt billigt"}
+    assert bought and sold
+    assert all(sale["profit"] > 0.0 for sale in sold.values())
+    assert min(sold) > min(bought)
+
+
+def test_discharge_before_solar_when_the_solar_export_costs_money() -> None:
+    """Solar surplus sold at -0.9 kr at noon: empty the battery in the morning so the sun has room."""
+    engine, _ = planned(4, 95, {**OFF, "discharge_before_solar": True}, solar=True, negative=True)
+    before_solar = [ts for ts, sale in sales(engine).items() if sale["title"] == "Sælger før solen fylder batteriet"]
+    assert before_solar and all(ts.date() == DAY and ts.hour < 9 for ts in before_solar)
+
+
+@pytest.mark.parametrize("optimizer_control", [False, True])
+@pytest.mark.parametrize("negative", [False, True])
+def test_never_charge_and_sell_in_the_same_hour(negative: bool, optimizer_control: bool) -> None:
+    rules = {
+        key: True
+        for key in (
+            "most_expensive_planner", "prioritize_discharge_hours_by_energy_cost", "sell_excess_kwh_available", "most_profit",
+            "negative_price_planner", "grid_charge_to_sell", "discharge_before_solar", "optimize_solar_charging",
+        )
+    }
+    engine, _ = planned(0, 30, {**rules, "optimizer_control": optimizer_control}, solar=True, negative=negative)
+    charged = {ts.replace(minute=0) for ts in charge_hours(engine)}
+    sold = {ts.replace(minute=0) for ts in sales(engine)}
+    assert charged and not charged & sold
+
+
+@pytest.mark.parametrize("days", [2, 5])
+def test_shadow_plan_covers_days_to_predict_and_beats_the_rules(days: int) -> None:
+    engine, result = planned(3, 30, {"optimizer_control": False, "most_profit": True}, solar=True, days=days)
+    shadow = engine.optimizer_shadow
+    # prices exist for today + 3 days, the horizon is days_to_predict as far as there are prices
+    assert len(shadow["hours"]) == 21 + (min(days, 4) - 1) * 24
+    assert shadow["optimal"] <= shadow["rules"] + 0.01
+    assert shadow["optimal"] <= shadow["self_consumption"] + 0.01
+    summary = result.attributes["powerwall_action"]["optimizer_shadow_summary"]
+    assert summary["optimal"] == shadow["optimal"]
+
+
+CFG = OptimizerConfig(battery_size=10.0, level_min=5.0, level_max=100.0, max_charge=5.0, max_discharge=5.0, efficiency=0.95, wear=0.1)
+
+
+def test_optimizer_charges_cheap_for_the_expensive_hour() -> None:
+    hours = [OptimizerHour(0, 0.5, 0.0, 1.0, 0.0), OptimizerHour(1, 3.0, 0.0, 3.0, 0.0)]
+    result = optimize(hours, 5.0, CFG, end_value_per_kwh=0.0)
+    assert result.actions == ["grid_charging", "discharge_allowed"]
+    assert result.total < simulate(hours, 5.0, CFG, ["discharge_allowed"] * 2, 0.0).total
+
+
+def test_optimizer_keeps_energy_worth_more_than_selling_it() -> None:
+    hours = [OptimizerHour(0, 1.0, 0.2, 0.0, 0.0)]
+    assert optimize(hours, 80.0, CFG, end_value_per_kwh=1.0).actions == ["discharge_allowed"]
+    assert optimize(hours, 80.0, CFG, end_value_per_kwh=0.0).actions == ["force_discharge"]
+
+
+def test_optimizer_respects_min_profit_per_kwh() -> None:
+    """A grid charging hour charges at full rate (like charge_if_needed), ~0.13 kr/kWh profit here."""
+    hours = [OptimizerHour(0, 1.0, 0.0, 0.0, 0.0), OptimizerHour(1, 1.4, 0.0, 5.0, 0.0)]
+    assert optimize(hours, 5.0, CFG, 0.0).actions[0] == "grid_charging"
+    strict = OptimizerConfig(**{**CFG.__dict__, "min_profit_per_kwh": 0.5})
+    assert optimize(hours, 5.0, strict, 0.0).actions[0] != "grid_charging"
+
+
+def test_optimizer_never_sells_in_excluded_hours() -> None:
+    hours = [OptimizerHour(0, 1.0, 5.0, 0.0, 0.0, can_sell=False)]
+    assert optimize(hours, 80.0, CFG, end_value_per_kwh=0.0).actions != ["force_discharge"]
+
+
+def test_simulated_sale_is_limited_to_the_planned_kwh() -> None:
+    """A rule sale of 0.5 kWh in a 15 min period must not be simulated as a full hour of discharging."""
+    hours = [OptimizerHour(0, 1.0, 0.5, 0.0, 0.0)]
+    full = simulate(hours, 80.0, CFG, ["force_discharge"], 0.0)
+    planned = simulate(hours, 80.0, CFG, ["force_discharge"], 0.0, [0.5])
+    assert planned.levels[0] == pytest.approx(80.0 - 0.5 / 0.95 / 10.0 * 100.0, abs=0.1)
+    assert full.levels[0] < planned.levels[0]
+
+
+def test_min_total_profit_does_not_block_using_the_battery() -> None:
+    """min_total_profit is for trades - an hour of house consumption earns less than 1 kr but must not be blocked."""
+
+    def no_profit_blocks(min_total_profit: float) -> set:
+        engine, _ = planned(17, 90, {"only_discharge_on_profit": True, "min_total_profit": min_total_profit})
+        return {
+            ts for day in engine.plan if isinstance(day, int)
+            for ts, reason in engine.plan[day]["blocked_discharge_timestamps"].items() if "Ingen fortjeneste" in reason
+        }
+
+    assert no_profit_blocks(100.0) == no_profit_blocks(0.0)
+
+
+
+@pytest.mark.parametrize("negative", [False, True])
+def test_optimizer_controls_the_battery(negative: bool) -> None:
+    """The optimiser's actions become the plan charge_if_needed() executes, and its battery levels match the plan."""
+    engine, result = planned(0, 30, {}, solar=True, negative=negative)
+    shadow = engine.optimizer_shadow
+    assert shadow["controls"] is True
+    assert shadow["optimal"] <= shadow["rules"] + 0.01
+    for row in shadow["hours"]:
+        day = engine.plan[(row["hour"].date() - DAY).days]
+        if row["action"] == "grid_charging" and row["grid_kwh"] >= 0.1:
+            assert any(engine.charge_hours[row["hour"]].get(rule) for rule in RULE_SWITCHES)
+            assert engine.charge_hours[row["hour"]]["kWh"] == pytest.approx(row["grid_kwh"], abs=0.01)
+        elif row["action"] == "force_discharge" and row["sold_kwh"] > 0.01:
+            sold = sum(sale["kwh"] for ts, sale in day["force_discharge_timestamps"].items() if ts.replace(minute=0) == row["hour"])
+            assert sold == pytest.approx(row["sold_kwh"], abs=0.01)
+        elif row["action"] == "discharge_allowed":
+            assert row["hour"] in day["discharge_timestamps"]
+        assert sum(day["battery_level_flow"][row["hour"].hour]) == pytest.approx(row["battery_level"], abs=1.0)
+    assert result.states["powerwall_action"] in ("grid_charging", "discharge_allowed", "force_solar_only_charging", "force_discharge", "blocked_solar_charge")
+
+
+def test_optimizer_respects_min_total_profit() -> None:
+    hours = [OptimizerHour(0, 1.0, 0.0, 0.0, 0.0), OptimizerHour(1, 1.4, 0.0, 5.0, 0.0)]
+    assert optimize(hours, 5.0, CFG, 0.0).actions[0] == "grid_charging"
+    strict = OptimizerConfig(**{**CFG.__dict__, "min_total_profit": 5.0})
+    assert optimize(hours, 5.0, strict, 0.0).actions[0] != "grid_charging"
+
+
+
+def test_optimizer_respects_switched_off_rules() -> None:
+    """With the optimiser in control the rule switches decide which actions it may use."""
+    engine, _ = planned(0, 30, {"grid_charge_to_sell": False, "optimize_solar_charging": False}, solar=True, negative=True)
+    assert not [ts for ts in charge_hours(engine) if engine.charge_hours[ts].get("grid_charge_to_sell")]
+    assert not [sale for sale in sales(engine).values() if sale["title"] in ("Sælger strøm købt billigt", "Sælger før billig opladning")]
+    assert not any(engine.plan[day]["blocked_solar_charge_timestamps"] for day in engine.plan if isinstance(day, int))
+    # the negative prices are still used for the own consumption
+    assert [ts for ts in charge_hours(engine) if ts.date() == DAY and ts.hour in NEGATIVE_HOURS]
+
+
+def test_optimizer_actions_are_explained_as_rules() -> None:
+    engine, _ = planned(0, 30, {}, solar=True, negative=True)
+    for ts in charge_hours(engine):
+        reason = engine.plan[(ts.date() - DAY).days]["charging_sessions"][ts]["reason"]
+        assert any(title in reason for title in ("Billigste timer", "Dyreste timer", "Brug for", "Negativ pris", "Køb for at sælge"))
+    titles = {sale["title"] for sale in sales(engine).values()}
+    assert titles <= {"Sælger strøm købt billigt", "Sælger før billig opladning", "Sælger før solen fylder batteriet", "Sælger i stedet for at bruge"}
+
+
+def test_hour_rules_group_consecutive_hours_with_the_same_rule() -> None:
+    from custom_components.battmind.engine_planner import _group_hour_rules, _joined_reason
+
+    def hour(h: int) -> datetime.datetime:
+        return datetime.datetime.combine(DAY, datetime.time(h))
+
+    def reason(title: str, values: str) -> str:
+        return f"<details><summary>⏳{title} ({values})</summary>body {values}<br></details>"
+
+    rows = [
+        (hour(1), reason("Dyreste timer", "1.00/10%")),
+        (hour(2), reason("Dyreste timer", "2.00/20%")),
+        (hour(4), reason("Dyreste timer", "3.00/30%")),  # not consecutive
+        (hour(5), reason("Billigste timer", "0.50/5%")),
+    ]
+    groups = _group_hour_rules(rows)
+    assert [len(group) for group in groups] == [2, 1, 1]
+    joined = _joined_reason(groups[0])
+    assert joined.startswith("<details><summary>📦⏳Dyreste timer (1.50/15%)</summary>")
+    assert "<summary>01:00 (1.00/10%)</summary>body 1.00/10%" in joined
+    # clock times are kept, not averaged
+    same = _joined_reason([(hour(1), reason("Prioriteret", "17:00")), (hour(2), reason("Prioriteret", "17:00"))])
+    assert "Prioriteret (17:00)</summary>" in same
+    differ = _joined_reason([(hour(1), reason("Prioriteret", "17:00")), (hour(2), reason("Prioriteret", "19:00"))])
+    assert "Prioriteret (17:00-19:00)</summary>" in differ
+
+
+@pytest.mark.parametrize("optimizer_control", [True, False])
+def test_overview_has_the_plan_and_its_totals(optimizer_control: bool) -> None:
+    engine, _ = planned(0, 30, {"optimizer_control": optimizer_control}, solar=True, negative=True)
+    overview = engine.last_overview
+    assert "## 📅 Ladnings- og afladningsplan ##" in overview
+    assert "Hour rules" not in overview and "📖" not in overview
+    summary = engine.optimizer_shadow["summary_optimal" if optimizer_control else "summary_rules"]
+    assert f"💰 I alt: {summary['profit']:+.2f} kr ({summary['profit_per_kwh']:.2f} kr/kWh)" in overview
+    assert f"**{-summary['profit']:+.2f}** |" in overview  # the bill row's difference = the title
+    without, with_battery = summary["without"], summary["with"]
+    assert summary["profit"] == pytest.approx(without["bill"] - with_battery["bill"], abs=0.02)
+    for column in (without, with_battery):
+        # the items add up to the bill
+        assert column["paid"] + column["earned"] + column["wear"] + column["energy_value"] == pytest.approx(column["bill"], abs=0.03)
+        assert column["house_cost"] + column["battery_cost"] == pytest.approx(column["paid"], abs=0.02)
+        assert column["solar_income"] + column["sold_income"] == pytest.approx(column["earned"], abs=0.02)
+    assert ("Optimering af hele perioden" if optimizer_control else "Reglerne") in overview
+
+
+def test_bill_with_the_battery_is_the_simulated_cost() -> None:
+    """breakdown()'s bill with the battery is the same as simulate() of the plan, without = no battery at all."""
+    from custom_components.battmind.engine_optimizer import breakdown
+
+    hours = [OptimizerHour(0, 0.5, 0.2, 1.0, 0.0), OptimizerHour(1, 3.0, 2.0, 2.0, 0.0), OptimizerHour(2, 1.0, 0.5, 0.0, 3.0)]
+    actions = ["grid_charging", "force_discharge", "discharge_allowed"]
+    result = breakdown(hours, 50.0, CFG, actions, 1.0)
+    assert result["with"]["bill"] == pytest.approx(simulate(hours, 50.0, CFG, actions, 1.0).total, abs=0.01)
+    assert result["without"]["bill"] == pytest.approx(simulate(hours, 50.0, CFG, ["blocked_solar_charge"] * 3, 1.0).total, abs=0.01)
+    assert result["without"]["house_kwh"] == pytest.approx(3.0)
+    assert result["without"]["solar_kwh"] == pytest.approx(3.0)
+
+
+def test_battery_price_is_a_running_average() -> None:
+    """Charged kWh come in at their price, used/sold kWh leave at the average (the price of the rest stays)."""
+    from custom_components.battmind.engine_planner import _running_battery_price
+
+    # 5 kWh at 2.00 kr, 5 kWh charged at 1.00 kr -> 1.50 kr
+    assert _running_battery_price(5.0, 2.0, [(5.0, 5.0, 1.0, 0.5)]) == pytest.approx(1.5)
+    # using 4 kWh doesn't change the price of the rest
+    assert _running_battery_price(5.0, 2.0, [(5.0, 5.0, 1.0, 0.5), (-4.0, 0.0, 0.0, 0.0)]) == pytest.approx(1.5)
+    # emptied and refilled with solar (sold for 0.50 kr otherwise): the old price is gone
+    assert _running_battery_price(5.0, 2.0, [(-5.0, 0.0, 0.0, 0.0), (4.0, 0.0, 0.0, 0.5)]) == pytest.approx(0.5)
+    # a charge hour with solar on top: the grid part at the grid price, the rest at the solar price
+    assert _running_battery_price(0.0, 2.0, [(4.0, 1.0, 1.0, 0.5)]) == pytest.approx((1.0 + 3 * 0.5) / 4)
+    # nothing in the battery: the start price
+    assert _running_battery_price(0.0, 2.0, []) == 2.0
+
+
+def test_midnight_battery_level_optimises_every_day_on_its_own() -> None:
+    """use_midnight_battery_level: every day of days_to_predict is optimised until midnight (max 24 hours)."""
+    from custom_components.battmind.engine_optimizer import optimize_per_day, optimize_with_rules
+
+    engine, _ = planned(18, 60, {"use_midnight_battery_level": True}, solar=True, days=3)
+    shadow = engine.optimizer_shadow
+    assert shadow["controls"] is True
+    assert len({row["hour"].date() for row in shadow["hours"]}) == 3
+
+    # the same as each day optimised alone, starting at the level the day before ends with
+    def hour(day: int, h: int, buy: float, sell: float) -> OptimizerHour:
+        return OptimizerHour(datetime.datetime.combine(DAY + datetime.timedelta(days=day), datetime.time(h)), buy, sell, 1.0, 0.0)
+
+    hours = [hour(0, 22, 0.5, 0.2), hour(0, 23, 3.0, 2.0), hour(1, 0, 0.4, 0.1), hour(1, 1, 2.5, 1.5)]
+    merged, explanations = optimize_per_day(hours, 30.0, CFG, 1.0, lambda _switch: True)
+    first, _ = optimize_with_rules(hours[:2], 30.0, CFG, 1.0, lambda _switch: True)
+    second, _ = optimize_with_rules(hours[2:], first.levels[-1], CFG, 1.0, lambda _switch: True)
+    assert merged.actions == first.actions + second.actions
+    assert merged.levels == first.levels + second.levels
+    assert len(explanations) == 4

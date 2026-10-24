@@ -32,6 +32,21 @@ async def test_setup_creates_entities(hass: HomeAssistant, loaded_entry) -> None
         assert hass.states.get(entity_id) is not None, entity_id
 
 
+async def test_removed_entities_are_cleaned_up(hass: HomeAssistant, mock_entry) -> None:
+    """Removed settings/buttons: their old registry entries are removed."""
+    ent_reg = er.async_get(hass)
+    mock_entry.add_to_hass(hass)
+    old = [
+        ent_reg.async_get_or_create(platform, DOMAIN, f"{mock_entry.entry_id}_{key}", config_entry=mock_entry)
+        for platform, key in (("switch", "deactivate_script"), ("switch", "optimizer_shadow_plan"), ("button", "restart_script"))
+    ]
+    set_source_states(hass)
+    assert await hass.config_entries.async_setup(mock_entry.entry_id)
+    await hass.async_block_till_done(wait_background_tasks=True)
+    assert all(ent_reg.async_get(entry.entity_id) is None for entry in old)
+    await async_unload_and_join(hass, mock_entry)
+
+
 async def test_startup_publishes_plan(hass: HomeAssistant, loaded_entry) -> None:
     rule = hass.states.get(f"sensor.{PREFIX}_current_charging_rule")
     assert rule is not None
@@ -55,10 +70,10 @@ async def test_debug_info_service(hass: HomeAssistant, loaded_entry) -> None:
 
 async def test_switch_triggers_replanning(hass: HomeAssistant, loaded_entry) -> None:
     coordinator = loaded_entry.runtime_data
-    entity_id = f"switch.{PREFIX}_cheapest_hour_fill_up"
+    entity_id = f"switch.{PREFIX}_use_midnight_battery_level"  # off by default
     await hass.services.async_call("switch", "turn_on", {"entity_id": entity_id}, blocking=True)
     assert hass.states.get(entity_id).state == "on"
-    assert coordinator.settings["cheapest_hour_fill_up"] is True
+    assert coordinator.settings["use_midnight_battery_level"] is True
     assert coordinator._settings_debounce is not None  # 5 s debounce before the new plan
     coordinator.last_job.clear()
 

@@ -184,7 +184,7 @@
         "data_description": {
           "days_to_predict": "Antal dage (inkl. i dag) som ladeplanen, forbrugsprognosen og solprognosen dækker. Flere dage giver bedre beslutninger om at gemme energi, men koster mere CPU og afhænger af prisprognoser.",
           "cron_interval": "Minutter mellem hvert tjek af planen. Planen genberegnes kun når priser, batteriniveau eller indstillinger er ændret.",
-          "dashboard": "Tilføjer et færdigt BattMind dashboard i sidepanelet med plan, priser, historik og alle indstillinger for denne instans. Kræver HACS-kortene apexcharts-card, mushroom, stack-in-card og config-template-card.",
+          "dashboard": "Tilføjer et færdigt BattMind dashboard i sidepanelet med plan, priser, historik og alle indstillinger for denne instans. Kræver HACS-kortene apexcharts-card, mushroom, config-template-card og card-mod.",
           "enable_diagnostic_file_log": "Skriv en detaljeret log til battmind_{prefix}.log i konfigurationsmappen (2 MB pr. fil, 3 rotationer). Til fejlfinding.",
           "testing_mode": "Markerer ladereglen med 🧪, så en testinstans kan skelnes fra den rigtige."
         }
@@ -203,6 +203,13 @@
           "solar_available_db_data_to_save": "Antal målinger af soloverskud der gemmes pr. time og vejrscore.",
           "kwh_avg_prices_db_data_to_save": "Antal dage med priser der gemmes. Bruges som reservepriser når prisintegrationen er offline.",
           "charging_history_db_data_to_save": "Antal måneder ladehistorik der gemmes (vises i historikken og bruges til batteriets kWh-pris)."
+        }
+      },
+      "restore_backup": {
+        "title": "Gendan fra en backup",
+        "description": "BattMind-backups fundet i **battmind_backups** (gemt med Eksportér data og når en BattMind-enhed slettes).\n\nVælg en for at gendanne den som **{prefix}**: dens konfiguration bruges som standard på de næste sider, og databaserne og indstillingerne gendannes ved første start.",
+        "data": {
+          "backup": "Gendan"
         }
       }
     },
@@ -229,7 +236,8 @@
           "menu_consumption": "Husets forbrug",
           "menu_prices": "Elpriser",
           "menu_solar": "Solceller og vejr",
-          "menu_advanced": "Planlægning og datalagring"
+          "menu_advanced": "Planlægning og datalagring",
+          "backup": "Backup (eksportér / importér)"
         }
       },
       "price_provider": {
@@ -405,7 +413,7 @@
         "data_description": {
           "days_to_predict": "Antal dage (inkl. i dag) som ladeplanen, forbrugsprognosen og solprognosen dækker. Flere dage giver bedre beslutninger om at gemme energi, men koster mere CPU og afhænger af prisprognoser.",
           "cron_interval": "Minutter mellem hvert tjek af planen. Planen genberegnes kun når priser, batteriniveau eller indstillinger er ændret.",
-          "dashboard": "Tilføjer et færdigt BattMind dashboard i sidepanelet med plan, priser, historik og alle indstillinger for denne instans. Kræver HACS-kortene apexcharts-card, mushroom, stack-in-card og config-template-card.",
+          "dashboard": "Tilføjer et færdigt BattMind dashboard i sidepanelet med plan, priser, historik og alle indstillinger for denne instans. Kræver HACS-kortene apexcharts-card, mushroom, config-template-card og card-mod.",
           "enable_diagnostic_file_log": "Skriv en detaljeret log til battmind_{prefix}.log i konfigurationsmappen (2 MB pr. fil, 3 rotationer). Til fejlfinding.",
           "testing_mode": "Markerer ladereglen med 🧪, så en testinstans kan skelnes fra den rigtige."
         }
@@ -425,6 +433,17 @@
           "kwh_avg_prices_db_data_to_save": "Antal dage med priser der gemmes. Bruges som reservepriser når prisintegrationen er offline.",
           "charging_history_db_data_to_save": "Antal måneder ladehistorik der gemmes (vises i historikken og bruges til batteriets kWh-pris)."
         }
+      },
+      "backup": {
+        "title": "Backup",
+        "description": "Eksportér gemmer databaserne, indstillingerne og konfigurationen i en fil i **battmind_backups**.\n\nImport af en fil erstatter databaserne og indstillingerne for **{prefix}** med backuppen (de nuværende data eksporteres først som en *_before_import*-fil) og genindlæser integrationen.",
+        "data": {
+          "backup": "Handling",
+          "restore_configuration": "Gendan også konfigurationen"
+        },
+        "data_description": {
+          "restore_configuration": "Brug også backuppens entiteter og indstillinger. Lad den være slået fra, når backuppen kommer fra en anden Home Assistant."
+        }
       }
     },
     "error": {
@@ -434,6 +453,11 @@
       "min_above_max": "Minimum niveau skal være lavere end maksimum niveau.",
       "no_price_provider": "Vælg mindst én prisleverandør.",
       "production_required": "En solprognose kræver en solproduktions-sensor."
+    },
+    "abort": {
+      "backup_exported": "Backuppen blev gemt som **{file}**.",
+      "backup_imported": "**{file}** blev importeret, og integrationen er genindlæst.",
+      "backup_failed": "Importen mislykkedes: {error}"
     }
   },
   "selector": {
@@ -446,6 +470,16 @@
       "options": {
         "energidataservice": "Energi Data Service",
         "stromligning": "Strømligning"
+      }
+    },
+    "restore_backup": {
+      "options": {
+        "none": "Gendan ikke (start forfra)"
+      }
+    },
+    "backup_action": {
+      "options": {
+        "export": "Eksportér nu"
       }
     }
   },
@@ -479,13 +513,38 @@
           "description": "Kør kun for denne BattMind-instans (standard: alle)."
         }
       }
+    },
+    "export_data": {
+      "name": "Eksportér data",
+      "description": "Gemmer databaserne, indstillingerne og konfigurationen som en backup-fil i konfigurationsmappen (battmind_backups).",
+      "fields": {
+        "config_entry_id": {
+          "name": "Konfigurationsindgang",
+          "description": "Eksportér kun denne instans (standard: alle)."
+        }
+      }
+    },
+    "import_data": {
+      "name": "Importér data",
+      "description": "Erstatter databaserne og indstillingerne for en instans med en backup-fil fra battmind_backups. De nuværende data eksporteres først.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Konfigurationsindgang",
+          "description": "Instansen der skal gendannes i."
+        },
+        "file": {
+          "name": "Backup-fil",
+          "description": "Filnavn i battmind_backups (som returneret af Eksportér data)."
+        },
+        "restore_configuration": {
+          "name": "Gendan konfiguration",
+          "description": "Erstat også konfigurationen (entiteter og indstillinger) med backuppen."
+        }
+      }
     }
   },
   "entity": {
     "switch": {
-      "deactivate_script": {
-        "name": "Deaktiver scriptet"
-      },
       "solar_charging": {
         "name": "Solcelleoverskud til opladning"
       },
@@ -521,6 +580,18 @@
       },
       "optimize_solar_charging": {
         "name": "Optimer solcelleopladning"
+      },
+      "negative_price_planner": {
+        "name": "Ladning: Negative priser"
+      },
+      "grid_charge_to_sell": {
+        "name": "Ladning: Køb for at sælge"
+      },
+      "discharge_before_solar": {
+        "name": "Afladning: Før solen"
+      },
+      "optimizer_control": {
+        "name": "Styr batteriet med optimering af hele perioden"
       }
     },
     "number": {
@@ -534,10 +605,10 @@
         "name": "Stigning for billige prisperioder"
       },
       "min_profit_per_kwh": {
-        "name": "Min. profit per kWh ved afladning"
+        "name": "Min. profit per kWh (ladning / afladning)"
       },
       "min_total_profit": {
-        "name": "Min. total profit ved afladning"
+        "name": "Min. total profit (ladning / afladning)"
       },
       "min_sell_kwh": {
         "name": "Min. overskydende kWh til salg"
@@ -560,8 +631,8 @@
       "enforce_planning": {
         "name": "Gennemtving planlægning"
       },
-      "restart_script": {
-        "name": "Genstart scriptet"
+      "export_data": {
+        "name": "Eksportér data"
       }
     },
     "sensor": {
@@ -585,6 +656,22 @@
       },
       "kwh_charged_by_solar": {
         "name": "kWh ladet af solcellerne"
+      },
+      "analysis": {
+        "name": "Analyse"
+      }
+    }
+  },
+  "issues": {
+    "blueprint_update": {
+      "title": "Ny version af blueprinten {name}",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "Opdatér blueprinten {name}",
+            "description": "BattMind kommer med en version af blueprinten **{name}**, der er forskellig fra `{path}`.\n\nVælg **Send** for at erstatte filen med den medfølgende version og genindlæse de automationer, der bruger den. Har du selv rettet i filen, bliver dine ændringer overskrevet – kopiér den til et andet filnavn først, hvis du vil beholde dem.\n\nIgnorér denne reparation for at beholde din egen fil."
+          }
+        }
       }
     }
   }

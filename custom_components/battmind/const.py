@@ -90,6 +90,38 @@ CHARGING_TYPES = {
         "priority": 3.2,
         "emoji": "🩹"
     },
+    "negative_price_planner": {
+        "priority": 3.3,
+        "emoji": "🎁"
+    },
+    "grid_charge_to_sell": {
+        "priority": 3.4,
+        "emoji": "🔁"
+    },
+    "discharge_before_solar": {
+        "priority": 4.3,
+        "emoji": "🌄"
+    },
+    "only_discharge_on_profit": {
+        "priority": 4.4,
+        "emoji": "🚫"
+    },
+    "prioritize_discharge_hours_by_energy_cost": {
+        "priority": 4.5,
+        "emoji": "⏳"
+    },
+    "most_profit": {
+        "priority": 4.6,
+        "emoji": "🤑"
+    },
+    "sell_excess_kwh_available": {
+        "priority": 4.7,
+        "emoji": "📤"
+    },
+    "force_powerwall_max_hours_old_discharge": {
+        "priority": 4.8,
+        "emoji": "🕰️"
+    },
     "charging": {
         "priority": 4,
         "emoji": "📈"
@@ -371,19 +403,22 @@ def build_config(options: dict[str, Any]) -> dict[str, Any]:
 # --------------------------------------------------------------------------- #
 # The values are restored on restart and migrated once from input_*.<legacy prefix>_<key>.
 SWITCH_SETTINGS: dict[str, dict[str, Any]] = {
-    "deactivate_script": {"default": False},
     "solar_charging": {"default": True},
     "cheapest_hour_fill_planner": {"default": True},
-    "cheapest_hour_fill_up": {"default": False},
-    "most_expensive_planner": {"default": False},
+    "cheapest_hour_fill_up": {"default": True},
+    "most_expensive_planner": {"default": True},
     "needed_before_max_level_planner": {"default": True},
     "only_discharge_on_profit": {"default": True},
-    "prioritize_discharge_hours_by_energy_cost": {"default": False},
-    "sell_excess_kwh_available": {"default": False},
+    "prioritize_discharge_hours_by_energy_cost": {"default": True},
+    "sell_excess_kwh_available": {"default": True},
     "use_midnight_battery_level": {"default": False},
-    "most_profit": {"default": False},
-    "force_powerwall_max_hours_old_discharge": {"default": False},
-    "optimize_solar_charging": {"default": False},
+    "most_profit": {"default": True},
+    "force_powerwall_max_hours_old_discharge": {"default": True},
+    "optimize_solar_charging": {"default": True},
+    "negative_price_planner": {"default": True},
+    "grid_charge_to_sell": {"default": True},
+    "discharge_before_solar": {"default": True},
+    "optimizer_control": {"default": True},
 }
 
 NUMBER_SETTINGS: dict[str, dict[str, Any]] = {
@@ -441,7 +476,7 @@ NUMBER_SETTINGS: dict[str, dict[str, Any]] = {
         "step": 1,
         "mode": "box",
         "unit": "h",
-        "default": 24,
+        "default": 48,
     },
 }
 
@@ -475,6 +510,7 @@ SENSOR_KEYS = (
     "emoji_description",
     "battery_level_needed",
     "kwh_charged_by_solar",
+    "analysis",
 )
 
 SIGNAL_UPDATE = "battmind_update_{entry_id}"
@@ -482,3 +518,5 @@ SIGNAL_UPDATE = "battmind_update_{entry_id}"
 SERVICE_DEBUG_INFO = "debug_info"
 SERVICE_RECALC_HISTORY_TODAY = "recalc_charging_history_today"
 SERVICE_ENFORCE_PLANNING = "enforce_planning"
+SERVICE_EXPORT_DATA = "export_data"
+SERVICE_IMPORT_DATA = "import_data"

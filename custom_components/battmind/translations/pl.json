@@ -6,7 +6,14 @@
           "powerwall_battery_level_entity_id": "Poziom magazynu energii (procent)",
           "powerwall_watt_flow_entity_id": "Przepływ mocy magazynu (dodatni przy rozładowaniu, ujemny przy ładowaniu)",
           "invert_powerwall_watt_flow_entity_id": "Odwróć znak dla Przepływ mocy magazynu"
-        }
+        },
+        "data": {
+          "invert_powerwall_watt_flow_entity_id": "Odwróć przepływ mocy",
+          "powerwall_battery_level_entity_id": "Poziom baterii",
+          "powerwall_watt_flow_entity_id": "Przepływ mocy baterii"
+        },
+        "description": "Czujniki, które BattMind odczytuje z twojej baterii domowej / falownika.",
+        "title": "Bateria domowa - czujniki"
       },
       "battery_specs": {
         "data_description": {
@@ -18,7 +25,19 @@
           "powerwall_charge_discharge_loss": "Straty ładowania/rozładowania (%)",
           "use_charge_discharge_loss_from_history": "Używaj rzeczywistych strat ładowania i rozładowania na podstawie historii ładowania zamiast szacowanych strat w konfiguracji",
           "powerwall_wear_cost_per_kwh": "Koszt zużycia magazynu na kWh"
-        }
+        },
+        "data": {
+          "powerwall_battery_level_max": "Poziom maksymalny",
+          "powerwall_battery_level_min": "Poziom minimalny",
+          "powerwall_battery_size": "Pojemność użytkowa",
+          "powerwall_charge_discharge_loss": "Strata ładowania/rozładowania",
+          "powerwall_charging_power_limit": "Maks. moc ładowania",
+          "powerwall_discharging_power": "Maks. moc rozładowania",
+          "powerwall_wear_cost_per_kwh": "Koszt zużycia",
+          "use_charge_discharge_loss_from_history": "Użyj zmierzonej straty"
+        },
+        "description": "Służy do przeliczania między % a kWh, ograniczania planu i obliczania kosztu energii w baterii.",
+        "title": "Bateria domowa - specyfikacja"
       },
       "consumption": {
         "data_description": {
@@ -26,13 +45,27 @@
           "power_consumption_entity_id_include_powerwall_charging": "Zużycie domu z uwzględnieniem ładowania magazynu (W)",
           "power_consumption_entity_id_include_powerwall_discharging": "Zużycie domu z uwzględnieniem rozładowania magazynu (W)",
           "ignore_consumption_from_entity_ids": "Lista czujników mocy do ignorowania"
-        }
+        },
+        "data": {
+          "ignore_consumption_from_entity_ids": "Ignoruj zużycie z",
+          "power_consumption_entity_id": "Zużycie domu",
+          "power_consumption_entity_id_include_powerwall_charging": "Obejmuje ładowanie baterii",
+          "power_consumption_entity_id_include_powerwall_discharging": "Obejmuje rozładowanie baterii"
+        },
+        "description": "BattMind zapisuje zużycie na godzinę i przewiduje, ile bateria musi pokryć w najbliższych dniach.",
+        "title": "Zużycie domu"
       },
       "prices_energidataservice": {
         "data_description": {
           "energidataservice_buy_entity_id": "Energi Data Service entity_id ceny",
           "energidataservice_sell_entity_id": "Energi Data Service entity_id ceny sprzedaży"
-        }
+        },
+        "data": {
+          "energidataservice_buy_entity_id": "Cena zakupu",
+          "energidataservice_sell_entity_id": "Cena sprzedaży (opcjonalnie)"
+        },
+        "description": "Czujniki z integracji [Energi Data Service]({eds_url}). Włącz Carnot (prognoza cen AI) w Energi Data Service, aby planować dalej niż opublikowane ceny.",
+        "title": "Energi Data Service"
       },
       "prices_stromligning": {
         "data_description": {
@@ -42,7 +75,17 @@
           "stromligning_sell_current_price": "Strømligning aktualna cena sprzedaży",
           "stromligning_sell_tomorrow_available": "Strømligning ceny sprzedaży na jutro",
           "stromligning_sell_forecasts": "Strømligning prognozy cen sprzedaży"
-        }
+        },
+        "data": {
+          "stromligning_buy_current_price": "Cena zakupu",
+          "stromligning_buy_forecasts": "Prognozy ceny zakupu",
+          "stromligning_buy_tomorrow_available": "Cena zakupu jutro",
+          "stromligning_sell_current_price": "Cena sprzedaży (opcjonalnie)",
+          "stromligning_sell_forecasts": "Prognozy ceny sprzedaży (opcjonalnie)",
+          "stromligning_sell_tomorrow_available": "Cena sprzedaży jutro (opcjonalnie)"
+        },
+        "description": "Czujniki z integracji Strømligning. Cena zakupu jest wymagana; czujniki sprzedaży są potrzebne do dokładnej ceny sprzedaży.",
+        "title": "Strømligning"
       },
       "prices_stromligning_tariffs": {
         "data_description": {
@@ -51,13 +94,28 @@
           "stromligning_sell_nettariff": "Strømligning sprzedaż taryfa sieciowa",
           "stromligning_sell_systemtariff": "Strømligning sprzedaż taryfa systemowa",
           "stromligning_sell_surcharge": "Strømligning sprzedaż dopłata do ceny spot"
-        }
+        },
+        "data": {
+          "stromligning_sell_distribution": "Taryfa przesyłowa",
+          "stromligning_sell_electricity_tax": "Podatek od energii",
+          "stromligning_sell_nettariff": "Taryfa sieciowa",
+          "stromligning_sell_surcharge": "Marża dostawcy",
+          "stromligning_sell_systemtariff": "Taryfa systemowa"
+        },
+        "description": "Przy sprzedaży taryfy i podatki są odejmowane od ceny, a taryfa przesyłowa/systemowa i opłata za sprzedaż są dodawane. Zostaw pole puste, aby użyć 0.",
+        "title": "Strømligning - taryfy przy sprzedaży"
       },
       "price_fees": {
         "data_description": {
           "refund": "Kwota zwrotu od państwa/dostawcy",
           "sell_fee": "Opłata za sprzedaż"
-        }
+        },
+        "data": {
+          "refund": "Zwrot",
+          "sell_fee": "Opłata za sprzedaż"
+        },
+        "description": "Kwoty na kWh, które zmieniają wartość ładowania i sprzedaży.",
+        "title": "Zwrot i opłaty"
       },
       "solar": {
         "data_description": {
@@ -65,19 +123,45 @@
           "inverter_discharging_power_limit": "Limit mocy rozładowania falownika (W)",
           "production_price": "Ustaw -1.0, aby używać ceny godzinowej sprzedaży",
           "forecast_entity_id": "Prognoza produkcji (W) (Obsługiwana integracja: Solcast PV Forecast)"
-        }
+        },
+        "data": {
+          "forecast_entity_id": "Prognoza słoneczna (opcjonalnie)",
+          "inverter_discharging_power_limit": "Limit mocy falownika",
+          "production_entity_id": "Produkcja słoneczna",
+          "production_price": "Stała cena sprzedaży nadwyżki słonecznej"
+        },
+        "description": "Opcjonalnie. Z panelami BattMind przewiduje nadwyżkę, która ładuje baterię za darmo, może przesunąć ładowanie słoneczne na tańsze godziny i sumuje `sensor.{prefix}_kwh_charged_by_solar`. Bez paneli zostaw puste.",
+        "title": "Panele słoneczne"
       },
       "weather": {
         "data_description": {
           "hourly_service_entity_id": "Encja prognozy godzinowej",
           "daily_service_entity_id": "Encja prognozy dziennej"
-        }
+        },
+        "data": {
+          "daily_service_entity_id": "Prognoza dzienna",
+          "hourly_service_entity_id": "Prognoza godzinowa"
+        },
+        "description": "Używane razem z zapisaną historią słoneczną do przewidywania nadwyżki słonecznej. Działa każda integracja pogody obsługująca `weather.get_forecasts` (Met.no, AccuWeather, OpenWeather, ...).",
+        "title": "Prognoza pogody"
       },
       "advanced": {
         "data_description": {
           "cron_interval": "Interwał między sprawdzaniem statusu a wykonywaniem funkcji",
-          "enable_diagnostic_file_log": "Włącza diagnostyczne logowanie do pliku w celu debugowania. Logi są zapisywane do osobnego pliku z automatyczną rotacją (2 MB na plik, 3 rotowane pliki)."
-        }
+          "enable_diagnostic_file_log": "Włącza diagnostyczne logowanie do pliku w celu debugowania. Logi są zapisywane do osobnego pliku z automatyczną rotacją (2 MB na plik, 3 rotowane pliki).",
+          "dashboard": "Dodaje do paska bocznego gotowy dashboard BattMind z planem, cenami, historią i wszystkimi ustawieniami tej instancji. Wymaga kart HACS apexcharts-card, mushroom, config-template-card i card-mod.",
+          "days_to_predict": "Liczba dni (łącznie z dzisiaj), które obejmuje plan ładowania, prognoza zużycia i prognoza słoneczna. Więcej dni daje lepsze decyzje o magazynowaniu energii, ale kosztuje więcej CPU i zależy od prognoz cen.",
+          "testing_mode": "Oznacza regułę ładowania symbolem 🧪, aby odróżnić instancję testową od prawdziwej."
+        },
+        "data": {
+          "cron_interval": "Interwał planowania",
+          "dashboard": "Dashboard w pasku bocznym",
+          "days_to_predict": "Dni do zaplanowania",
+          "enable_diagnostic_file_log": "Plik dziennika diagnostycznego",
+          "testing_mode": "Tryb testowy"
+        },
+        "description": "Planista, reguły i progi są sterowane encjami BattMind (przełączniki i liczby) - to są ustawienia techniczne.",
+        "title": "Planowanie"
       },
       "database": {
         "data_description": {
@@ -85,8 +169,60 @@
           "solar_available_db_data_to_save": "Ilość przechowywana dla poziomu zachmurzenia",
           "kwh_avg_prices_db_data_to_save": "Ilość przechowywana",
           "charging_history_db_data_to_save": "Przechowuj X miesięcy historii"
+        },
+        "data": {
+          "charging_history_db_data_to_save": "Historia ładowania",
+          "kwh_avg_prices_db_data_to_save": "Historia cen",
+          "power_values_db_data_to_save": "Historia zużycia",
+          "solar_available_db_data_to_save": "Historia słoneczna według typu pogody"
+        },
+        "description": "Ile historii przechowuje BattMind. Więcej historii daje stabilniejsze prognozy, ale wolniej dostosowuje się do zmian.",
+        "title": "Przechowywanie danych"
+      },
+      "restore_backup": {
+        "title": "Przywróć z kopii zapasowej",
+        "description": "Kopie zapasowe BattMind znalezione w **battmind_backups** (zapisane przez Eksportuj dane oraz przy usuwaniu urządzenia BattMind).\n\nWybierz jedną, aby przywrócić ją jako **{prefix}**: jej konfiguracja zostanie użyta jako domyślna na kolejnych stronach, a bazy danych i ustawienia zostaną przywrócone przy pierwszym uruchomieniu.",
+        "data": {
+          "backup": "Przywróć"
         }
+      },
+      "import_legacy": {
+        "data": {
+          "import_source": "Importuj z"
+        },
+        "description": "Instalacje BattMind PyScript znalezione w folderze konfiguracji:\n{files}\n\nWybierz jedną do importu (może mieć inny prefiks niż **{prefix}**). Ustawienia są używane jako domyślne na kolejnych stronach, a bazy danych (historia ładowania, zużycie, ceny, słońce) są kopiowane przy pierwszym uruchomieniu. Pliki PyScript są tylko odczytywane, nigdy zmieniane - obie wersje mogą działać jednocześnie.",
+        "title": "Import z wersji PyScript"
+      },
+      "price_provider": {
+        "data": {
+          "price_providers": "Dostawcy cen"
+        },
+        "description": "Wybierz, skąd pochodzą ceny godzinowe. Przy obu używany jest pierwszy z ceną dla danej godziny, a drugi uzupełnia luki.",
+        "title": "Ceny energii"
+      },
+      "user": {
+        "data": {
+          "entity_prefix": "Prefiks encji",
+          "language": "Język"
+        },
+        "data_description": {
+          "entity_prefix": "np. battmind, battmind_ha lub garage_battery",
+          "language": "Język przeglądu, historii ładowania, reguły ładowania i powiadomień."
+        },
+        "description": "BattMind planuje, kiedy bateria domowa ma ładować się z sieci, rozładowywać lub sprzedawać, na podstawie cen, zużycia i prognozy słonecznej. Plan jest publikowany jako czujniki, których używasz we własnych automatyzacjach.\n\n**Prefiks encji** jest używany w każdym identyfikatorze encji, np. `sensor.PREFIX_powerwall_action`. Użyj innego prefiksu dla każdej instancji (i innego niż wersja PyScript, jeśli działają obie). Nie można go później zmienić.",
+        "title": "Dodaj BattMind"
       }
+    },
+    "abort": {
+      "already_configured": "Już skonfigurowano"
+    },
+    "error": {
+      "invalid_prefix": "Użyj 1-50 małych liter, cyfr lub podkreśleń, zaczynając od litery.",
+      "min_above_max": "Poziom minimalny musi być niższy niż maksymalny.",
+      "no_price_provider": "Wybierz co najmniej jednego dostawcę cen.",
+      "prefix_entities_exist": "Encje z tym prefiksem już istnieją (np. z wersji PyScript). Wybierz inny prefiks, aby uruchomić obie jednocześnie.",
+      "prefix_in_use": "Ten prefiks jest już używany przez inny wpis BattMind.",
+      "production_required": "Prognoza słoneczna wymaga czujnika produkcji słonecznej."
     }
   },
   "options": {
@@ -96,7 +232,14 @@
           "powerwall_battery_level_entity_id": "Poziom magazynu energii (procent)",
           "powerwall_watt_flow_entity_id": "Przepływ mocy magazynu (dodatni przy rozładowaniu, ujemny przy ładowaniu)",
           "invert_powerwall_watt_flow_entity_id": "Odwróć znak dla Przepływ mocy magazynu"
-        }
+        },
+        "data": {
+          "invert_powerwall_watt_flow_entity_id": "Odwróć przepływ mocy",
+          "powerwall_battery_level_entity_id": "Poziom baterii",
+          "powerwall_watt_flow_entity_id": "Przepływ mocy baterii"
+        },
+        "description": "Czujniki, które BattMind odczytuje z twojej baterii domowej / falownika.",
+        "title": "Bateria domowa - czujniki"
       },
       "battery_specs": {
         "data_description": {
@@ -108,7 +251,19 @@
           "powerwall_charge_discharge_loss": "Straty ładowania/rozładowania (%)",
           "use_charge_discharge_loss_from_history": "Używaj rzeczywistych strat ładowania i rozładowania na podstawie historii ładowania zamiast szacowanych strat w konfiguracji",
           "powerwall_wear_cost_per_kwh": "Koszt zużycia magazynu na kWh"
-        }
+        },
+        "data": {
+          "powerwall_battery_level_max": "Poziom maksymalny",
+          "powerwall_battery_level_min": "Poziom minimalny",
+          "powerwall_battery_size": "Pojemność użytkowa",
+          "powerwall_charge_discharge_loss": "Strata ładowania/rozładowania",
+          "powerwall_charging_power_limit": "Maks. moc ładowania",
+          "powerwall_discharging_power": "Maks. moc rozładowania",
+          "powerwall_wear_cost_per_kwh": "Koszt zużycia",
+          "use_charge_discharge_loss_from_history": "Użyj zmierzonej straty"
+        },
+        "description": "Służy do przeliczania między % a kWh, ograniczania planu i obliczania kosztu energii w baterii.",
+        "title": "Bateria domowa - specyfikacja"
       },
       "consumption": {
         "data_description": {
@@ -116,13 +271,27 @@
           "power_consumption_entity_id_include_powerwall_charging": "Zużycie domu z uwzględnieniem ładowania magazynu (W)",
           "power_consumption_entity_id_include_powerwall_discharging": "Zużycie domu z uwzględnieniem rozładowania magazynu (W)",
           "ignore_consumption_from_entity_ids": "Lista czujników mocy do ignorowania"
-        }
+        },
+        "data": {
+          "ignore_consumption_from_entity_ids": "Ignoruj zużycie z",
+          "power_consumption_entity_id": "Zużycie domu",
+          "power_consumption_entity_id_include_powerwall_charging": "Obejmuje ładowanie baterii",
+          "power_consumption_entity_id_include_powerwall_discharging": "Obejmuje rozładowanie baterii"
+        },
+        "description": "BattMind zapisuje zużycie na godzinę i przewiduje, ile bateria musi pokryć w najbliższych dniach.",
+        "title": "Zużycie domu"
       },
       "prices_energidataservice": {
         "data_description": {
           "energidataservice_buy_entity_id": "Energi Data Service entity_id ceny",
           "energidataservice_sell_entity_id": "Energi Data Service entity_id ceny sprzedaży"
-        }
+        },
+        "data": {
+          "energidataservice_buy_entity_id": "Cena zakupu",
+          "energidataservice_sell_entity_id": "Cena sprzedaży (opcjonalnie)"
+        },
+        "description": "Czujniki z integracji [Energi Data Service]({eds_url}). Włącz Carnot (prognoza cen AI) w Energi Data Service, aby planować dalej niż opublikowane ceny.",
+        "title": "Energi Data Service"
       },
       "prices_stromligning": {
         "data_description": {
@@ -132,7 +301,17 @@
           "stromligning_sell_current_price": "Strømligning aktualna cena sprzedaży",
           "stromligning_sell_tomorrow_available": "Strømligning ceny sprzedaży na jutro",
           "stromligning_sell_forecasts": "Strømligning prognozy cen sprzedaży"
-        }
+        },
+        "data": {
+          "stromligning_buy_current_price": "Cena zakupu",
+          "stromligning_buy_forecasts": "Prognozy ceny zakupu",
+          "stromligning_buy_tomorrow_available": "Cena zakupu jutro",
+          "stromligning_sell_current_price": "Cena sprzedaży (opcjonalnie)",
+          "stromligning_sell_forecasts": "Prognozy ceny sprzedaży (opcjonalnie)",
+          "stromligning_sell_tomorrow_available": "Cena sprzedaży jutro (opcjonalnie)"
+        },
+        "description": "Czujniki z integracji Strømligning. Cena zakupu jest wymagana; czujniki sprzedaży są potrzebne do dokładnej ceny sprzedaży.",
+        "title": "Strømligning"
       },
       "prices_stromligning_tariffs": {
         "data_description": {
@@ -141,13 +320,28 @@
           "stromligning_sell_nettariff": "Strømligning sprzedaż taryfa sieciowa",
           "stromligning_sell_systemtariff": "Strømligning sprzedaż taryfa systemowa",
           "stromligning_sell_surcharge": "Strømligning sprzedaż dopłata do ceny spot"
-        }
+        },
+        "data": {
+          "stromligning_sell_distribution": "Taryfa przesyłowa",
+          "stromligning_sell_electricity_tax": "Podatek od energii",
+          "stromligning_sell_nettariff": "Taryfa sieciowa",
+          "stromligning_sell_surcharge": "Marża dostawcy",
+          "stromligning_sell_systemtariff": "Taryfa systemowa"
+        },
+        "description": "Przy sprzedaży taryfy i podatki są odejmowane od ceny, a taryfa przesyłowa/systemowa i opłata za sprzedaż są dodawane. Zostaw pole puste, aby użyć 0.",
+        "title": "Strømligning - taryfy przy sprzedaży"
       },
       "price_fees": {
         "data_description": {
           "refund": "Kwota zwrotu od państwa/dostawcy",
           "sell_fee": "Opłata za sprzedaż"
-        }
+        },
+        "data": {
+          "refund": "Zwrot",
+          "sell_fee": "Opłata za sprzedaż"
+        },
+        "description": "Kwoty na kWh, które zmieniają wartość ładowania i sprzedaży.",
+        "title": "Zwrot i opłaty"
       },
       "solar": {
         "data_description": {
@@ -155,19 +349,45 @@
           "inverter_discharging_power_limit": "Limit mocy rozładowania falownika (W)",
           "production_price": "Ustaw -1.0, aby używać ceny godzinowej sprzedaży",
           "forecast_entity_id": "Prognoza produkcji (W) (Obsługiwana integracja: Solcast PV Forecast)"
-        }
+        },
+        "data": {
+          "forecast_entity_id": "Prognoza słoneczna (opcjonalnie)",
+          "inverter_discharging_power_limit": "Limit mocy falownika",
+          "production_entity_id": "Produkcja słoneczna",
+          "production_price": "Stała cena sprzedaży nadwyżki słonecznej"
+        },
+        "description": "Opcjonalnie. Z panelami BattMind przewiduje nadwyżkę, która ładuje baterię za darmo, może przesunąć ładowanie słoneczne na tańsze godziny i sumuje `sensor.{prefix}_kwh_charged_by_solar`. Bez paneli zostaw puste.",
+        "title": "Panele słoneczne"
       },
       "weather": {
         "data_description": {
           "hourly_service_entity_id": "Encja prognozy godzinowej",
           "daily_service_entity_id": "Encja prognozy dziennej"
-        }
+        },
+        "data": {
+          "daily_service_entity_id": "Prognoza dzienna",
+          "hourly_service_entity_id": "Prognoza godzinowa"
+        },
+        "description": "Używane razem z zapisaną historią słoneczną do przewidywania nadwyżki słonecznej. Działa każda integracja pogody obsługująca `weather.get_forecasts` (Met.no, AccuWeather, OpenWeather, ...).",
+        "title": "Prognoza pogody"
       },
       "advanced": {
         "data_description": {
           "cron_interval": "Interwał między sprawdzaniem statusu a wykonywaniem funkcji",
-          "enable_diagnostic_file_log": "Włącza diagnostyczne logowanie do pliku w celu debugowania. Logi są zapisywane do osobnego pliku z automatyczną rotacją (2 MB na plik, 3 rotowane pliki)."
-        }
+          "enable_diagnostic_file_log": "Włącza diagnostyczne logowanie do pliku w celu debugowania. Logi są zapisywane do osobnego pliku z automatyczną rotacją (2 MB na plik, 3 rotowane pliki).",
+          "dashboard": "Dodaje do paska bocznego gotowy dashboard BattMind z planem, cenami, historią i wszystkimi ustawieniami tej instancji. Wymaga kart HACS apexcharts-card, mushroom, config-template-card i card-mod.",
+          "days_to_predict": "Liczba dni (łącznie z dzisiaj), które obejmuje plan ładowania, prognoza zużycia i prognoza słoneczna. Więcej dni daje lepsze decyzje o magazynowaniu energii, ale kosztuje więcej CPU i zależy od prognoz cen.",
+          "testing_mode": "Oznacza regułę ładowania symbolem 🧪, aby odróżnić instancję testową od prawdziwej."
+        },
+        "data": {
+          "cron_interval": "Interwał planowania",
+          "dashboard": "Dashboard w pasku bocznym",
+          "days_to_predict": "Dni do zaplanowania",
+          "enable_diagnostic_file_log": "Plik dziennika diagnostycznego",
+          "testing_mode": "Tryb testowy"
+        },
+        "description": "Planista, reguły i progi są sterowane encjami BattMind (przełączniki i liczby) - to są ustawienia techniczne.",
+        "title": "Planowanie"
       },
       "database": {
         "data_description": {
@@ -175,15 +395,73 @@
           "solar_available_db_data_to_save": "Ilość przechowywana dla poziomu zachmurzenia",
           "kwh_avg_prices_db_data_to_save": "Ilość przechowywana",
           "charging_history_db_data_to_save": "Przechowuj X miesięcy historii"
+        },
+        "data": {
+          "charging_history_db_data_to_save": "Historia ładowania",
+          "kwh_avg_prices_db_data_to_save": "Historia cen",
+          "power_values_db_data_to_save": "Historia zużycia",
+          "solar_available_db_data_to_save": "Historia słoneczna według typu pogody"
+        },
+        "description": "Ile historii przechowuje BattMind. Więcej historii daje stabilniejsze prognozy, ale wolniej dostosowuje się do zmian.",
+        "title": "Przechowywanie danych"
+      },
+      "init": {
+        "menu_options": {
+          "backup": "Kopia zapasowa (eksport / import)",
+          "menu_advanced": "Planowanie i przechowywanie danych",
+          "menu_battery": "Bateria domowa",
+          "menu_consumption": "Zużycie domu",
+          "menu_general": "Ogólne",
+          "menu_prices": "Ceny energii",
+          "menu_solar": "Panele słoneczne i pogoda"
+        },
+        "description": "Wybierz, co zmienić. Integracja zostanie przeładowana po zapisaniu.",
+        "title": "BattMind"
+      },
+      "backup": {
+        "title": "Kopia zapasowa",
+        "description": "Eksport zapisuje bazy danych, ustawienia i konfigurację do pliku w **battmind_backups**.\n\nImport pliku zastępuje bazy danych i ustawienia **{prefix}** kopią zapasową (bieżące dane są najpierw eksportowane jako plik *_before_import*) i ponownie ładuje integrację.",
+        "data": {
+          "backup": "Działanie",
+          "restore_configuration": "Przywróć również konfigurację"
+        },
+        "data_description": {
+          "restore_configuration": "Użyj również encji i opcji z kopii zapasowej. Pozostaw wyłączone, gdy kopia pochodzi z innego Home Assistant."
         }
+      },
+      "general": {
+        "data": {
+          "language": "Język"
+        },
+        "data_description": {
+          "language": "Język przeglądu, historii ładowania, reguły ładowania i powiadomień."
+        },
+        "title": "Ogólne"
+      },
+      "price_provider": {
+        "data": {
+          "price_providers": "Dostawcy cen"
+        },
+        "description": "Wybierz, skąd pochodzą ceny godzinowe. Przy obu używany jest pierwszy z ceną dla danej godziny, a drugi uzupełnia luki.",
+        "title": "Ceny energii"
       }
+    },
+    "abort": {
+      "backup_exported": "Kopia zapasowa została zapisana jako **{file}**.",
+      "backup_imported": "Zaimportowano **{file}**, integracja została ponownie załadowana.",
+      "backup_failed": "Import nie powiódł się: {error}"
+    },
+    "error": {
+      "invalid_prefix": "Użyj 1-50 małych liter, cyfr lub podkreśleń, zaczynając od litery.",
+      "min_above_max": "Poziom minimalny musi być niższy niż maksymalny.",
+      "no_price_provider": "Wybierz co najmniej jednego dostawcę cen.",
+      "prefix_entities_exist": "Encje z tym prefiksem już istnieją (np. z wersji PyScript). Wybierz inny prefiks, aby uruchomić obie jednocześnie.",
+      "prefix_in_use": "Ten prefiks jest już używany przez inny wpis BattMind.",
+      "production_required": "Prognoza słoneczna wymaga czujnika produkcji słonecznej."
     }
   },
   "entity": {
     "switch": {
-      "deactivate_script": {
-        "name": "Dezaktywuj skrypt"
-      },
       "solar_charging": {
         "name": "Ładowanie z nadwyżki solarnej"
       },
@@ -219,6 +497,18 @@
       },
       "optimize_solar_charging": {
         "name": "Optymalizuj ładowanie energią słoneczną"
+      },
+      "negative_price_planner": {
+        "name": "Ładowanie: Ujemne ceny"
+      },
+      "grid_charge_to_sell": {
+        "name": "Ładowanie: Kup, aby sprzedać"
+      },
+      "discharge_before_solar": {
+        "name": "Rozładowanie: Przed słońcem"
+      },
+      "optimizer_control": {
+        "name": "Steruj baterią optymalizacją całego okresu"
       }
     },
     "number": {
@@ -232,10 +522,10 @@
         "name": "Wzrost dla tanich okresów"
       },
       "min_profit_per_kwh": {
-        "name": "Min. zysk na kWh przy rozładowaniu"
+        "name": "Min. zysk na kWh (ładowanie / rozładowanie)"
       },
       "min_total_profit": {
-        "name": "Min. całkowity zysk z rozładowania"
+        "name": "Min. całkowity zysk (ładowanie / rozładowanie)"
       },
       "min_sell_kwh": {
         "name": "Min. nadwyżka kWh do sprzedaży"
@@ -258,8 +548,8 @@
       "enforce_planning": {
         "name": "Wymuś planowanie"
       },
-      "restart_script": {
-        "name": "Uruchom ponownie skrypt"
+      "export_data": {
+        "name": "Eksportuj dane"
       }
     },
     "sensor": {
@@ -283,7 +573,106 @@
       },
       "kwh_charged_by_solar": {
         "name": "kWh naładowane z PV"
+      },
+      "analysis": {
+        "name": "Analiza"
       }
+    }
+  },
+  "issues": {
+    "blueprint_update": {
+      "title": "Nowa wersja blueprintu {name}",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "Zaktualizuj blueprint {name}",
+            "description": "BattMind zawiera wersję blueprintu **{name}**, która różni się od `{path}`.\n\nWybierz **Zatwierdź**, aby zastąpić plik dołączoną wersją i ponownie wczytać automatyzacje, które go używają. Twoje własne zmiany w pliku zostaną nadpisane – jeśli chcesz je zachować, najpierw skopiuj plik pod inną nazwą.\n\nZignoruj tę naprawę, aby zachować własny plik."
+          }
+        }
+      }
+    }
+  },
+  "selector": {
+    "restore_backup": {
+      "options": {
+        "none": "Nie przywracaj (zacznij od zera)"
+      }
+    },
+    "backup_action": {
+      "options": {
+        "export": "Eksportuj teraz"
+      }
+    },
+    "import_source": {
+      "options": {
+        "none": "Nie importuj"
+      }
+    },
+    "price_providers": {
+      "options": {
+        "energidataservice": "Energi Data Service",
+        "stromligning": "Strømligning"
+      }
+    }
+  },
+  "services": {
+    "export_data": {
+      "name": "Eksportuj dane",
+      "description": "Zapisuje bazy danych, ustawienia i konfigurację jako plik kopii zapasowej w folderze konfiguracji (battmind_backups).",
+      "fields": {
+        "config_entry_id": {
+          "name": "Wpis konfiguracji",
+          "description": "Eksportuj tylko ten wpis (domyślnie: wszystkie)."
+        }
+      }
+    },
+    "import_data": {
+      "name": "Importuj dane",
+      "description": "Zastępuje bazy danych i ustawienia wpisu plikiem kopii zapasowej z battmind_backups. Bieżące dane są najpierw eksportowane.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Wpis konfiguracji",
+          "description": "Wpis, do którego przywrócić dane."
+        },
+        "file": {
+          "name": "Plik kopii zapasowej",
+          "description": "Nazwa pliku w battmind_backups (zwrócona przez Eksportuj dane)."
+        },
+        "restore_configuration": {
+          "name": "Przywróć konfigurację",
+          "description": "Zastąp również konfigurację (encje i opcje) kopią zapasową."
+        }
+      }
+    },
+    "debug_info": {
+      "description": "Pokazuje stan BattMind jako trwałe powiadomienie (zwracany też jako odpowiedź).",
+      "fields": {
+        "config_entry_id": {
+          "description": "Uruchom tylko dla tego wpisu BattMind (domyślnie: wszystkie).",
+          "name": "Wpis konfiguracji"
+        }
+      },
+      "name": "Pokaż informacje debugowania"
+    },
+    "enforce_planning": {
+      "description": "Przelicza plan ładowania teraz.",
+      "fields": {
+        "config_entry_id": {
+          "description": "Uruchom tylko dla tego wpisu BattMind (domyślnie: wszystkie).",
+          "name": "Wpis konfiguracji"
+        }
+      },
+      "name": "Wymuś planowanie"
+    },
+    "recalc_charging_history_today": {
+      "description": "Przelicza dzisiejszą historię ładowania godzina po godzinie.",
+      "fields": {
+        "config_entry_id": {
+          "description": "Uruchom tylko dla tego wpisu BattMind (domyślnie: wszystkie).",
+          "name": "Wpis konfiguracji"
+        }
+      },
+      "name": "Przelicz dzisiejszą historię ładowania"
     }
   }
 }

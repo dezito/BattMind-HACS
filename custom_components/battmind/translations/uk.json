@@ -6,7 +6,14 @@
           "powerwall_battery_level_entity_id": "Рівень домашньої батареї (відсоток)",
           "powerwall_watt_flow_entity_id": "Потік потужності домашньої батареї (позитивний при розряджанні, негативний при заряджанні)",
           "invert_powerwall_watt_flow_entity_id": "Інвертувати знак для Потік потужності домашньої батареї"
-        }
+        },
+        "data": {
+          "invert_powerwall_watt_flow_entity_id": "Інвертувати потік потужності",
+          "powerwall_battery_level_entity_id": "Рівень батареї",
+          "powerwall_watt_flow_entity_id": "Потік потужності батареї"
+        },
+        "description": "Датчики, які BattMind зчитує з вашої домашньої батареї / інвертора.",
+        "title": "Домашня батарея - датчики"
       },
       "battery_specs": {
         "data_description": {
@@ -18,7 +25,19 @@
           "powerwall_charge_discharge_loss": "Втрати заряджання/розряджання (%)",
           "use_charge_discharge_loss_from_history": "Використовувати фактичні втрати заряджання та розряджання на основі історії заряджання замість оцінених втрат у конфігурації",
           "powerwall_wear_cost_per_kwh": "Вартість зносу батареї за кВт·год"
-        }
+        },
+        "data": {
+          "powerwall_battery_level_max": "Максимальний рівень",
+          "powerwall_battery_level_min": "Мінімальний рівень",
+          "powerwall_battery_size": "Корисна ємність",
+          "powerwall_charge_discharge_loss": "Втрати заряду/розряду",
+          "powerwall_charging_power_limit": "Макс. потужність заряджання",
+          "powerwall_discharging_power": "Макс. потужність розряду",
+          "powerwall_wear_cost_per_kwh": "Вартість зношування",
+          "use_charge_discharge_loss_from_history": "Використовувати виміряні втрати"
+        },
+        "description": "Використовується для перерахунку між % і кВт·год, обмеження плану та розрахунку вартості енергії в батареї.",
+        "title": "Домашня батарея - характеристики"
       },
       "consumption": {
         "data_description": {
@@ -26,13 +45,27 @@
           "power_consumption_entity_id_include_powerwall_charging": "Споживання будинку з урахуванням заряджання батареї (Вт)",
           "power_consumption_entity_id_include_powerwall_discharging": "Споживання будинку з урахуванням розряджання батареї (Вт)",
           "ignore_consumption_from_entity_ids": "Список датчиків потужності, які слід ігнорувати"
-        }
+        },
+        "data": {
+          "ignore_consumption_from_entity_ids": "Ігнорувати споживання від",
+          "power_consumption_entity_id": "Споживання будинку",
+          "power_consumption_entity_id_include_powerwall_charging": "Включає заряджання батареї",
+          "power_consumption_entity_id_include_powerwall_discharging": "Включає розряд батареї"
+        },
+        "description": "BattMind зберігає погодинне споживання і прогнозує, скільки батарея має покрити в найближчі дні.",
+        "title": "Споживання будинку"
       },
       "prices_energidataservice": {
         "data_description": {
           "energidataservice_buy_entity_id": "Energi Data Service entity_id ціни",
           "energidataservice_sell_entity_id": "Energi Data Service entity_id ціни продажу"
-        }
+        },
+        "data": {
+          "energidataservice_buy_entity_id": "Ціна купівлі",
+          "energidataservice_sell_entity_id": "Ціна продажу (необов'язково)"
+        },
+        "description": "Датчики з інтеграції [Energi Data Service]({eds_url}). Увімкніть Carnot (прогноз цін ШІ) в Energi Data Service, щоб планувати далі за опубліковані ціни.",
+        "title": "Energi Data Service"
       },
       "prices_stromligning": {
         "data_description": {
@@ -42,7 +75,17 @@
           "stromligning_sell_current_price": "Strømligning поточна ціна продажу",
           "stromligning_sell_tomorrow_available": "Strømligning ціни продажу на завтра",
           "stromligning_sell_forecasts": "Strømligning прогнози цін продажу"
-        }
+        },
+        "data": {
+          "stromligning_buy_current_price": "Ціна купівлі",
+          "stromligning_buy_forecasts": "Прогнози ціни купівлі",
+          "stromligning_buy_tomorrow_available": "Ціна купівлі завтра",
+          "stromligning_sell_current_price": "Ціна продажу (необов'язково)",
+          "stromligning_sell_forecasts": "Прогнози ціни продажу (необов'язково)",
+          "stromligning_sell_tomorrow_available": "Ціна продажу завтра (необов'язково)"
+        },
+        "description": "Датчики з інтеграції Strømligning. Ціна купівлі обов'язкова; датчики продажу потрібні для точної ціни продажу.",
+        "title": "Strømligning"
       },
       "prices_stromligning_tariffs": {
         "data_description": {
@@ -51,13 +94,28 @@
           "stromligning_sell_nettariff": "Strømligning продаж мережевий тариф",
           "stromligning_sell_systemtariff": "Strømligning продаж системний тариф",
           "stromligning_sell_surcharge": "Strømligning продаж надбавка до спотової ціни"
-        }
+        },
+        "data": {
+          "stromligning_sell_distribution": "Тариф на передачу",
+          "stromligning_sell_electricity_tax": "Податок на електроенергію",
+          "stromligning_sell_nettariff": "Мережевий тариф",
+          "stromligning_sell_surcharge": "Надбавка постачальника",
+          "stromligning_sell_systemtariff": "Системний тариф"
+        },
+        "description": "Під час продажу тарифи та податки віднімаються від ціни, а тариф на передачу/системний тариф і плата за продаж додаються. Залиште поле порожнім, щоб використати 0.",
+        "title": "Strømligning - тарифи під час продажу"
       },
       "price_fees": {
         "data_description": {
           "refund": "Сума компенсації від держави/постачальника",
           "sell_fee": "Комісія за продаж"
-        }
+        },
+        "data": {
+          "refund": "Відшкодування",
+          "sell_fee": "Плата за продаж"
+        },
+        "description": "Суми за кВт·год, що змінюють вартість заряджання та продажу.",
+        "title": "Відшкодування і плати"
       },
       "solar": {
         "data_description": {
@@ -65,19 +123,45 @@
           "inverter_discharging_power_limit": "Ліміт потужності розряджання інвертора (Вт)",
           "production_price": "Встановіть -1.0 для використання погодинної ціни продажу",
           "forecast_entity_id": "Прогноз сонячної генерації (Вт) (Підтримується: Solcast PV Forecast)"
-        }
+        },
+        "data": {
+          "forecast_entity_id": "Сонячний прогноз (необов'язково)",
+          "inverter_discharging_power_limit": "Ліміт потужності інвертора",
+          "production_entity_id": "Сонячний виробіток",
+          "production_price": "Фіксована ціна продажу сонячного надлишку"
+        },
+        "description": "Необов'язково. Із сонячними панелями BattMind прогнозує надлишок, що заряджає батарею безкоштовно, може переносити сонячне заряджання на дешевші години й накопичує `sensor.{prefix}_kwh_charged_by_solar`. Без панелей залиште порожнім.",
+        "title": "Сонячні панелі"
       },
       "weather": {
         "data_description": {
           "hourly_service_entity_id": "Сутність погодинного прогнозу",
           "daily_service_entity_id": "Сутність денного прогнозу"
-        }
+        },
+        "data": {
+          "daily_service_entity_id": "Денний прогноз",
+          "hourly_service_entity_id": "Погодинний прогноз"
+        },
+        "description": "Використовується разом зі збереженою сонячною історією для прогнозу сонячного надлишку. Підходить будь-яка інтеграція погоди з підтримкою `weather.get_forecasts` (Met.no, AccuWeather, OpenWeather, ...).",
+        "title": "Прогноз погоди"
       },
       "advanced": {
         "data_description": {
           "cron_interval": "Інтервал між перевірками стану та виконанням функцій",
-          "enable_diagnostic_file_log": "Вмикає діагностичне файлове логування для налагодження. Логи записуються в окремий файл з автоматичною ротацією (2 МБ на файл, 3 ротовані файли)."
-        }
+          "enable_diagnostic_file_log": "Вмикає діагностичне файлове логування для налагодження. Логи записуються в окремий файл з автоматичною ротацією (2 МБ на файл, 3 ротовані файли).",
+          "dashboard": "Додає в бокове меню готову панель BattMind із планом, цінами, історією та всіма налаштуваннями цього екземпляра. Потребує карток HACS apexcharts-card, mushroom, config-template-card і card-mod.",
+          "days_to_predict": "Кількість днів (включно з сьогодні), які охоплюють план заряджання, прогноз споживання та сонячний прогноз. Більше днів дає кращі рішення щодо накопичення енергії, але потребує більше CPU і залежить від прогнозів цін.",
+          "testing_mode": "Позначає правило заряджання символом 🧪, щоб тестовий екземпляр можна було відрізнити від справжнього."
+        },
+        "data": {
+          "cron_interval": "Інтервал планування",
+          "dashboard": "Панель у боковому меню",
+          "days_to_predict": "Днів для планування",
+          "enable_diagnostic_file_log": "Діагностичний файл журналу",
+          "testing_mode": "Тестовий режим"
+        },
+        "description": "Планувальник, правила та пороги керуються сутностями BattMind (перемикачі та числа) - це технічні налаштування.",
+        "title": "Планування"
       },
       "database": {
         "data_description": {
@@ -85,8 +169,60 @@
           "solar_available_db_data_to_save": "Обсяг збереження залежно від рівня хмарності",
           "kwh_avg_prices_db_data_to_save": "Обсяг збереження",
           "charging_history_db_data_to_save": "Зберігати історію за X місяців"
+        },
+        "data": {
+          "charging_history_db_data_to_save": "Історія заряджання",
+          "kwh_avg_prices_db_data_to_save": "Історія цін",
+          "power_values_db_data_to_save": "Історія споживання",
+          "solar_available_db_data_to_save": "Сонячна історія за типом погоди"
+        },
+        "description": "Скільки історії зберігає BattMind. Більше історії дає стабільніші прогнози, але повільніше пристосовується до змін.",
+        "title": "Зберігання даних"
+      },
+      "restore_backup": {
+        "title": "Відновити з резервної копії",
+        "description": "Резервні копії BattMind знайдено в **battmind_backups** (створені командою Експортувати дані та під час видалення пристрою BattMind).\n\nВиберіть одну, щоб відновити її як **{prefix}**: її конфігурація буде використана за замовчуванням на наступних сторінках, а бази даних і налаштування буде відновлено під час першого запуску.",
+        "data": {
+          "backup": "Відновити"
         }
+      },
+      "import_legacy": {
+        "data": {
+          "import_source": "Імпортувати з"
+        },
+        "description": "Знайдені в папці конфігурації встановлення BattMind PyScript:\n{files}\n\nОберіть одне для імпорту (воно може мати інший префікс, ніж **{prefix}**). Налаштування використовуються як типові на наступних сторінках, а бази даних (історія заряджання, споживання, ціни, сонце) копіюються під час першого запуску. Файли PyScript лише читаються, ніколи не змінюються - обидві версії можуть працювати одночасно.",
+        "title": "Імпорт із версії PyScript"
+      },
+      "price_provider": {
+        "data": {
+          "price_providers": "Постачальники цін"
+        },
+        "description": "Оберіть, звідки беруться погодинні ціни. З обома використовується перший, що має ціну на годину, а інший заповнює прогалини.",
+        "title": "Ціни на електроенергію"
+      },
+      "user": {
+        "data": {
+          "entity_prefix": "Префікс сутностей",
+          "language": "Мова"
+        },
+        "data_description": {
+          "entity_prefix": "напр. battmind, battmind_ha або garage_battery",
+          "language": "Мова огляду, історії заряджання, правила заряджання та сповіщень."
+        },
+        "description": "BattMind планує, коли домашня батарея має заряджатися з мережі, розряджатися або продавати, на основі цін, споживання та сонячного прогнозу. План публікується як датчики, які ви використовуєте у власних автоматизаціях.\n\n**Префікс сутностей** використовується в кожному ідентифікаторі сутності, напр. `sensor.PREFIX_powerwall_action`. Використовуйте інший префікс для кожного екземпляра (та інший, ніж у версії PyScript, якщо працюють обидві). Його не можна змінити пізніше.",
+        "title": "Додати BattMind"
       }
+    },
+    "abort": {
+      "already_configured": "Вже налаштовано"
+    },
+    "error": {
+      "invalid_prefix": "Використовуйте 1-50 малих літер, цифр або підкреслень, починаючи з літери.",
+      "min_above_max": "Мінімальний рівень має бути нижчим за максимальний.",
+      "no_price_provider": "Оберіть щонайменше одного постачальника цін.",
+      "prefix_entities_exist": "Сутності з цим префіксом уже існують (напр. з версії PyScript). Оберіть інший префікс, щоб запускати обидві одночасно.",
+      "prefix_in_use": "Цей префікс уже використовує інший запис BattMind.",
+      "production_required": "Сонячний прогноз потребує датчика сонячного виробітку."
     }
   },
   "options": {
@@ -96,7 +232,14 @@
           "powerwall_battery_level_entity_id": "Рівень домашньої батареї (відсоток)",
           "powerwall_watt_flow_entity_id": "Потік потужності домашньої батареї (позитивний при розряджанні, негативний при заряджанні)",
           "invert_powerwall_watt_flow_entity_id": "Інвертувати знак для Потік потужності домашньої батареї"
-        }
+        },
+        "data": {
+          "invert_powerwall_watt_flow_entity_id": "Інвертувати потік потужності",
+          "powerwall_battery_level_entity_id": "Рівень батареї",
+          "powerwall_watt_flow_entity_id": "Потік потужності батареї"
+        },
+        "description": "Датчики, які BattMind зчитує з вашої домашньої батареї / інвертора.",
+        "title": "Домашня батарея - датчики"
       },
       "battery_specs": {
         "data_description": {
@@ -108,7 +251,19 @@
           "powerwall_charge_discharge_loss": "Втрати заряджання/розряджання (%)",
           "use_charge_discharge_loss_from_history": "Використовувати фактичні втрати заряджання та розряджання на основі історії заряджання замість оцінених втрат у конфігурації",
           "powerwall_wear_cost_per_kwh": "Вартість зносу батареї за кВт·год"
-        }
+        },
+        "data": {
+          "powerwall_battery_level_max": "Максимальний рівень",
+          "powerwall_battery_level_min": "Мінімальний рівень",
+          "powerwall_battery_size": "Корисна ємність",
+          "powerwall_charge_discharge_loss": "Втрати заряду/розряду",
+          "powerwall_charging_power_limit": "Макс. потужність заряджання",
+          "powerwall_discharging_power": "Макс. потужність розряду",
+          "powerwall_wear_cost_per_kwh": "Вартість зношування",
+          "use_charge_discharge_loss_from_history": "Використовувати виміряні втрати"
+        },
+        "description": "Використовується для перерахунку між % і кВт·год, обмеження плану та розрахунку вартості енергії в батареї.",
+        "title": "Домашня батарея - характеристики"
       },
       "consumption": {
         "data_description": {
@@ -116,13 +271,27 @@
           "power_consumption_entity_id_include_powerwall_charging": "Споживання будинку з урахуванням заряджання батареї (Вт)",
           "power_consumption_entity_id_include_powerwall_discharging": "Споживання будинку з урахуванням розряджання батареї (Вт)",
           "ignore_consumption_from_entity_ids": "Список датчиків потужності, які слід ігнорувати"
-        }
+        },
+        "data": {
+          "ignore_consumption_from_entity_ids": "Ігнорувати споживання від",
+          "power_consumption_entity_id": "Споживання будинку",
+          "power_consumption_entity_id_include_powerwall_charging": "Включає заряджання батареї",
+          "power_consumption_entity_id_include_powerwall_discharging": "Включає розряд батареї"
+        },
+        "description": "BattMind зберігає погодинне споживання і прогнозує, скільки батарея має покрити в найближчі дні.",
+        "title": "Споживання будинку"
       },
       "prices_energidataservice": {
         "data_description": {
           "energidataservice_buy_entity_id": "Energi Data Service entity_id ціни",
           "energidataservice_sell_entity_id": "Energi Data Service entity_id ціни продажу"
-        }
+        },
+        "data": {
+          "energidataservice_buy_entity_id": "Ціна купівлі",
+          "energidataservice_sell_entity_id": "Ціна продажу (необов'язково)"
+        },
+        "description": "Датчики з інтеграції [Energi Data Service]({eds_url}). Увімкніть Carnot (прогноз цін ШІ) в Energi Data Service, щоб планувати далі за опубліковані ціни.",
+        "title": "Energi Data Service"
       },
       "prices_stromligning": {
         "data_description": {
@@ -132,7 +301,17 @@
           "stromligning_sell_current_price": "Strømligning поточна ціна продажу",
           "stromligning_sell_tomorrow_available": "Strømligning ціни продажу на завтра",
           "stromligning_sell_forecasts": "Strømligning прогнози цін продажу"
-        }
+        },
+        "data": {
+          "stromligning_buy_current_price": "Ціна купівлі",
+          "stromligning_buy_forecasts": "Прогнози ціни купівлі",
+          "stromligning_buy_tomorrow_available": "Ціна купівлі завтра",
+          "stromligning_sell_current_price": "Ціна продажу (необов'язково)",
+          "stromligning_sell_forecasts": "Прогнози ціни продажу (необов'язково)",
+          "stromligning_sell_tomorrow_available": "Ціна продажу завтра (необов'язково)"
+        },
+        "description": "Датчики з інтеграції Strømligning. Ціна купівлі обов'язкова; датчики продажу потрібні для точної ціни продажу.",
+        "title": "Strømligning"
       },
       "prices_stromligning_tariffs": {
         "data_description": {
@@ -141,13 +320,28 @@
           "stromligning_sell_nettariff": "Strømligning продаж мережевий тариф",
           "stromligning_sell_systemtariff": "Strømligning продаж системний тариф",
           "stromligning_sell_surcharge": "Strømligning продаж надбавка до спотової ціни"
-        }
+        },
+        "data": {
+          "stromligning_sell_distribution": "Тариф на передачу",
+          "stromligning_sell_electricity_tax": "Податок на електроенергію",
+          "stromligning_sell_nettariff": "Мережевий тариф",
+          "stromligning_sell_surcharge": "Надбавка постачальника",
+          "stromligning_sell_systemtariff": "Системний тариф"
+        },
+        "description": "Під час продажу тарифи та податки віднімаються від ціни, а тариф на передачу/системний тариф і плата за продаж додаються. Залиште поле порожнім, щоб використати 0.",
+        "title": "Strømligning - тарифи під час продажу"
       },
       "price_fees": {
         "data_description": {
           "refund": "Сума компенсації від держави/постачальника",
           "sell_fee": "Комісія за продаж"
-        }
+        },
+        "data": {
+          "refund": "Відшкодування",
+          "sell_fee": "Плата за продаж"
+        },
+        "description": "Суми за кВт·год, що змінюють вартість заряджання та продажу.",
+        "title": "Відшкодування і плати"
       },
       "solar": {
         "data_description": {
@@ -155,19 +349,45 @@
           "inverter_discharging_power_limit": "Ліміт потужності розряджання інвертора (Вт)",
           "production_price": "Встановіть -1.0 для використання погодинної ціни продажу",
           "forecast_entity_id": "Прогноз сонячної генерації (Вт) (Підтримується: Solcast PV Forecast)"
-        }
+        },
+        "data": {
+          "forecast_entity_id": "Сонячний прогноз (необов'язково)",
+          "inverter_discharging_power_limit": "Ліміт потужності інвертора",
+          "production_entity_id": "Сонячний виробіток",
+          "production_price": "Фіксована ціна продажу сонячного надлишку"
+        },
+        "description": "Необов'язково. Із сонячними панелями BattMind прогнозує надлишок, що заряджає батарею безкоштовно, може переносити сонячне заряджання на дешевші години й накопичує `sensor.{prefix}_kwh_charged_by_solar`. Без панелей залиште порожнім.",
+        "title": "Сонячні панелі"
       },
       "weather": {
         "data_description": {
           "hourly_service_entity_id": "Сутність погодинного прогнозу",
           "daily_service_entity_id": "Сутність денного прогнозу"
-        }
+        },
+        "data": {
+          "daily_service_entity_id": "Денний прогноз",
+          "hourly_service_entity_id": "Погодинний прогноз"
+        },
+        "description": "Використовується разом зі збереженою сонячною історією для прогнозу сонячного надлишку. Підходить будь-яка інтеграція погоди з підтримкою `weather.get_forecasts` (Met.no, AccuWeather, OpenWeather, ...).",
+        "title": "Прогноз погоди"
       },
       "advanced": {
         "data_description": {
           "cron_interval": "Інтервал між перевірками стану та виконанням функцій",
-          "enable_diagnostic_file_log": "Вмикає діагностичне файлове логування для налагодження. Логи записуються в окремий файл з автоматичною ротацією (2 МБ на файл, 3 ротовані файли)."
-        }
+          "enable_diagnostic_file_log": "Вмикає діагностичне файлове логування для налагодження. Логи записуються в окремий файл з автоматичною ротацією (2 МБ на файл, 3 ротовані файли).",
+          "dashboard": "Додає в бокове меню готову панель BattMind із планом, цінами, історією та всіма налаштуваннями цього екземпляра. Потребує карток HACS apexcharts-card, mushroom, config-template-card і card-mod.",
+          "days_to_predict": "Кількість днів (включно з сьогодні), які охоплюють план заряджання, прогноз споживання та сонячний прогноз. Більше днів дає кращі рішення щодо накопичення енергії, але потребує більше CPU і залежить від прогнозів цін.",
+          "testing_mode": "Позначає правило заряджання символом 🧪, щоб тестовий екземпляр можна було відрізнити від справжнього."
+        },
+        "data": {
+          "cron_interval": "Інтервал планування",
+          "dashboard": "Панель у боковому меню",
+          "days_to_predict": "Днів для планування",
+          "enable_diagnostic_file_log": "Діагностичний файл журналу",
+          "testing_mode": "Тестовий режим"
+        },
+        "description": "Планувальник, правила та пороги керуються сутностями BattMind (перемикачі та числа) - це технічні налаштування.",
+        "title": "Планування"
       },
       "database": {
         "data_description": {
@@ -175,15 +395,73 @@
           "solar_available_db_data_to_save": "Обсяг збереження залежно від рівня хмарності",
           "kwh_avg_prices_db_data_to_save": "Обсяг збереження",
           "charging_history_db_data_to_save": "Зберігати історію за X місяців"
+        },
+        "data": {
+          "charging_history_db_data_to_save": "Історія заряджання",
+          "kwh_avg_prices_db_data_to_save": "Історія цін",
+          "power_values_db_data_to_save": "Історія споживання",
+          "solar_available_db_data_to_save": "Сонячна історія за типом погоди"
+        },
+        "description": "Скільки історії зберігає BattMind. Більше історії дає стабільніші прогнози, але повільніше пристосовується до змін.",
+        "title": "Зберігання даних"
+      },
+      "init": {
+        "menu_options": {
+          "backup": "Резервна копія (експорт / імпорт)",
+          "menu_advanced": "Планування і зберігання даних",
+          "menu_battery": "Домашня батарея",
+          "menu_consumption": "Споживання будинку",
+          "menu_general": "Загальні",
+          "menu_prices": "Ціни на електроенергію",
+          "menu_solar": "Сонячні панелі та погода"
+        },
+        "description": "Оберіть, що змінити. Інтеграцію буде перезавантажено після збереження.",
+        "title": "BattMind"
+      },
+      "backup": {
+        "title": "Резервна копія",
+        "description": "Експорт записує бази даних, налаштування й конфігурацію у файл у **battmind_backups**.\n\nІмпорт файлу замінює бази даних і налаштування **{prefix}** резервною копією (поточні дані спочатку експортуються як файл *_before_import*) і перезавантажує інтеграцію.",
+        "data": {
+          "backup": "Дія",
+          "restore_configuration": "Також відновити конфігурацію"
+        },
+        "data_description": {
+          "restore_configuration": "Також використати сутності й параметри з резервної копії. Залиште вимкненим, якщо копія з іншого Home Assistant."
         }
+      },
+      "general": {
+        "data": {
+          "language": "Мова"
+        },
+        "data_description": {
+          "language": "Мова огляду, історії заряджання, правила заряджання та сповіщень."
+        },
+        "title": "Загальні"
+      },
+      "price_provider": {
+        "data": {
+          "price_providers": "Постачальники цін"
+        },
+        "description": "Оберіть, звідки беруться погодинні ціни. З обома використовується перший, що має ціну на годину, а інший заповнює прогалини.",
+        "title": "Ціни на електроенергію"
       }
+    },
+    "abort": {
+      "backup_exported": "Резервну копію збережено як **{file}**.",
+      "backup_imported": "**{file}** імпортовано, інтеграцію перезавантажено.",
+      "backup_failed": "Імпорт не вдався: {error}"
+    },
+    "error": {
+      "invalid_prefix": "Використовуйте 1-50 малих літер, цифр або підкреслень, починаючи з літери.",
+      "min_above_max": "Мінімальний рівень має бути нижчим за максимальний.",
+      "no_price_provider": "Оберіть щонайменше одного постачальника цін.",
+      "prefix_entities_exist": "Сутності з цим префіксом уже існують (напр. з версії PyScript). Оберіть інший префікс, щоб запускати обидві одночасно.",
+      "prefix_in_use": "Цей префікс уже використовує інший запис BattMind.",
+      "production_required": "Сонячний прогноз потребує датчика сонячного виробітку."
     }
   },
   "entity": {
     "switch": {
-      "deactivate_script": {
-        "name": "Деактивувати скрипт"
-      },
       "solar_charging": {
         "name": "Заряджання надлишком сонця"
       },
@@ -219,6 +497,18 @@
       },
       "optimize_solar_charging": {
         "name": "Оптимізувати заряджання від сонячної енергії"
+      },
+      "negative_price_planner": {
+        "name": "Заряджання: Від'ємні ціни"
+      },
+      "grid_charge_to_sell": {
+        "name": "Заряджання: Купити, щоб продати"
+      },
+      "discharge_before_solar": {
+        "name": "Розряджання: Перед сонцем"
+      },
+      "optimizer_control": {
+        "name": "Керувати батареєю оптимізацією всього періоду"
       }
     },
     "number": {
@@ -232,10 +522,10 @@
         "name": "Зростання для дешевих періодів"
       },
       "min_profit_per_kwh": {
-        "name": "Мін. прибуток за кВт·год при розряджанні"
+        "name": "Мін. прибуток за кВт·год (заряджання / розряджання)"
       },
       "min_total_profit": {
-        "name": "Мін. загальний прибуток від розряджання"
+        "name": "Мін. загальний прибуток (заряджання / розряджання)"
       },
       "min_sell_kwh": {
         "name": "Мін. надлишок кВт·год для продажу"
@@ -258,8 +548,8 @@
       "enforce_planning": {
         "name": "Примусове планування"
       },
-      "restart_script": {
-        "name": "Перезапустити скрипт"
+      "export_data": {
+        "name": "Експортувати дані"
       }
     },
     "sensor": {
@@ -283,7 +573,106 @@
       },
       "kwh_charged_by_solar": {
         "name": "кВт·год заряджено від сонця"
+      },
+      "analysis": {
+        "name": "Аналіз"
       }
+    }
+  },
+  "issues": {
+    "blueprint_update": {
+      "title": "Нова версія blueprint {name}",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "Оновити blueprint {name}",
+            "description": "BattMind містить версію blueprint **{name}**, яка відрізняється від `{path}`.\n\nНатисніть **Надіслати**, щоб замінити файл вбудованою версією та перезавантажити автоматизації, які його використовують. Ваші власні зміни у файлі буде перезаписано – скопіюйте його під іншою назвою, якщо хочете їх зберегти.\n\nПроігноруйте це виправлення, щоб залишити власний файл."
+          }
+        }
+      }
+    }
+  },
+  "selector": {
+    "restore_backup": {
+      "options": {
+        "none": "Не відновлювати (почати з нуля)"
+      }
+    },
+    "backup_action": {
+      "options": {
+        "export": "Експортувати зараз"
+      }
+    },
+    "import_source": {
+      "options": {
+        "none": "Не імпортувати"
+      }
+    },
+    "price_providers": {
+      "options": {
+        "energidataservice": "Energi Data Service",
+        "stromligning": "Strømligning"
+      }
+    }
+  },
+  "services": {
+    "export_data": {
+      "name": "Експортувати дані",
+      "description": "Зберігає бази даних, налаштування й конфігурацію як файл резервної копії в теці конфігурації (battmind_backups).",
+      "fields": {
+        "config_entry_id": {
+          "name": "Запис конфігурації",
+          "description": "Експортувати лише цей запис (за замовчуванням: усі)."
+        }
+      }
+    },
+    "import_data": {
+      "name": "Імпортувати дані",
+      "description": "Замінює бази даних і налаштування запису файлом резервної копії з battmind_backups. Поточні дані спочатку експортуються.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Запис конфігурації",
+          "description": "Запис, у який відновити дані."
+        },
+        "file": {
+          "name": "Файл резервної копії",
+          "description": "Ім'я файлу в battmind_backups (яке повертає Експортувати дані)."
+        },
+        "restore_configuration": {
+          "name": "Відновити конфігурацію",
+          "description": "Також замінити конфігурацію (сутності й параметри) резервною копією."
+        }
+      }
+    },
+    "debug_info": {
+      "description": "Показує стан BattMind як постійне сповіщення (також повертається як відповідь).",
+      "fields": {
+        "config_entry_id": {
+          "description": "Запускати лише для цього запису BattMind (типово: усі).",
+          "name": "Запис конфігурації"
+        }
+      },
+      "name": "Показати налагоджувальну інформацію"
+    },
+    "enforce_planning": {
+      "description": "Перераховує план заряджання зараз.",
+      "fields": {
+        "config_entry_id": {
+          "description": "Запускати лише для цього запису BattMind (типово: усі).",
+          "name": "Запис конфігурації"
+        }
+      },
+      "name": "Примусове планування"
+    },
+    "recalc_charging_history_today": {
+      "description": "Перераховує сьогоднішню історію заряджання погодинно.",
+      "fields": {
+        "config_entry_id": {
+          "description": "Запускати лише для цього запису BattMind (типово: усі).",
+          "name": "Запис конфігурації"
+        }
+      },
+      "name": "Перерахувати сьогоднішню історію заряджання"
     }
   }
 }

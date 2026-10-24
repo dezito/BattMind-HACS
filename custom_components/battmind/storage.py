@@ -20,7 +20,8 @@ from .const import DOMAIN, LEGACY_DB_FILES, STORAGE_VERSION
 
 _LOGGER = logging.getLogger(__name__)
 
-DB_NAMES = tuple(LEGACY_DB_FILES.keys())
+# "analysis": economy and planning quality (engine_analysis.py), no PyScript version
+DB_NAMES = (*LEGACY_DB_FILES, "analysis")
 
 
 class BattMindStorage:
@@ -48,6 +49,14 @@ class BattMindStorage:
                 result[name] = None
                 continue
             result[name] = await self.hass.async_add_executor_job(decode, raw)
+        return result
+
+    async def async_load_raw(self) -> dict[str, Any]:
+        """The stored (encoded) databases, for a backup."""
+        result: dict[str, Any] = {}
+        for name, store in self._stores.items():
+            if (raw := await store.async_load()) is not None:
+                result[name] = raw
         return result
 
     async def async_save(self, name: str, encoded: Any) -> None:

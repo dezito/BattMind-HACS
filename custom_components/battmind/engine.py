@@ -11,12 +11,14 @@ The algorithm is split in mixins:
 * :mod:`engine_planner` - the charging plan and the overview markdown
 * :mod:`engine_history` - charging history and the cost of the energy in the battery
 * :mod:`engine_energy`  - power measurements, solar prediction and the hourly databases
+* :mod:`engine_analysis` - economy, energy and planning quality per month and day
 """
 from __future__ import annotations
 
 import datetime
 import hashlib
 import logging
+import math
 import threading
 import time
 from dataclasses import dataclass, field
@@ -31,10 +33,11 @@ from .const import (
     PRICE_ADDER_DAY_BETWEEN_DIVIDER,
     SWITCH_SETTINGS,
 )
+from .engine_analysis import AnalysisMixin
 from .engine_energy import EnergyMixin
 from .engine_history import HistoryMixin
 from .engine_planner import PlannerMixin
-from .formatting import active_charging_rules, emoji_parse, format_charging_rule, get_list_values, translate
+from .formatting import active_charging_rules, emoji_parse, emoji_rules, format_charging_rule, get_list_values, translate
 from .helpers import (
     average,
     calculate_ema,
@@ -92,7 +95,7 @@ class JobResult:
     duration: float = 0.0
 
 
-class BattMindEngine(PlannerMixin, HistoryMixin, EnergyMixin):
+class BattMindEngine(PlannerMixin, HistoryMixin, EnergyMixin, AnalysisMixin):
     """Holds the BattMind state and implements the algorithm."""
 
     def __init__(self, config: dict, prefix: str, texts: dict[str, str]) -> None:
@@ -117,11 +120,13 @@ class BattMindEngine(PlannerMixin, HistoryMixin, EnergyMixin):
         self.power_values_db: dict = {}
         self.kwh_avg_prices_db: dict = {}
         self.solar_available_db: dict = {}
+        self.analysis_db: dict = {"hours": {}, "days": {}, "plans": {}, "rule_days": {}}
 
         # runtime state
         self.grid_price_cache: dict = {"using_offline_prices": False}
         self.sell_price_cache: dict = {"using_offline_prices": False}
         self.plan: dict = {}
+        self.optimizer_shadow: dict | None = None
         self.charge_hours: dict = {}
         self.battery_expenses: dict = {}
         self.charging_history_total: dict = {}
@@ -177,6 +182,7 @@ class BattMindEngine(PlannerMixin, HistoryMixin, EnergyMixin):
             "power_values": self.power_values_db,
             "kwh_avg_prices": self.kwh_avg_prices_db,
             "solar_available": self.solar_available_db,
+            "analysis": self.analysis_db,
         }
 
     def mark_dirty(self, name: str) -> None:
@@ -192,6 +198,8 @@ class BattMindEngine(PlannerMixin, HistoryMixin, EnergyMixin):
         self.load_kwh_prices(databases.get("kwh_avg_prices"))
         self.update_grid_prices(initial_run=True)
         self.load_charging_history(databases.get("charging_history"))
+        self.load_analysis_db(databases.get("analysis"))
+        self.publish_analysis()
         _LOGGER.info(
             "Loaded databases: charging history %s entries, power values %s hours, price history %s days, solar %s hours",
             len(self.charging_history_db), len(self.power_values_db), len(self.kwh_avg_prices_db.get("mean", [])),
@@ -214,7 +222,9 @@ class BattMindEngine(PlannerMixin, HistoryMixin, EnergyMixin):
         )
         self.power_values_to_db(self.power_values(period=60))
         self.kwh_charged_by_solar()
-        return self.charging_history(timestamp=timestamp)
+        session = self.charging_history(timestamp=timestamp)
+        self.analysis_hour_end(timestamp)
+        return session
 
     # ------------------------------------------------------------------ #
     # Snapshot access
@@ -320,10 +330,11 @@ class BattMindEngine(PlannerMixin, HistoryMixin, EnergyMixin):
         return [int(hour) for hour in value.replace(" ", "").split(",") if hour.isdigit()]
 
     def get_min_profit_per_kwh(self) -> float:
-        return self.number("min_profit_per_kwh") if self.enabled("only_discharge_on_profit") else 0.0
+        """Used by every charge/discharge rule, not only by only_discharge_on_profit."""
+        return self.number("min_profit_per_kwh")
 
     def get_min_total_profit(self) -> float:
-        return self.number("min_total_profit") if self.enabled("only_discharge_on_profit") else 0.0
+        return self.number("min_total_profit")
 
     def get_forecast_type(self) -> str:
         value = str(self.setting("forecast_type") or "ema").split(" ")[0].lower()
@@ -370,8 +381,14 @@ class BattMindEngine(PlannerMixin, HistoryMixin, EnergyMixin):
         self._job_cache["charging_loss"] = loss
         return loss
 
+    def battery_efficiency(self) -> float:
+        """One way efficiency: the round trip loss is split evenly over charging and discharging."""
+        return math.sqrt(1.0 - min(abs(self.get_charging_loss()), 0.9))
+
     def calc_battery_loss_cost(self, price: float) -> float:
-        return price * abs(self.get_charging_loss())
+        """Loss part of the price of 1 kWh out of the battery: it costs price / (1 - round trip loss)."""
+        loss = min(abs(self.get_charging_loss()), 0.9)
+        return price * loss / (1.0 - loss)
 
     # ------------------------------------------------------------------ #
     # Prices
@@ -640,25 +657,24 @@ class BattMindEngine(PlannerMixin, HistoryMixin, EnergyMixin):
         """Update the plan and decide what the battery should do right now."""
         t = self.t
         try:
-            if self.enabled("deactivate_script"):
-                self.set_charging_rule(f"⛔{t('ui.charge_if_needed.script_deactivated')}")
-                return self.last_powerwall_action
-
             self.cheap_grid_charge_hours(force_recalculate=force_recalculate)
 
             if (charge_hour := self.current_hour_in_charge_hours()) is not None:
                 action = "grid_charging"
                 self.session_rules.update(active_charging_rules(self.charge_hours[charge_hour]))
                 rule = t("ui.charge_if_needed.planned_charging", emoji=emoji_parse(self.charge_hours[charge_hour]))
-            elif self.current_period_in_force_discharge() is not None:
+            elif (sale_period := self.current_period_in_force_discharge()) is not None:
                 action = "force_discharge"
                 self.session_rules["force_discharge"] = True
+                # the rule that sells (most profit, old energy, ...) for the analysis per rule
+                self.session_rules.update(emoji_rules(self._plan_today()["force_discharge_timestamps"][sale_period].get("emoji", "")))
                 rule = t("ui.charge_if_needed.force_discharge")
             elif self._current_hour_in("discharge_timestamps") is not None:
                 action = "discharge_allowed"
                 rule = t("ui.charge_if_needed.discharge_allowed")
             elif self._current_hour_in("force_powerwall_max_hours_old_discharge_timestamps") is not None:
                 action = "discharge_allowed"
+                self.session_rules["force_powerwall_max_hours_old_discharge"] = True
                 rule = t("ui.charge_if_needed.force_powerwall_max_hours_old_discharge")
             elif self._current_hour_in("blocked_solar_charge_timestamps") is not None:
                 action = "blocked_solar_charge"

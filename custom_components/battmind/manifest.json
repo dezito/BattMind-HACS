@@ -2,7 +2,9 @@
   "domain": "battmind",
   "name": "BattMind",
   "after_dependencies": [
+    "blueprint",
     "recorder",
+    "repairs",
     "sun",
     "weather"
   ],
@@ -20,5 +22,5 @@
   "issue_tracker": "https://github.com/dezito/BattMind-HACS/issues",
   "requirements": [],
   "single_config_entry": false,
-  "version": "1.0.1"
+  "version": "1.0.2"
 }

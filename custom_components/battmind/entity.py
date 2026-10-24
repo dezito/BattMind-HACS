@@ -55,6 +55,12 @@ class BattMindEntity(Entity):
             return None
         return state
 
+    async def async_get_restored_state(self) -> State | None:
+        """The value of an imported backup (backup.py) before the entity's own last state."""
+        if (value := self.coordinator.restore_settings.get(f"{self._platform_domain}.{self._key}")) is not None:
+            return State(self.entity_id, value)
+        return await self.async_get_last_state()  # type: ignore[attr-defined]
+
 
 class BattMindUpdatingEntity(BattMindEntity):
     """Entity that writes its state when the coordinator publishes its key."""

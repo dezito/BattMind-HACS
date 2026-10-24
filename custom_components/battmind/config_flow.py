@@ -13,9 +13,11 @@ import voluptuous as vol
 
 from homeassistant.config_entries import ConfigEntry, ConfigFlow, ConfigFlowResult, OptionsFlow
 from homeassistant.core import callback
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers import selector
 
+from .backup import BACKUP_DIR, async_export, async_import, async_load_backup, backup_dir, list_backups
 from .const import (
     CONF_ENTITY_PREFIX,
     DEFAULT_ENTITY_PREFIX,
@@ -35,6 +37,7 @@ from .storage import find_legacy_sources, load_legacy_config
 
 PREFIX_RE = re.compile(r"^[a-z][a-z0-9_]{0,49}$")
 IMPORT_NONE = "none"
+BACKUP_EXPORT = "export"
 CRON_INTERVALS = ["1", "2", "3", "4", "5", "6", "10", "12", "15", "20", "30"]
 PRICE_PROVIDERS = ["energidataservice", "stromligning"]
 ENERGIDATASERVICE_URL = "https://github.com/MTrab/energidataservice"  # {eds_url} in the step descriptions
@@ -400,6 +403,8 @@ class BattMindConfigFlow(BattMindFlowPages, ConfigFlow, domain=DOMAIN):
         self._initial_settings: dict[str, Any] = {}
         self._legacy_sources: dict[str, list[str]] = {}
         self._legacy_prefix: str | None = None
+        self._backups: dict[str, str] = {}
+        self._restore_backup: str | None = None
         self._queue: list[str] = []
         self._providers: list[str] = ["energidataservice"]
 
@@ -437,12 +442,10 @@ class BattMindConfigFlow(BattMindFlowPages, ConfigFlow, domain=DOMAIN):
                 self._prefix = prefix
                 self._options["language"] = user_input.get("language", self._options["language"])
                 self._queue = list(CONFIG_FLOW_STEPS)
-                self._legacy_sources = await self.hass.async_add_executor_job(
-                    find_legacy_sources, self.hass.config.config_dir
-                )
-                if self._legacy_sources:
-                    return await self.async_step_import_legacy()
-                return await self._async_next()
+                self._backups = await self.hass.async_add_executor_job(list_backups, backup_dir(self.hass))
+                if self._backups:
+                    return await self.async_step_restore_backup()
+                return await self._async_legacy_or_next()
 
         language = normalize_language(self.hass.config.language)
         schema = vol.Schema(
@@ -452,6 +455,45 @@ class BattMindConfigFlow(BattMindFlowPages, ConfigFlow, domain=DOMAIN):
             }
         )
         return self.async_show_form(step_id="user", data_schema=schema, errors=errors)
+
+    async def _async_legacy_or_next(self) -> ConfigFlowResult:
+        self._legacy_sources = await self.hass.async_add_executor_job(find_legacy_sources, self.hass.config.config_dir)
+        if self._legacy_sources:
+            return await self.async_step_import_legacy()
+        return await self._async_next()
+
+    async def async_step_restore_backup(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        """Ask which exported or deleted BattMind entry (if any) should be restored."""
+        if user_input is not None:
+            name = user_input.get("backup", IMPORT_NONE)
+            if name not in self._backups:
+                return await self._async_legacy_or_next()
+            backup = await async_load_backup(self.hass, name)
+            self._restore_backup = name
+            language = self._options["language"]
+            self._options = {**default_options(), **(backup.get("options") or {}), "language": language}
+            self._providers = providers_from_options(self._options)
+            return await self._async_next()
+
+        schema = vol.Schema(
+            {
+                vol.Required("backup", default=next(iter(self._backups))): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=[
+                            *(selector.SelectOptionDict(value=name, label=label) for name, label in self._backups.items()),
+                            selector.SelectOptionDict(value=IMPORT_NONE, label=IMPORT_NONE),
+                        ],
+                        mode=selector.SelectSelectorMode.LIST,
+                        translation_key="restore_backup",
+                    )
+                )
+            }
+        )
+        return self.async_show_form(
+            step_id="restore_backup",
+            data_schema=schema,
+            description_placeholders={"prefix": self._prefix, "folder": BACKUP_DIR},
+        )
 
     async def async_step_import_legacy(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Ask which PyScript installation (if any) should be imported."""
@@ -501,6 +543,7 @@ class BattMindConfigFlow(BattMindFlowPages, ConfigFlow, domain=DOMAIN):
                 CONF_ENTITY_PREFIX: self._prefix,
                 "legacy_prefix": self._legacy_prefix,
                 "initial_settings": self._initial_settings,
+                "restore_backup": self._restore_backup,
             },
             options=self._options,
         )
@@ -521,7 +564,40 @@ class BattMindOptionsFlow(BattMindFlowPages, OptionsFlow):
         self._options = {**default_options(), **self.config_entry.options}
         self._options["language"] = normalize_language(self._options.get("language"))
         self._providers = providers_from_options(self._options)
-        return self.async_show_menu(step_id="init", menu_options=[f"menu_{group}" for group in OPTIONS_MENU])
+        return self.async_show_menu(step_id="init", menu_options=[*(f"menu_{group}" for group in OPTIONS_MENU), "backup"])
+
+    async def async_step_backup(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        """Export the data now, or replace it with a backup (the entry is reloaded)."""
+        if user_input is not None:
+            choice = user_input.get("backup", BACKUP_EXPORT)
+            if choice == BACKUP_EXPORT:
+                name = await async_export(self.hass, self.config_entry)
+                return self.async_abort(reason="backup_exported", description_placeholders={"file": f"{BACKUP_DIR}/{name}"})
+            try:
+                await async_import(self.hass, self.config_entry, choice, bool(user_input.get("restore_configuration")))
+            except HomeAssistantError as err:
+                return self.async_abort(reason="backup_failed", description_placeholders={"error": str(err)})
+            return self.async_abort(reason="backup_imported", description_placeholders={"file": f"{BACKUP_DIR}/{choice}"})
+
+        backups = await self.hass.async_add_executor_job(list_backups, backup_dir(self.hass))
+        schema = vol.Schema(
+            {
+                vol.Required("backup", default=BACKUP_EXPORT): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=[
+                            selector.SelectOptionDict(value=BACKUP_EXPORT, label=BACKUP_EXPORT),
+                            *(selector.SelectOptionDict(value=name, label=label) for name, label in backups.items()),
+                        ],
+                        mode=selector.SelectSelectorMode.LIST,
+                        translation_key="backup_action",
+                    )
+                ),
+                vol.Required("restore_configuration", default=False): selector.BooleanSelector(),
+            }
+        )
+        return self.async_show_form(
+            step_id="backup", data_schema=schema, description_placeholders={**self._placeholders(), "folder": BACKUP_DIR}
+        )
 
     async def _async_menu(self, group: str) -> ConfigFlowResult:
         self._queue = list(OPTIONS_MENU[group])

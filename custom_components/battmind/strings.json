@@ -184,7 +184,7 @@
         "data_description": {
           "days_to_predict": "Number of days (incl. today) the charging plan, the consumption prediction and the solar prediction cover. More days give better decisions about storing energy, but cost more CPU and depend on price forecasts.",
           "cron_interval": "Minutes between each check of the plan. The plan is only recalculated when prices, battery level or settings changed.",
-          "dashboard": "Adds a ready-made BattMind dashboard to the sidebar with the plan, prices, history and all settings for this instance. Needs the HACS cards apexcharts-card, mushroom, stack-in-card and config-template-card.",
+          "dashboard": "Adds a ready-made BattMind dashboard to the sidebar with the plan, prices, history and all settings for this instance. Needs the HACS cards apexcharts-card, mushroom, config-template-card and card-mod.",
           "enable_diagnostic_file_log": "Write a detailed log to battmind_{prefix}.log in the config folder (2 MB per file, 3 rotations). For troubleshooting.",
           "testing_mode": "Marks the charging rule with 🧪 so a test instance can be told apart from the real one."
         }
@@ -203,6 +203,13 @@
           "solar_available_db_data_to_save": "Number of measurements of solar surplus kept per hour and weather score.",
           "kwh_avg_prices_db_data_to_save": "Number of days of prices kept. Used as fallback prices when the price integration is offline.",
           "charging_history_db_data_to_save": "Number of months of charging history kept (shown in the history and used for the battery cost)."
+        }
+      },
+      "restore_backup": {
+        "title": "Restore from a backup",
+        "description": "BattMind backups found in **battmind_backups** (written by Export data and when a BattMind device is deleted).\n\nChoose one to restore it as **{prefix}**: its configuration is used as defaults on the next pages, and the databases and settings are restored on first start.",
+        "data": {
+          "backup": "Restore"
         }
       }
     },
@@ -229,7 +236,8 @@
           "menu_consumption": "House consumption",
           "menu_prices": "Electricity prices",
           "menu_solar": "Solar panels and weather",
-          "menu_advanced": "Planning and data storage"
+          "menu_advanced": "Planning and data storage",
+          "backup": "Backup (export / import)"
         }
       },
       "price_provider": {
@@ -405,7 +413,7 @@
         "data_description": {
           "days_to_predict": "Number of days (incl. today) the charging plan, the consumption prediction and the solar prediction cover. More days give better decisions about storing energy, but cost more CPU and depend on price forecasts.",
           "cron_interval": "Minutes between each check of the plan. The plan is only recalculated when prices, battery level or settings changed.",
-          "dashboard": "Adds a ready-made BattMind dashboard to the sidebar with the plan, prices, history and all settings for this instance. Needs the HACS cards apexcharts-card, mushroom, stack-in-card and config-template-card.",
+          "dashboard": "Adds a ready-made BattMind dashboard to the sidebar with the plan, prices, history and all settings for this instance. Needs the HACS cards apexcharts-card, mushroom, config-template-card and card-mod.",
           "enable_diagnostic_file_log": "Write a detailed log to battmind_{prefix}.log in the config folder (2 MB per file, 3 rotations). For troubleshooting.",
           "testing_mode": "Marks the charging rule with 🧪 so a test instance can be told apart from the real one."
         }
@@ -425,6 +433,17 @@
           "kwh_avg_prices_db_data_to_save": "Number of days of prices kept. Used as fallback prices when the price integration is offline.",
           "charging_history_db_data_to_save": "Number of months of charging history kept (shown in the history and used for the battery cost)."
         }
+      },
+      "backup": {
+        "title": "Backup",
+        "description": "Export writes the databases, settings and configuration to a file in **battmind_backups**.\n\nImporting a file replaces the databases and settings of **{prefix}** with the backup (the current data is exported first, as a *_before_import* file) and reloads the integration.",
+        "data": {
+          "backup": "Action",
+          "restore_configuration": "Also restore the configuration"
+        },
+        "data_description": {
+          "restore_configuration": "Use the entities and options of the backup as well. Leave off when the backup comes from another Home Assistant."
+        }
       }
     },
     "error": {
@@ -434,6 +453,11 @@
       "min_above_max": "The minimum level must be lower than the maximum level.",
       "no_price_provider": "Choose at least one price provider.",
       "production_required": "A solar forecast requires a solar production sensor."
+    },
+    "abort": {
+      "backup_exported": "The backup was saved as **{file}**.",
+      "backup_imported": "**{file}** was imported, the integration has been reloaded.",
+      "backup_failed": "The import failed: {error}"
     }
   },
   "selector": {
@@ -446,6 +470,16 @@
       "options": {
         "energidataservice": "Energi Data Service",
         "stromligning": "Strømligning"
+      }
+    },
+    "restore_backup": {
+      "options": {
+        "none": "Do not restore (start empty)"
+      }
+    },
+    "backup_action": {
+      "options": {
+        "export": "Export now"
       }
     }
   },
@@ -479,13 +513,38 @@
           "description": "Only run for this BattMind entry (default: all)."
         }
       }
+    },
+    "export_data": {
+      "name": "Export data",
+      "description": "Saves the databases, settings and configuration as a backup file in the config folder (battmind_backups).",
+      "fields": {
+        "config_entry_id": {
+          "name": "Config entry",
+          "description": "Only export this entry (default: all)."
+        }
+      }
+    },
+    "import_data": {
+      "name": "Import data",
+      "description": "Replaces the databases and settings of an entry with a backup file from battmind_backups. The current data is exported first.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Config entry",
+          "description": "The entry to restore into."
+        },
+        "file": {
+          "name": "Backup file",
+          "description": "File name in battmind_backups (as returned by Export data)."
+        },
+        "restore_configuration": {
+          "name": "Restore configuration",
+          "description": "Also replace the configuration (entities and options) with the backup."
+        }
+      }
     }
   },
   "entity": {
     "switch": {
-      "deactivate_script": {
-        "name": "Deactivate script"
-      },
       "solar_charging": {
         "name": "Solar surplus charging"
       },
@@ -521,6 +580,18 @@
       },
       "optimize_solar_charging": {
         "name": "Optimise solar charging"
+      },
+      "negative_price_planner": {
+        "name": "Charging: Negative prices"
+      },
+      "grid_charge_to_sell": {
+        "name": "Charging: Buy to sell"
+      },
+      "discharge_before_solar": {
+        "name": "Discharging: Before the sun"
+      },
+      "optimizer_control": {
+        "name": "Control the battery with the whole period optimisation"
       }
     },
     "number": {
@@ -534,10 +605,10 @@
         "name": "Increase for cheap periods"
       },
       "min_profit_per_kwh": {
-        "name": "Min. profit per kWh when discharging"
+        "name": "Min. profit per kWh (charging / discharging)"
       },
       "min_total_profit": {
-        "name": "Min. total profit from discharging"
+        "name": "Min. total profit (charging / discharging)"
       },
       "min_sell_kwh": {
         "name": "Minimum excess kWh for export"
@@ -560,8 +631,8 @@
       "enforce_planning": {
         "name": "Force planning"
       },
-      "restart_script": {
-        "name": "Restart script"
+      "export_data": {
+        "name": "Export data"
       }
     },
     "sensor": {
@@ -585,6 +656,22 @@
       },
       "kwh_charged_by_solar": {
         "name": "kWh charged by solar"
+      },
+      "analysis": {
+        "name": "Analysis"
+      }
+    }
+  },
+  "issues": {
+    "blueprint_update": {
+      "title": "New version of the blueprint {name}",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "Update the blueprint {name}",
+            "description": "BattMind comes with a version of the blueprint **{name}** that differs from `{path}`.\n\nSelect **Submit** to replace the file with the bundled version and reload the automations that use it. Changes you made to the file yourself are overwritten – copy it to another file name first if you want to keep them.\n\nIgnore this repair to keep your own file."
+          }
+        }
       }
     }
   }
