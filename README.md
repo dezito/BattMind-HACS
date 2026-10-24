@@ -25,23 +25,47 @@ it pays to sell power. The result is exposed as an action
 ## Features
 
 - **Charging plan for several days** (1–7 days) based on electricity prices, forecasts and consumption history
-- **Planners that can be switched on and off individually:**
-  - **Cheapest periods:** charge in the cheapest periods (number of periods and price limits are configurable)
+- **Two ways to control the battery**
+  - **Rules** (default): the charge and discharge rules below decide each hour
+  - **Whole period optimisation:** calculates the cheapest action for every hour of the whole forecast period at
+    once (charging loss, wear, solar, buy and sell prices and the profit requirements). Every action is shown as
+    the rule it corresponds to, and the rule switches decide which actions it may use
+- **Charging rules that can be switched on and off individually** – solar surplus always charges first, and grid
+  charging never pushes out solar that would be sold for less than the grid kWh cost
+  - **Cheapest periods:** charge in the cheapest periods for the day's consumption (number of periods and price limits are configurable)
   - **Fill up during cheapest period:** charge the battery fully in the cheapest period
-  - **Most expensive periods:** make sure there is power in the battery for the most expensive periods
-  - **Required before max level:** only charge what is needed before the solar panels fill the battery
-- **Discharging and selling**
-  - Only discharge when it is profitable (min. profit per kWh and in total)
-  - Prioritise discharge hours by the cost price of the energy
-  - Sell excess kWh to the grid in the most expensive hours (forced discharge)
-  - Maximise profit, and exclude specific selling hours
-  - Forced discharge of "old" kWh that have been in the battery for too long
-- **Solar (optional):** solar surplus charging, optimised solar charging and forecast from
-  [Solcast PV Forecast](https://github.com/BJReplay/ha-solcast-solar) and/or own history per cloud cover
+  - **Most expensive periods:** charge for the most expensive hours the battery doesn't cover
+  - **Required before max level:** only charge what is missing before the solar panels fill the battery
+  - **Negative prices:** fill the battery when charging pays, even if the energy is never used
+  - **Buy to sell:** charge cheaply from the grid only to sell the kWh again when it pays after loss and wear
+- **Discharging rules**
+  - **Profit only:** block discharging in hours where the battery's kWh cost (incl. loss and wear) is higher than the price
+  - **Prioritise by energy cost:** save the battery for the most expensive hours until it is charged again
+  - **Before the sun:** use/sell the battery before the sun fills it anyway and the surplus would be sold cheaply
+  - **Max. age of kWh:** energy older than X hours is used even without profit, and sold when that pays more
+- **Selling rules**
+  - **Maximise profit:** sell in the most expensive periods when that pays more than using the energy yourself
+  - **Sell excess kWh:** sell the energy that isn't used before the battery is empty or full again (forced discharge)
+  - **Use midnight battery level:** only look until midnight instead of the whole forecast period
+  - min. profit per kWh and in total, min. kWh per sale, and exclude specific selling hours
+- **Solar (optional)**
+  - **Solar surplus charging:** include the solar surplus in the plan
+  - **Optimise solar charging:** sell the solar surplus in the expensive hours and fill the battery in the cheap solar hours instead
+  - forecast from [Solcast PV Forecast](https://github.com/BJReplay/ha-solcast-solar) and/or own history per cloud cover
+- **Consumption forecast** from own history: average, EMA or trend
 - **Price providers:** [Energi Data Service](https://github.com/MTrab/energidataservice) and/or
   [Strømligning](https://github.com/MTrab/stromligning), incl. sell price, tariffs, selling fee and refund
 - **Cost price of the battery's energy:** what the energy in the battery has cost (grid, solar, charge/discharge loss and wear)
-- **Detailed charging history and overview** as markdown and a ready-made dashboard in the sidebar
+- **Detailed charging history and overview** as markdown
+- **[Analysis](#dashboard)** of what the battery earns and how well BattMind plans
+  - economy per month: charged (grid/solar), discharged, charge price, value of a discharged kWh, spread and savings
+  - charged and discharged per rule, cycles and wear
+  - measured round trip loss against the configured loss, and self-sufficiency (solar, battery, grid)
+  - the error of each consumption forecast type, with a hint when another type is more accurate
+  - a hindsight score per day, planned against what happened, days with an empty battery in the most expensive
+    hours, and planned against measured solar surplus
+  - the first time, the last year is read from Home Assistant's long-term statistics
+- **[Ready-made dashboard](#dashboard)** in the sidebar with overview, settings and analysis, built from your setup
 - **Fail-safe:** if prices are missing, planning falls back to the internal price database
 - **Multiple instances:** each instance has its own prefix (e.g. one per battery)
 - **Languages:** Danish, English, German, Polish and Ukrainian
@@ -62,7 +86,7 @@ BattMind sends **no commands** to your inverter. It exposes what the battery sho
 | `sensor.battmind_powerwall_action` | Meaning |
 |---|---|
 | `grid_charging` | Charge the battery from the grid now |
-| `discharge_allowed` | The battery may discharge to the house |
+| `discharge_allowed` | Normal operation: the battery isn't really controlled – it charges from solar and discharges to the house as the inverter normally does |
 | `force_discharge` | Discharge / sell to the grid now (the most expensive hours) |
 | `force_solar_only_charging` | Charge from solar only, no discharging |
 | `blocked_solar_charge` | Don't charge from solar (the surplus is sold instead) |
@@ -81,7 +105,7 @@ actions:
       - conditions: "{{ trigger.to_state.state == 'grid_charging' }}"
         sequence: []  # e.g. force charging from the grid
       - conditions: "{{ trigger.to_state.state == 'discharge_allowed' }}"
-        sequence: []  # e.g. maximise self-consumption
+        sequence: []  # e.g. normal operation / maximise self-consumption (solar charging and discharging allowed)
       - conditions: "{{ trigger.to_state.state == 'force_discharge' }}"
         sequence: []  # e.g. force discharge to the grid
       - conditions: "{{ trigger.to_state.state in ['force_solar_only_charging', 'blocked_solar_charge'] }}"
@@ -161,11 +185,11 @@ The entity ids start with the prefix, here `battmind`.
 
 | Type | Entities |
 |---|---|
-| `switch` | Solar surplus charging, cheapest periods, fill up during cheapest period, most expensive periods, required before max level, discharge only at profit, prioritise discharging by energy cost, sell excess kWh, use midnight battery level, maximise profit, forced discharge of old kWh, optimise solar charging, negative prices, buy to sell, discharge before the sun, optimise the whole period (shadow plan) |
+| `switch` | Solar surplus charging, cheapest periods, fill up during cheapest period, most expensive periods, required before max level, discharge only at profit, prioritise discharging by energy cost, sell excess kWh, use midnight battery level, maximise profit, forced discharge of old kWh, optimise solar charging, negative prices, buy to sell, discharge before the sun, control the battery with the whole period optimisation |
 | `number` | Cheap price periods, increase for cheapest price / cheap periods, min. profit per kWh, min. total profit, min. kWh for export, max. hours for old kWh |
 | `select` | Forecast type (average, EMA or trend) |
 | `text` | Exclude selling hours (e.g. `17,18,19`) |
-| `button` | Force planning, export data (a [backup](#backup-export-and-import-of-data)) |
+| `button` | Force planning, export data (a [backup](#backup-export-and-import-of-data)), reset dashboard |
 
 The plan is recalculated 5 seconds after a setting is changed. The values are kept across restarts.
 
