@@ -113,6 +113,9 @@
       "enforce_planning": {
         "default": "mdi:calendar-refresh"
       },
+      "reset_dashboard": {
+        "default": "mdi:view-dashboard-edit"
+      },
       "export_data": {
         "default": "mdi:database-export"
       }

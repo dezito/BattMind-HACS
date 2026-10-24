@@ -11,6 +11,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .backup import BACKUP_DIR, async_export
 from .const import DOMAIN
 from .coordinator import BattMindCoordinator
+from .dashboard import async_reset_dashboard
 from .entity import BattMindEntity
 
 
@@ -20,12 +21,13 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities: AddE
     registry = er.async_get(hass)
     if entity_id := registry.async_get_entity_id("button", DOMAIN, f"{entry.entry_id}_restart_script"):
         registry.async_remove(entity_id)
-    async_add_entities(
-        [
-            BattMindEnforcePlanningButton(coordinator, "button", "enforce_planning"),
-            BattMindExportButton(coordinator, "button", "export_data"),
-        ]
-    )
+    entities = [
+        BattMindEnforcePlanningButton(coordinator, "button", "enforce_planning"),
+        BattMindExportButton(coordinator, "button", "export_data"),
+    ]
+    if coordinator.config.get("dashboard"):
+        entities.append(BattMindResetDashboardButton(coordinator, "button", "reset_dashboard"))
+    async_add_entities(entities)
 
 
 class BattMindEnforcePlanningButton(BattMindEntity, ButtonEntity):
@@ -49,3 +51,12 @@ class BattMindExportButton(BattMindEntity, ButtonEntity):
             title=f"📟BattMind ({prefix})",
             notification_id=f"{prefix}_backup",
         )
+
+
+class BattMindResetDashboardButton(BattMindEntity, ButtonEntity):
+    """Throw away the edits made to the sidebar dashboard in the UI."""
+
+    _attr_entity_category = EntityCategory.CONFIG
+
+    async def async_press(self) -> None:
+        await async_reset_dashboard(self.hass, self.coordinator.prefix)

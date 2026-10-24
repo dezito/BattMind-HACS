@@ -548,6 +548,9 @@
       "enforce_planning": {
         "name": "Примусове планування"
       },
+      "reset_dashboard": {
+        "name": "Скинути панель"
+      },
       "export_data": {
         "name": "Експортувати дані"
       }

@@ -631,6 +631,9 @@
       "enforce_planning": {
         "name": "Gennemtving planlægning"
       },
+      "reset_dashboard": {
+        "name": "Nulstil dashboard"
+      },
       "export_data": {
         "name": "Eksportér data"
       }

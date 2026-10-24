@@ -548,6 +548,9 @@
       "enforce_planning": {
         "name": "Planung erzwingen"
       },
+      "reset_dashboard": {
+        "name": "Dashboard zurücksetzen"
+      },
       "export_data": {
         "name": "Daten exportieren"
       }
