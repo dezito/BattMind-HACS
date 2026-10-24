@@ -611,12 +611,12 @@ class BattMindEngine(PlannerMixin, HistoryMixin, EnergyMixin, AnalysisMixin):
 
     def emoji_description(self) -> None:
         lines = [f"## {self.t('ui.emoji_description.header')} ##"]
-        for group, inline in EMOJI_DESCRIPTION_GROUPS:
+        for group in EMOJI_DESCRIPTION_GROUPS:
             entries = sorted(((key, entry) for key, entry in CHARGING_TYPES.items() if entry["group"] == group), key=lambda kv: kv[1]["priority"])
             items = [f"**{entry['emoji']} {self.t(f'charging_type.{key}.description', default='No description')}**" for key, entry in entries]
             if items:
                 lines.append(f"### {self.t(f'ui.emoji_description.groups.{group}')}")
-                lines.extend([f"* {' · '.join(items)}"] if inline else [f"* {item}" for item in items])
+                lines.extend(f"* {item}" for item in items)
         self.set_state("emoji_description", self.t("ui.emoji_description.markdown_hint", name=self.name))
         self.set_attr("emoji_description", "description", "\n".join(lines))
 
