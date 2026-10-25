@@ -29,7 +29,7 @@ inverters, because you choose what happens with Home Assistant's normal action e
 | Input | Meaning |
 |---|---|
 | BattMind action | `sensor.<prefix>_powerwall_action` |
-| Repeat interval | run the current action again with this interval (0 = off). See [below](#repeat-interval) |
+| Repeat interval | run the current action again with this interval (default 5 minutes, 0 = off). See [below](#repeat-interval) |
 | Custom triggers | extra triggers that run the current action again, e.g. a change on an inverter entity |
 
 ### Actions
@@ -71,14 +71,20 @@ isn't in the consumption forecast.
 
 ### Repeat interval
 
-Some inverters need the command again and again:
+By default the current action is sent again **every 5 minutes**. Without a repeat, the action is only
+sent when BattMind changes it – so if a command is lost (the inverter's cloud doesn't answer), the inverter
+changes its mode by itself, or the settings are changed elsewhere (e.g. in the inverter's app), nothing puts
+it right until the next change of action. The repeat catches that within 5 minutes.
 
-- **Huawei Solar:** forced charge/discharge runs for a given duration. Repeat every 30 minutes.
+Change it if your inverter needs something else:
+
 - **Modbus:** some batteries fall back to their own mode if no command arrives. Repeat every 30 seconds.
-- **Settings changed elsewhere** (e.g. in the inverter's app): repeat every few minutes to put them back.
+- **Huawei Solar:** forced charge/discharge runs for a given duration (e.g. 120 min) – the 5 minutes renew it
+  long before it runs out.
+- **0 = off:** only if every command reliably sticks, and the inverter never changes mode on its own.
 
 The repetition starts over every time BattMind changes action, and also when Home Assistant starts or the
-automations are reloaded (only with a repeat interval set).
+automations are reloaded (not with 0).
 
 ## Your own automation
 

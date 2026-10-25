@@ -123,5 +123,5 @@ device's id (shown in the address bar on the device's page).
 
 ## Repeat interval
 
-The forced charge/discharge stops after `duration` minutes. Set **Repeat interval** to e.g. 30 minutes
-(`00:30:00`), so it is renewed while the action lasts.
+The forced charge/discharge stops after `duration` minutes. Keep **Repeat interval** at the default 5
+minutes (or at least below `duration`), so it is renewed while the action lasts.

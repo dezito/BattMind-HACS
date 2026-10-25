@@ -16,6 +16,28 @@ One of these is usually the reason:
 - **It isn't one of the cheapest periods**, or it costs more than *increase for cheapest price* above the
   day's cheapest hour.
 
+## It planned to charge tonight, but the battery wasn't charged in the morning
+
+Usually the plan changed during the night. BattMind recalculates the plan every few minutes, and it moves
+or drops the charging when something it depends on changes:
+
+- **The prices changed.** Forecast prices (e.g. Carnot) and hours filled from the price database are
+  replaced by the real prices when they are published, and a cheaper hour – or no profitable one – may turn up.
+- **The consumption or the battery level differs** from the forecast, so less (or nothing) was needed.
+- **The solar forecast changed.** More expected sun means less grid charging, because solar charges first.
+
+To see what actually happened:
+
+- open the history of `sensor.<prefix>_powerwall_action` (*History* or the entity's dialog): it shows when
+  the action was `grid_charging` during the night
+- `sensor.<prefix>_current_charging_rule` and its history tell why
+- the overview shows the plan as it is now, with a reason for every hour
+- [Planned against actual](dashboard-analysis.md#planned-against-actual) in the analysis compares the plan
+  from the evening before with what was charged
+
+If the action was `grid_charging` but the battery didn't charge, the automation or the inverter is the
+problem – check the blueprint's trace (*Automations → ⋮ → Traces*).
+
 ## Why is the action `force_solar_only_charging` in the night?
 
 The energy in the battery is saved for more expensive hours (e.g. the morning or the next evening), or
@@ -61,10 +83,16 @@ was imported from the PyScript version or a backup.
 It is only recalculated when prices, the battery level or a setting have changed. Press **Force planning**
 (or call `battmind.enforce_planning`) to recalculate it now.
 
-## The automation doesn't run after a restart
+## The battery doesn't do what the action says
 
-The blueprint only runs on startup if a **Repeat interval** is set. Otherwise it waits for the next change
-of action. Set a repeat interval if your inverter forgets its settings on restart.
+E.g. the action is `grid_charging`, but the battery doesn't charge – after a restart, a lost command or
+because the inverter changed its mode by itself. The blueprint's **Repeat interval** (default 5 minutes)
+sends the current action again, also when Home Assistant starts, so it is put right within 5 minutes. If you
+set it to 0, the action is only sent when BattMind changes it, and nothing catches a lost command. See
+[Repeat interval](actions.md#repeat-interval).
+
+If it still doesn't follow, check the blueprint's trace (*Automations → ⋮ → Traces*): did the actions run,
+and did the inverter accept them?
 
 ## Today's charging history looks wrong
 

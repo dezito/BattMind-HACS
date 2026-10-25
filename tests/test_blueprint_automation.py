@@ -43,7 +43,10 @@ def ran(hass: HomeAssistant) -> list[str]:
     return events
 
 
-async def _setup(hass: HomeAssistant, freezer: FrozenDateTimeFactory, **inputs: Any) -> None:
+async def _setup(hass: HomeAssistant, freezer: FrozenDateTimeFactory, default_repeat: bool = False, **inputs: Any) -> None:
+    if not default_repeat:
+        # the tests choose the repeat themselves (the blueprint repeats every 5 minutes by default)
+        inputs.setdefault("repeat_interval", {"hours": 0, "minutes": 0, "seconds": 0})
     freezer.move_to(datetime(2026, 10, 23, 10, 13, 30, tzinfo=dt_util.get_default_time_zone()))
     hass.states.async_set(ACTION_SENSOR, "discharge_allowed")
     actions = {
@@ -91,12 +94,32 @@ async def test_action_change_runs_action(hass: HomeAssistant, freezer: FrozenDat
     assert ran == ["grid_charging"]
 
 
-async def test_repeat_off_by_default(hass: HomeAssistant, freezer: FrozenDateTimeFactory, ran: list[str]) -> None:
+async def test_repeat_off(hass: HomeAssistant, freezer: FrozenDateTimeFactory, ran: list[str]) -> None:
     await _setup(hass, freezer)
     hass.states.async_set(ACTION_SENSOR, "grid_charging")
     await _settle()
     await _wait(hass, freezer, 3600, step=60)
     assert ran == ["grid_charging"]
+
+
+async def test_repeat_every_5_minutes_by_default(hass: HomeAssistant, freezer: FrozenDateTimeFactory, ran: list[str]) -> None:
+    """A lost command or an inverter that changed its mode is put right within 5 minutes."""
+    await _setup(hass, freezer, default_repeat=True)
+    hass.states.async_set(ACTION_SENSOR, "grid_charging")
+    await _settle()
+    await _wait(hass, freezer, 900, step=30)
+    assert ran == ["grid_charging"] * 4
+
+    await _stop(hass)
+
+
+async def test_runs_on_reload_by_default(hass: HomeAssistant, freezer: FrozenDateTimeFactory, ran: list[str]) -> None:
+    await _setup(hass, freezer, default_repeat=True)
+    hass.bus.async_fire("automation_reloaded")
+    await _settle()
+    assert ran == ["discharge_allowed"]
+
+    await _stop(hass)
 
 
 async def test_repeat_interval_seconds(hass: HomeAssistant, freezer: FrozenDateTimeFactory, ran: list[str]) -> None:

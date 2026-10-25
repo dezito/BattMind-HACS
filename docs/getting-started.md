@@ -124,7 +124,8 @@ yours. The easiest way is the blueprint that comes with the integration:
 2. Select the BattMind sensor.
 3. For each of the five actions, add what your inverter should do. See [Actions](actions.md) for what each
    action means, and [Huawei Solar](inverters/huawei.md) for a complete example.
-4. If the inverter's forced charge/discharge stops by itself after a while, set **Repeat interval**.
+4. Keep **Repeat interval** at 5 minutes (default): the action is sent again, so a lost command or a mode
+   the inverter changed by itself is put right. Use 30 seconds for a battery controlled via Modbus.
 
 > [!TIP]
 > Start with the automation **off** and watch `sensor.<prefix>_powerwall_action` for a day. When the actions

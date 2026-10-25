@@ -73,5 +73,5 @@ Some batteries fall back to their own mode if no command arrives for a while.
 
 ## Huawei Solar
 
-See [Huawei Solar](inverters/huawei.md) for complete actions. Set the repeat interval to 30 minutes,
-because Huawei's forced charge/discharge stops by itself.
+See [Huawei Solar](inverters/huawei.md) for complete actions. Keep the repeat interval at 5 minutes, so
+Huawei's forced charge/discharge (which stops by itself) is renewed.
