@@ -59,13 +59,14 @@ blueprint:
           name: Repeat interval
           description: >-
             Keep running the current action again with this interval (0 = off).
-            Use it if your inverter's forced charge/discharge stops by itself
-            after a while (e.g. Huawei Solar every 30 minutes), if the battery
-            is controlled via Modbus and needs a command every few seconds, or
-            if the settings can be changed elsewhere.
+            The default 5 minutes puts the inverter back on track if a command
+            was lost, the inverter changed its mode by itself or the settings
+            were changed elsewhere - and the action is also sent when Home
+            Assistant starts. Use a shorter interval if the battery is
+            controlled via Modbus and needs a command every few seconds.
           default:
             hours: 0
-            minutes: 0
+            minutes: 5
             seconds: 0
           selector:
             duration:
