@@ -105,7 +105,8 @@ power values.
 When BattMind does something wrong, create a debug file **as soon as possible** after it happened: it holds
 the latest calculations, the inputs they ran with and the latest log messages.
 
-1. Press the button **Export debug info** on the BattMind device (Settings → Devices & services → BattMind),
+1. Press the button **Export debug info** at the bottom of the dashboard's **Settings** view (under *Problem or
+   error?*) or on the BattMind device (Settings → Devices & services → BattMind),
    or run the action `battmind.export_debug` under **Developer tools → Actions**.
 2. A notification appears with a download link (valid for 24 hours) and a link that opens a GitHub issue with
    the version and time filled in. The file is also saved in `battmind_debug/` in the config folder (the
