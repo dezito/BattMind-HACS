@@ -313,7 +313,7 @@ class AnalysisMixin:
         Only for days ahead with PRICE_CORRECTION_MIN_DAYS judged days, at most
         PRICE_CORRECTION_MAX either way, and only when the option is on.
         """
-        if not self.config["prices"].get("use_forecast_correction"):
+        if not self.enabled("price_forecast_correction"):
             return {}
         first = (self.now().date() - datetime.timedelta(days=PRICE_CORRECTION_DAYS)).isoformat()
         selected = [day for date, day in self.analysis_db.get("price_days", {}).items() if date >= first and isinstance(day, dict)]
@@ -824,7 +824,7 @@ class AnalysisMixin:
 
         price_forecast = {
             "rank_hours": PRICE_RANK_HOURS,
-            "correction_on": bool(self.config["prices"].get("use_forecast_correction")),
+            "correction_on": bool(self.enabled("price_forecast_correction")),
             "correction_min_days": PRICE_CORRECTION_MIN_DAYS,
             "last_7": price_errors(today - datetime.timedelta(days=7)),
             "last_30": price_last_30,

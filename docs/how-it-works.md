@@ -53,7 +53,7 @@ Buy and sell prices per hour (or per 15 minutes) from Energi Data Service and/or
 tariffs, refund and sell fee.
 
 **Forecast prices** (e.g. Carnot) get a small adder of 0.033 kr per day ahead, so the plan prefers known
-prices. With *Correct the price forecast* on (default), they are also corrected with how far off the
+prices. With the switch *Correct the price forecast* on (default, *Settings → Control*), they are also corrected with how far off the
 forecast was the last 30 days for that day ahead: if the forecast 2 days ahead was 0.15 kr too high on
 average, the plan subtracts 0.15 kr. A day ahead is only corrected after 7 days of measurements, and by at
 most ±0.50 kr. The [price forecast analysis](dashboard-analysis.md#price-forecast) shows the measurements

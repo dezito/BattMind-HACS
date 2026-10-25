@@ -252,8 +252,6 @@ DEFAULT_CONFIG: dict[str, Any] = {
         },
         "refund": 0.0,
         "sell_fee": 0.03,
-        # correct the price forecast with its measured bias (engine_analysis.py)
-        "use_forecast_correction": True,
     },
     "solar": {
         "entity_ids": {
@@ -311,7 +309,6 @@ OPTION_PATHS: dict[str, str] = {
     "stromligning_sell_surcharge": "prices.entity_ids.stromligning_sell_surcharge",
     "refund": "prices.refund",
     "sell_fee": "prices.sell_fee",
-    "use_price_forecast_correction": "prices.use_forecast_correction",
     # solar / forecast
     "production_entity_id": "solar.entity_ids.production_entity_id",
     "forecast_entity_id": "solar.entity_ids.forecast_entity_id",
@@ -374,7 +371,7 @@ FLOW_STEPS: dict[str, list[str]] = {
         "stromligning_sell_systemtariff",
         "stromligning_sell_surcharge",
     ],
-    "price_fees": ["refund", "sell_fee", "use_price_forecast_correction"],
+    "price_fees": ["refund", "sell_fee"],
     "solar": ["production_entity_id", "inverter_discharging_power_limit", "production_price", "forecast_entity_id"],
     "weather": ["hourly_service_entity_id", "daily_service_entity_id"],
     "advanced": ["days_to_predict", "cron_interval", "dashboard", "enable_diagnostic_file_log", "testing_mode"],
@@ -446,6 +443,8 @@ SWITCH_SETTINGS: dict[str, dict[str, Any]] = {
     "grid_charge_to_sell": {"default": True},
     "discharge_before_solar": {"default": True},
     "optimizer_control": {"default": True},
+    # correct the price forecast with its measured bias (engine_analysis.py)
+    "price_forecast_correction": {"default": True},
 }
 
 NUMBER_SETTINGS: dict[str, dict[str, Any]] = {

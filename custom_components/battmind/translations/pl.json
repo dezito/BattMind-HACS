@@ -108,13 +108,11 @@
       "price_fees": {
         "data_description": {
           "refund": "Kwota zwrotu od państwa/dostawcy",
-          "sell_fee": "Opłata za sprzedaż",
-          "use_price_forecast_correction": "Koryguj prognozę cen o jej odchylenie z ostatnich 30 dni, dla każdego dnia naprzód (po 7 dniach pomiarów, maksymalnie ±0,50 kr). Zobacz prognozę cen w analizie."
+          "sell_fee": "Opłata za sprzedaż"
         },
         "data": {
           "refund": "Zwrot",
-          "sell_fee": "Opłata za sprzedaż",
-          "use_price_forecast_correction": "Koryguj prognozę cen"
+          "sell_fee": "Opłata za sprzedaż"
         },
         "description": "Kwoty na kWh, które zmieniają wartość ładowania i sprzedaży.",
         "title": "Zwrot i opłaty"
@@ -336,13 +334,11 @@
       "price_fees": {
         "data_description": {
           "refund": "Kwota zwrotu od państwa/dostawcy",
-          "sell_fee": "Opłata za sprzedaż",
-          "use_price_forecast_correction": "Koryguj prognozę cen o jej odchylenie z ostatnich 30 dni, dla każdego dnia naprzód (po 7 dniach pomiarów, maksymalnie ±0,50 kr). Zobacz prognozę cen w analizie."
+          "sell_fee": "Opłata za sprzedaż"
         },
         "data": {
           "refund": "Zwrot",
-          "sell_fee": "Opłata za sprzedaż",
-          "use_price_forecast_correction": "Koryguj prognozę cen"
+          "sell_fee": "Opłata za sprzedaż"
         },
         "description": "Kwoty na kWh, które zmieniają wartość ładowania i sprzedaży.",
         "title": "Zwrot i opłaty"
@@ -513,6 +509,9 @@
       },
       "optimizer_control": {
         "name": "Steruj baterią optymalizacją całego okresu"
+      },
+      "price_forecast_correction": {
+        "name": "Koryguj prognozę cen"
       }
     },
     "number": {

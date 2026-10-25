@@ -129,7 +129,6 @@ SELECTORS: dict[str, Any] = {
     "stromligning_sell_surcharge": _entity("sensor", integration="stromligning"),
     "refund": _number(0, 10, 0.001, "kr/kWh"),
     "sell_fee": _number(0, 10, 0.001, "kr/kWh"),
-    "use_price_forecast_correction": BOOLEAN,
     # solar / weather
     "production_entity_id": _entity("sensor", device_class="power"),
     "inverter_discharging_power_limit": _number(100, 100000, 100, "W"),

@@ -1743,6 +1743,9 @@ views:
               - entity: switch.battmind_optimizer_control
                 name:
                   type: entity
+              - entity: switch.battmind_price_forecast_correction
+                name:
+                  type: entity
               - entity: select.battmind_forecast_type
                 name:
                   type: entity

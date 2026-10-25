@@ -136,13 +136,11 @@
         "description": "Beløb pr. kWh der ændrer hvad opladning og salg er værd.",
         "data": {
           "refund": "Refusion",
-          "sell_fee": "Salgsgebyr",
-          "use_price_forecast_correction": "Ret prisprognosen"
+          "sell_fee": "Salgsgebyr"
         },
         "data_description": {
           "refund": "Refusion pr. kWh fra stat/netselskab/leverandør, trækkes fra købsprisen i prishistorikken. 0 hvis ingen.",
-          "sell_fee": "Gebyr pr. kWh ved salg til nettet. Indgår i den beregnede salgspris.",
-          "use_price_forecast_correction": "Ret prisprognosen med hvor meget den har ramt ved siden af de sidste 30 dage, pr. dag frem (efter 7 dages målinger, højst ±0,50 kr). Se prisprognosen i analysen."
+          "sell_fee": "Gebyr pr. kWh ved salg til nettet. Indgår i den beregnede salgspris."
         }
       },
       "solar": {
@@ -367,13 +365,11 @@
         "description": "Beløb pr. kWh der ændrer hvad opladning og salg er værd.",
         "data": {
           "refund": "Refusion",
-          "sell_fee": "Salgsgebyr",
-          "use_price_forecast_correction": "Ret prisprognosen"
+          "sell_fee": "Salgsgebyr"
         },
         "data_description": {
           "refund": "Refusion pr. kWh fra stat/netselskab/leverandør, trækkes fra købsprisen i prishistorikken. 0 hvis ingen.",
-          "sell_fee": "Gebyr pr. kWh ved salg til nettet. Indgår i den beregnede salgspris.",
-          "use_price_forecast_correction": "Ret prisprognosen med hvor meget den har ramt ved siden af de sidste 30 dage, pr. dag frem (efter 7 dages målinger, højst ±0,50 kr). Se prisprognosen i analysen."
+          "sell_fee": "Gebyr pr. kWh ved salg til nettet. Indgår i den beregnede salgspris."
         }
       },
       "solar": {
@@ -596,6 +592,9 @@
       },
       "optimizer_control": {
         "name": "Styr batteriet med optimering af hele perioden"
+      },
+      "price_forecast_correction": {
+        "name": "Ret prisprognosen"
       }
     },
     "number": {
