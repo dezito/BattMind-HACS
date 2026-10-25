@@ -733,7 +733,8 @@ class AnalysisMixin:
             use = sum(_num(day.get("forecast", {}).get("use")) for day in selected)
             if not hours:
                 return None
-            result = {"hours": int(hours)}
+            # the measured consumption per hour, and per type what it forecast on average (measured + bias)
+            result = {"hours": int(hours), "actual": round(use / hours, 3)}
             for kind in FORECAST_TYPES:
                 absolute = sum(_num((day.get("forecast", {}).get(kind) or [0, 0])[0]) for day in selected)
                 bias = sum(_num((day.get("forecast", {}).get(kind) or [0, 0])[1]) for day in selected)
@@ -741,6 +742,7 @@ class AnalysisMixin:
                     "mae": round(absolute / hours, 3),
                     "bias": round(bias / hours, 3),
                     "relative": round(absolute / use, 3) if use > 0 else None,
+                    "forecast": round((use + bias) / hours, 3),
                 }
             return result
 
