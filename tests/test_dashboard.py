@@ -47,7 +47,7 @@ def test_chart_span_follows_days_to_predict(days: int, span: str) -> None:
     # the analysis charts show fixed periods (months / the last 31 days)
     spans = [
         value for node in walk(content) for key, value in node.items()
-        if key in ("graph_span", "selection_span") and "d" in str(value) and value not in ("400d", "31d")
+        if key in ("graph_span", "selection_span") and "d" in str(value) and value not in ("400d", "31d", "6d")
     ]
     assert len(spans) == 4 and set(spans) == {span}
 

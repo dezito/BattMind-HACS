@@ -121,7 +121,7 @@ class BattMindEngine(PlannerMixin, HistoryMixin, EnergyMixin, AnalysisMixin):
         self.power_values_db: dict = {}
         self.kwh_avg_prices_db: dict = {}
         self.solar_available_db: dict = {}
-        self.analysis_db: dict = {"hours": {}, "days": {}, "plans": {}, "rule_days": {}}
+        self.analysis_db: dict = {"hours": {}, "days": {}, "plans": {}, "rule_days": {}, "price_hours": {}, "price_days": {}}
 
         # runtime state
         self.grid_price_cache: dict = {"using_offline_prices": False}
@@ -429,11 +429,20 @@ class BattMindEngine(PlannerMixin, HistoryMixin, EnergyMixin, AnalysisMixin):
         provider = self.price_provider
         prices = (provider.sell_prices if sell_prices else provider.buy_prices) if provider else {}
         if prices:
+            sources = provider.sell_price_sources if sell_prices else provider.buy_price_sources
+            # forecasts corrected with their measured bias per day ahead (the analysis)
+            corrections = self.price_forecast_corrections()
+            if corrections:
+                current_hour = reset_time_to_hour(now)
+                prices = {
+                    timestamp: round(price + corrections.get(days_between(current_hour, timestamp), 0.0), 2)
+                    if str(sources.get(timestamp, "")).endswith(":forecast") else price
+                    for timestamp, price in prices.items()
+                }
             # hours of the plan the provider has no price for are filled from the price history
             missing_hours = self._database_prices(
                 "history_sell" if sell_prices else "history", prices, int(self.config["days_to_predict"])
             )
-            sources = provider.sell_price_sources if sell_prices else provider.buy_price_sources
             if missing_hours:
                 _LOGGER.debug("No %s price for %s hours, using the price history", kind, len(missing_hours))
                 prices = dict(sorted({**prices, **missing_hours}.items()))

@@ -57,7 +57,8 @@ every rule explained with examples, [inverter setups](docs/inverters/huawei.md) 
   - forecast from [Solcast PV Forecast](https://github.com/BJReplay/ha-solcast-solar) and/or own history per cloud cover
 - **Consumption forecast** from own history: average, EMA or trend
 - **Price providers:** [Energi Data Service](https://github.com/MTrab/energidataservice) and/or
-  [Strømligning](https://github.com/MTrab/stromligning), incl. sell price, tariffs, selling fee and refund
+  [Strømligning](https://github.com/MTrab/stromligning), incl. sell price, tariffs, selling fee and refund;
+  forecast prices are corrected with their measured bias
 - **[Cost price of the battery's energy](docs/how-it-works.md#the-cost-of-a-kwh-from-the-battery):** what the energy in the battery has cost (grid, solar, charge/discharge loss and wear)
 - **Detailed charging history and overview** as markdown
 - **[Analysis](docs/dashboard-analysis.md#analysis)** of what the battery earns and how well BattMind plans
@@ -65,6 +66,7 @@ every rule explained with examples, [inverter setups](docs/inverters/huawei.md) 
   - charged and discharged per rule, cycles and wear
   - measured round trip loss against the configured loss, and self-sufficiency (solar, battery, grid)
   - the error of each consumption forecast type, with a hint when another type is more accurate
+  - the price forecast against the real prices per day ahead: the error, and how often it found the cheapest and most expensive hours
   - a hindsight score per day, planned against what happened, days with an empty battery in the most expensive
     hours, and planned against measured solar surplus
   - the first time, the last year is read from Home Assistant's long-term statistics

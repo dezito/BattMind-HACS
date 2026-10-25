@@ -80,6 +80,8 @@ and the other fills the gaps.
 - **Strømligning:** the buy sensors are required. The sell sensors and the tariff page give an accurate
   sell price.
 - **Refund** is subtracted from the buy price, **sell fee** is included in the sell price.
+- **Correct the price forecast** (on by default) corrects forecast prices with their measured bias once
+  there are 7 days of measurements – see [how it works](how-it-works.md#prices).
 
 ### Solar panels and weather (optional)
 

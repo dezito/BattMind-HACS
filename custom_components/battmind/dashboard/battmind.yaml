@@ -2600,6 +2600,148 @@ views:
                   return (entity.attributes.plans || []).filter(d => d.plan_solar !== undefined && d.plan_solar !== null).map(d => [new Date(d.date + 'T12:00:00').getTime(), d.plan_solar]);
             grid_options:
               columns: full
+      # the price forecast of the price integration against the real prices
+      - type: grid
+        column_span: 2
+        cards:
+          - type: heading
+            heading: '@@section_price_forecast@@'
+            icon: mdi:chart-bell-curve-cumulative
+          - type: markdown
+            content: "<details><summary>@@read_more@@</summary>\n\n@@price_forecast_explain@@\n\n@@price_forecast_correction_explain@@\n\n</details>"
+            grid_options:
+              columns: full
+          - type: markdown
+            card_mod:
+              style: |
+                ha-card {
+                  --markdown-table-border-color: transparent
+                }
+            content: |-
+              {% macro n(v, d=2) %}{{ v | round(d) if v is number else '–' }}{% endmacro %}
+              {% macro p(v) %}{{ (v * 100) | round(0) | int ~ ' %' if v is number else '–' }}{% endmacro %}
+              {% set f = states.sensor.battmind_analysis.attributes.price_forecast or {} %}
+              {% set week = f.last_7 or [] %}
+              {% if f.last_30 -%}
+              @@price_forecast_intro@@
+
+              | @@days_ahead@@ | @@days@@ | @@mae@@ 7 @@days@@ | @@mae@@ 30 @@days@@ | @@bias@@ | @@worst_hour@@ | @@cheap_hits@@ | @@dear_hits@@ | @@correction@@ |
+              |:---|---:|---:|---:|---:|---:|---:|---:|---:|
+              {% for l in f.last_30 -%}
+              {% set w = week | selectattr('lead', 'eq', l.lead) | first -%}
+              | **{{ l.lead }}** | {{ l.days }} | {{ n(w.mae if w else none) }} | {{ n(l.mae) }} | {{ n(l.bias) }} | {{ n(l.max) }} | {{ p(l.cheap) }} ({{ n(l.cheap_miss) }}) | {{ p(l.dear) }} ({{ n(l.dear_miss) }}) | {{ n(l.correction) }} |
+              {% endfor %}
+              @@price_forecast_unit@@
+
+              {% if not f.correction_on -%}
+              <ha-alert alert-type="info">@@price_forecast_correction_off@@</ha-alert>
+              {%- elif f.last_30 | selectattr('correction', 'number') | list | length < f.last_30 | length -%}
+              <ha-alert alert-type="info">@@price_forecast_correction_waiting@@</ha-alert>
+              {%- endif %}
+              {%- else -%}
+              <ha-alert alert-type="info">@@no_data_yet@@</ha-alert>
+              {%- endif %}
+            grid_options:
+              columns: full
+          - type: custom:apexcharts-card
+            header:
+              show: true
+              title: '@@price_forecast_title@@'
+              show_states: false
+            graph_span: 6d
+            span:
+              start: day
+              offset: -2d
+            now:
+              show: true
+            yaxis:
+              - decimals: 2
+            all_series_config:
+              type: line
+              curve: stepline
+              unit: ' kr/kWh'
+              float_precision: 2
+              stroke_width: 2
+              show:
+                legend_value: false
+                in_header: false
+            apex_config:
+              chart:
+                height: 260px
+            series:
+              - entity: sensor.battmind_analysis
+                name: '@@real_price@@'
+                color: '#6250d6'
+                stroke_width: 3
+                data_generator: |
+                  return ((entity.attributes.price_forecast || {}).hours || []).filter(h => h.real !== null && h.real !== undefined).map(h => [new Date(h.t + ':00:00').getTime(), h.real]);
+              - entity: sensor.battmind_analysis
+                name: '@@price_forecast_1@@'
+                color: '#2a78d6'
+                data_generator: |
+                  return ((entity.attributes.price_forecast || {}).hours || []).filter(h => h.d1 !== null && h.d1 !== undefined).map(h => [new Date(h.t + ':00:00').getTime(), h.d1]);
+              - entity: sensor.battmind_analysis
+                name: '@@price_forecast_2@@'
+                color: '#1baf7a'
+                data_generator: |
+                  return ((entity.attributes.price_forecast || {}).hours || []).filter(h => h.d2 !== null && h.d2 !== undefined).map(h => [new Date(h.t + ':00:00').getTime(), h.d2]);
+              - entity: sensor.battmind_analysis
+                name: '@@price_forecast_3@@'
+                color: '#eb6834'
+                data_generator: |
+                  return ((entity.attributes.price_forecast || {}).hours || []).filter(h => h.d3 !== null && h.d3 !== undefined).map(h => [new Date(h.t + ':00:00').getTime(), h.d3]);
+              - entity: sensor.battmind_analysis
+                name: '@@price_forecast_corrected@@'
+                color: '#e34948'
+                stroke_width: 3
+                data_generator: |
+                  return ((entity.attributes.price_forecast || {}).hours || []).filter(h => h.corrected !== null && h.corrected !== undefined).map(h => [new Date(h.t + ':00:00').getTime(), h.corrected]);
+            grid_options:
+              columns: full
+          - type: custom:apexcharts-card
+            header:
+              show: true
+              title: '@@price_forecast_error_title@@'
+              show_states: false
+            graph_span: 31d
+            span:
+              end: day
+            now:
+              show: false
+            yaxis:
+              - min: 0
+                decimals: 2
+            all_series_config:
+              type: line
+              unit: ' kr/kWh'
+              float_precision: 3
+              stroke_width: 2
+              show:
+                legend_value: false
+                in_header: false
+            apex_config:
+              chart:
+                height: 240px
+              markers:
+                size: 3
+            series:
+              - entity: sensor.battmind_analysis
+                name: '@@price_forecast_1@@'
+                color: '#2a78d6'
+                data_generator: |
+                  return ((entity.attributes.price_forecast || {}).days || []).filter(d => d.d1 !== undefined).map(d => [new Date(d.date + 'T12:00:00').getTime(), d.d1]);
+              - entity: sensor.battmind_analysis
+                name: '@@price_forecast_2@@'
+                color: '#1baf7a'
+                data_generator: |
+                  return ((entity.attributes.price_forecast || {}).days || []).filter(d => d.d2 !== undefined).map(d => [new Date(d.date + 'T12:00:00').getTime(), d.d2]);
+              - entity: sensor.battmind_analysis
+                name: '@@price_forecast_3@@'
+                color: '#eb6834'
+                data_generator: |
+                  return ((entity.attributes.price_forecast || {}).days || []).filter(d => d.d3 !== undefined).map(d => [new Date(d.date + 'T12:00:00').getTime(), d.d3]);
+            grid_options:
+              columns: full
       - type: grid
         cards:
           - type: heading

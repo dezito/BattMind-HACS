@@ -6,6 +6,7 @@ import datetime
 import pytest
 
 from custom_components.battmind.engine_analysis import (
+    evaluate_price_day,
     grid_cost,
     hindsight_cost,
     rules_of_entries,
@@ -13,7 +14,7 @@ from custom_components.battmind.engine_analysis import (
     summarize_day,
 )
 
-from .test_engine import DAY, TZ, snapshot, started_engine
+from .test_engine import DAY, TZ, _price_rows, snapshot, started_engine
 
 CHARGE_HOURS = (1, 2, 3)
 DISCHARGE_HOURS = (17, 18, 19, 20)
@@ -157,3 +158,105 @@ def test_backfill_from_the_statistics() -> None:
     assert result.error is None, result.error
     assert engine.analysis_backfilled()
     assert engine.analysis_db["days"][(DAY - datetime.timedelta(days=5)).isoformat()]["price_sum"] == pytest.approx(48.0)
+
+
+def test_price_day_is_judged_per_days_ahead() -> None:
+    rows = [{"real": hour / 10, "1": hour / 10 + 0.1, "2": (23 - hour) / 10, **({"3": 1.0} if hour < 10 else {})} for hour in range(24)]
+    day = evaluate_price_day(rows)
+    # 1 day ahead: 0.1 too high but the same order
+    assert day["1"]["n"] == 24
+    assert day["1"]["abs"] / 24 == pytest.approx(0.1)
+    assert day["1"]["bias"] / 24 == pytest.approx(0.1)
+    assert (day["1"]["cheap"], day["1"]["cheap_miss"], day["1"]["dear"], day["1"]["dear_miss"]) == (4, 0.0, 4, 0.0)
+    # 2 days ahead: the order turned around, the "cheap" hours were the 4 most expensive
+    assert day["2"]["cheap"] == 0
+    assert day["2"]["cheap_miss"] == pytest.approx(2.0)
+    assert day["2"]["dear_miss"] == pytest.approx(2.0)
+    # 3 days ahead: too few hours
+    assert "3" not in day
+
+
+def test_price_forecast_is_compared_with_the_real_prices() -> None:
+    tomorrow = DAY + datetime.timedelta(days=1)
+    engine = started_engine(datetime.datetime.combine(DAY, datetime.time(0, 5)), 50.0)
+
+    def run(now: datetime.datetime, snap):
+        assert engine.run_job(snap, engine.update_grid_prices).error is None
+        result = engine.run_job(snap, engine.charge_if_needed, False)
+        assert result.error is None, result.error
+        result = engine.run_job(snap, engine.hour_end, now.replace(minute=0))
+        assert result.error is None, result.error
+        return result
+
+    # the morning: tomorrow is only a forecast (0.1 above the real prices that come at 13)
+    morning = datetime.datetime.combine(DAY, datetime.time(10, 59))
+    snap = snapshot(morning, 50.0)
+    snap.price_data["attributes"]["sensor.price"].update(
+        raw_tomorrow=[], tomorrow_valid=False,
+        forecast=_price_rows(tomorrow, 0.9) + _price_rows(tomorrow + datetime.timedelta(days=1), 1.1),
+    )
+    run(morning, snap)
+    hours = engine.analysis_db["price_hours"]
+    forecast = {row["hour"][11:13]: row["price"] for row in _price_rows(tomorrow, 0.9)}
+    # without the daily adder of the providers
+    assert hours[f"{tomorrow.isoformat()}T05"]["1"] == pytest.approx(forecast["05"], abs=0.006)
+    assert "2" in hours[f"{(tomorrow + datetime.timedelta(days=1)).isoformat()}T05"]
+    assert "real" not in hours[f"{tomorrow.isoformat()}T05"]
+    assert not engine.analysis_db["price_days"].get(tomorrow.isoformat())
+
+    # 13: the real prices of tomorrow are known
+    afternoon = datetime.datetime.combine(DAY, datetime.time(13, 59))
+    result = run(afternoon, snapshot(afternoon, 50.0))
+    judged = engine.analysis_db["price_days"][tomorrow.isoformat()]["1"]
+    assert judged["n"] == 24
+    assert judged["bias"] / 24 == pytest.approx(0.1, abs=0.006)
+    assert (judged["cheap"], judged["dear"]) == (4, 4)
+
+    published = result.attributes["analysis"]["price_forecast"]
+    assert published["last_30"][0]["lead"] == 1
+    assert published["last_30"][0]["mae"] == pytest.approx(0.1, abs=0.006)
+    assert published["days"][-1]["date"] == tomorrow.isoformat()
+    row = next(row for row in published["hours"] if row["t"] == f"{tomorrow.isoformat()}T05")
+    assert row["real"] is not None and row["d1"] is not None
+
+
+def test_price_forecast_is_corrected_with_its_bias() -> None:
+    tomorrow = DAY + datetime.timedelta(days=1)
+    now = datetime.datetime.combine(DAY, datetime.time(10, 5))
+    engine = started_engine(now, 50.0)
+    days = engine.analysis_db["price_days"]
+    for back in range(1, 8):
+        days[(DAY - datetime.timedelta(days=back)).isoformat()] = {
+            # 1 day ahead 0.2 too high; 3 days ahead 2 kr too low (capped at 0.5)
+            "1": {"n": 24, "abs": 4.8, "bias": 4.8},
+            "3": {"n": 24, "abs": 48.0, "bias": -48.0},
+            # 2 days ahead: too few days
+            **({"2": {"n": 24, "abs": 2.4, "bias": 2.4}} if back <= 3 else {}),
+        }
+    assert engine.price_forecast_corrections() == {1: -0.2, 3: 0.5}
+
+    snap = snapshot(now, 50.0)
+    snap.price_data["attributes"]["sensor.price"].update(
+        raw_tomorrow=[], tomorrow_valid=False,
+        forecast=_price_rows(tomorrow, 0.9) + _price_rows(tomorrow + datetime.timedelta(days=1), 1.1),
+    )
+    assert engine.run_job(snap, engine.update_grid_prices).error is None
+    provider = engine.price_provider.buy_prices
+    prices = engine.get_grid_prices()
+    hour = datetime.datetime.combine(tomorrow, datetime.time(5))
+    later = hour + datetime.timedelta(days=1)
+    today = datetime.datetime.combine(DAY, datetime.time(15))
+    assert prices[hour] == pytest.approx(provider[hour] - 0.2)
+    assert prices[later] == provider[later]
+    assert prices[today] == provider[today]  # real prices are never corrected
+
+    result = engine.run_job(snap, engine.hour_end, now.replace(minute=0))
+    published = result.attributes["analysis"]["price_forecast"]
+    assert {entry["lead"]: entry["correction"] for entry in published["last_30"]} == {1: -0.2, 2: None, 3: 0.5}
+    row = next(row for row in published["hours"] if row["t"] == f"{tomorrow.isoformat()}T05")
+    assert row["corrected"] == pytest.approx(row["d1"] - 0.2)
+
+    engine.config["prices"]["use_forecast_correction"] = False
+    assert engine.price_forecast_corrections() == {}
+    assert engine.run_job(snap, engine.update_grid_prices).error is None
+    assert engine.get_grid_prices()[hour] == provider[hour]

@@ -108,11 +108,13 @@
       "price_fees": {
         "data_description": {
           "refund": "Erstattungsbetrag vom Staat/Anbieter",
-          "sell_fee": "Verkaufsgebühr"
+          "sell_fee": "Verkaufsgebühr",
+          "use_price_forecast_correction": "Die Preisprognose um ihre Abweichung der letzten 30 Tage korrigieren, pro Tag voraus (nach 7 Tagen Messung, höchstens ±0,50 kr). Siehe die Preisprognose in der Analyse."
         },
         "data": {
           "refund": "Erstattung",
-          "sell_fee": "Verkaufsgebühr"
+          "sell_fee": "Verkaufsgebühr",
+          "use_price_forecast_correction": "Preisprognose korrigieren"
         },
         "description": "Beträge pro kWh, die den Wert von Laden und Verkaufen ändern.",
         "title": "Erstattung und Gebühren"
@@ -334,11 +336,13 @@
       "price_fees": {
         "data_description": {
           "refund": "Erstattungsbetrag vom Staat/Anbieter",
-          "sell_fee": "Verkaufsgebühr"
+          "sell_fee": "Verkaufsgebühr",
+          "use_price_forecast_correction": "Die Preisprognose um ihre Abweichung der letzten 30 Tage korrigieren, pro Tag voraus (nach 7 Tagen Messung, höchstens ±0,50 kr). Siehe die Preisprognose in der Analyse."
         },
         "data": {
           "refund": "Erstattung",
-          "sell_fee": "Verkaufsgebühr"
+          "sell_fee": "Verkaufsgebühr",
+          "use_price_forecast_correction": "Preisprognose korrigieren"
         },
         "description": "Beträge pro kWh, die den Wert von Laden und Verkaufen ändern.",
         "title": "Erstattung und Gebühren"
