@@ -2694,6 +2694,26 @@ views:
                 data_generator: |
                   return ((entity.attributes.price_forecast || {}).hours || []).filter(h => h.d3 !== null && h.d3 !== undefined).map(h => [new Date(h.t + ':00:00').getTime(), h.d3]);
               - entity: sensor.battmind_analysis
+                name: '@@price_forecast_4@@'
+                color: '#eda100'
+                data_generator: |
+                  return ((entity.attributes.price_forecast || {}).hours || []).filter(h => h.d4 !== null && h.d4 !== undefined).map(h => [new Date(h.t + ':00:00').getTime(), h.d4]);
+              - entity: sensor.battmind_analysis
+                name: '@@price_forecast_5@@'
+                color: '#0aa2b5'
+                data_generator: |
+                  return ((entity.attributes.price_forecast || {}).hours || []).filter(h => h.d5 !== null && h.d5 !== undefined).map(h => [new Date(h.t + ':00:00').getTime(), h.d5]);
+              - entity: sensor.battmind_analysis
+                name: '@@price_forecast_6@@'
+                color: '#d14b9a'
+                data_generator: |
+                  return ((entity.attributes.price_forecast || {}).hours || []).filter(h => h.d6 !== null && h.d6 !== undefined).map(h => [new Date(h.t + ':00:00').getTime(), h.d6]);
+              - entity: sensor.battmind_analysis
+                name: '@@price_forecast_7@@'
+                color: '#8a8a8a'
+                data_generator: |
+                  return ((entity.attributes.price_forecast || {}).hours || []).filter(h => h.d7 !== null && h.d7 !== undefined).map(h => [new Date(h.t + ':00:00').getTime(), h.d7]);
+              - entity: sensor.battmind_analysis
                 name: '@@price_forecast_corrected@@'
                 color: '#e34948'
                 stroke_width: 3
@@ -2743,6 +2763,26 @@ views:
                 color: '#eb6834'
                 data_generator: |
                   return ((entity.attributes.price_forecast || {}).days || []).filter(d => d.d3 !== undefined).map(d => [new Date(d.date + 'T12:00:00').getTime(), d.d3]);
+              - entity: sensor.battmind_analysis
+                name: '@@price_forecast_4@@'
+                color: '#eda100'
+                data_generator: |
+                  return ((entity.attributes.price_forecast || {}).days || []).filter(d => d.d4 !== undefined).map(d => [new Date(d.date + 'T12:00:00').getTime(), d.d4]);
+              - entity: sensor.battmind_analysis
+                name: '@@price_forecast_5@@'
+                color: '#0aa2b5'
+                data_generator: |
+                  return ((entity.attributes.price_forecast || {}).days || []).filter(d => d.d5 !== undefined).map(d => [new Date(d.date + 'T12:00:00').getTime(), d.d5]);
+              - entity: sensor.battmind_analysis
+                name: '@@price_forecast_6@@'
+                color: '#d14b9a'
+                data_generator: |
+                  return ((entity.attributes.price_forecast || {}).days || []).filter(d => d.d6 !== undefined).map(d => [new Date(d.date + 'T12:00:00').getTime(), d.d6]);
+              - entity: sensor.battmind_analysis
+                name: '@@price_forecast_7@@'
+                color: '#8a8a8a'
+                data_generator: |
+                  return ((entity.attributes.price_forecast || {}).days || []).filter(d => d.d7 !== undefined).map(d => [new Date(d.date + 'T12:00:00').getTime(), d.d7]);
             grid_options:
               columns: full
       - type: grid
