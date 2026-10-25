@@ -5,6 +5,13 @@ debug_info:
         config_entry:
           integration: battmind
 
+export_debug:
+  fields:
+    config_entry_id:
+      selector:
+        config_entry:
+          integration: battmind
+
 recalc_charging_history_today:
   fields:
     config_entry_id:

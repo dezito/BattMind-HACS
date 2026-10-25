@@ -209,6 +209,9 @@
     "backup": {
       "exported": "Kopia zapasowa zapisana jako {file}",
       "imported": "Przywrócono kopię zapasową {file} (bazy danych: {databases})."
+    },
+    "debug": {
+      "exported": "**Utworzono plik debug**\n\n1. Pobierz go: {download} (link działa przez {hours} godz., plik jest też zapisany jako `{file}` w folderze konfiguracji).\n2. [Otwórz zgłoszenie na GitHubie]({issue}) - wersja i czas są już uzupełnione.\n3. Opisz, co się stało, kiedy to się stało i czego oczekiwałeś, a następnie przeciągnij plik do pola *Debug file*.\n\nUtwórz plik jak najszybciej po wystąpieniu problemu: zawiera ostatnie obliczenia i komunikaty logu.\n\nPlik zawiera Twoje ustawienia, ceny, historię energii i plany. Imiona, nazwy encji, współrzędne, usługi notify, adresy i klucze są usunięte lub zastąpione. Nic nie jest nigdzie wysyłane - sam decydujesz, co przesyłasz."
     }
   },
   "dashboard": {
@@ -231,6 +234,7 @@
     "solar_forecast": "Prognoza PV",
     "forecast": "Prognoza",
     "debug_info": "Informacje debug",
+    "export_debug": "Eksport debug",
     "recalc_history": "Przelicz dzisiejszą historię ładowania",
     "read_more": "Więcej",
     "section_control": "Sterowanie",

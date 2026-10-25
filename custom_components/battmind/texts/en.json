@@ -209,6 +209,9 @@
     "backup": {
       "exported": "Backup saved as {file}",
       "imported": "Backup {file} restored (databases: {databases})."
+    },
+    "debug": {
+      "exported": "**Debug file created**\n\n1. Download it: {download} (the link works for {hours} hours, the file is also saved as `{file}` in the config folder).\n2. [Open a GitHub issue]({issue}) - the version and the time are filled in.\n3. Describe what happened, when it happened and what you expected, and drag the file into the field *Debug file*.\n\nCreate the file as soon as possible after the problem: it holds the latest calculations and log messages.\n\nThe file contains your settings, prices, energy history and plans. Names, entity names, coordinates, notify services, addresses and keys are removed or replaced. Nothing is sent anywhere - you decide what you upload."
     }
   },
   "dashboard": {
@@ -231,6 +234,7 @@
     "solar_forecast": "Solar forecast",
     "forecast": "Forecast",
     "debug_info": "Debug info",
+    "export_debug": "Export debug",
     "recalc_history": "Recalculate today's charging history",
     "read_more": "Read more",
     "section_control": "Control",

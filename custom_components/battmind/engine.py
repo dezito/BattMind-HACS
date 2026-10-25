@@ -820,6 +820,11 @@ class BattMindEngine(PlannerMixin, HistoryMixin, EnergyMixin, AnalysisMixin):
         self.notify(output, title=f"{self.title} debug info", notification_id=f"{self.name}_debug_info")
         return output
 
+    def debug_state(self) -> dict:
+        """The runtime state for the debug export (debug_export.py), encoded like the databases."""
+        skip = {"config", "texts", "price_provider"}
+        return {key: encode(value) for key, value in vars(self).items() if not key.startswith("_") and key not in skip}
+
     # ------------------------------------------------------------------ #
     # Power value cache
     # ------------------------------------------------------------------ #

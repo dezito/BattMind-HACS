@@ -556,6 +556,9 @@
       },
       "export_data": {
         "name": "Daten exportieren"
+      },
+      "export_debug": {
+        "name": "Debug-Info exportieren"
       }
     },
     "sensor": {
@@ -659,6 +662,16 @@
         }
       },
       "name": "Debug-Info anzeigen"
+    },
+    "export_debug": {
+      "name": "Debug-Info exportieren",
+      "description": "Speichert eine anonymisierte Debug-Datei (battmind_debug) für ein GitHub-Issue und zeigt eine Benachrichtigung mit Download-Link und einer Anleitung zum Melden des Problems.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Konfigurationseintrag",
+          "description": "Nur diesen Eintrag exportieren (Standard: alle)."
+        }
+      }
     },
     "enforce_planning": {
       "description": "Berechnet den Ladeplan jetzt neu.",

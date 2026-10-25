@@ -494,6 +494,16 @@
         }
       }
     },
+    "export_debug": {
+      "name": "Export debug info",
+      "description": "Saves an anonymised debug file (battmind_debug) for a GitHub issue and shows a notification with a download link and how to report the problem.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Config entry",
+          "description": "Only export this entry (default: all)."
+        }
+      }
+    },
     "recalc_charging_history_today": {
       "name": "Recalculate charging history today",
       "description": "Recalculates today’s charging history hour by hour.",
@@ -639,6 +649,9 @@
       },
       "export_data": {
         "name": "Export data"
+      },
+      "export_debug": {
+        "name": "Export debug info"
       }
     },
     "sensor": {

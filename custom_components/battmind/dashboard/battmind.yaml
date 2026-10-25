@@ -1697,6 +1697,20 @@ views:
           - condition: state
             entity: input_boolean.dezito_show_debug_button
             state: 'on'
+      - type: custom:mushroom-template-badge
+        content: '@@export_debug@@'
+        icon: mdi:bug-outline
+        color: yellow
+        tap_action:
+          action: perform-action
+          perform_action: button.press
+          target:
+            entity_id: button.battmind_export_debug
+        label: ''
+        visibility:
+          - condition: state
+            entity: input_boolean.dezito_show_debug_button
+            state: 'on'
       - type: entity
         show_name: false
         show_state: true

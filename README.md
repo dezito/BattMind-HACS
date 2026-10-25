@@ -224,6 +224,7 @@ go back to the generated dashboard.
 | `battmind.enforce_planning` | Recalculate the plan now |
 | `battmind.recalc_charging_history_today` | Recalculate today's charging history |
 | `battmind.debug_info` | Returns internal state for troubleshooting |
+| `battmind.export_debug` | Save an anonymised debug file for a GitHub issue |
 | `battmind.export_data` | Save a backup of data and settings (see below) |
 | `battmind.import_data` | Replace data and settings with a backup |
 
@@ -256,7 +257,8 @@ See [Switching from the PyScript version](docs/migration.md) for the steps and w
 See [FAQ and troubleshooting](docs/faq-troubleshooting.md). In short:
 
 - Turn on **Diagnostic file log** under **Configure → Advanced** (`battmind_<prefix>.log` in the config folder).
-- Call `battmind.debug_info` under **Developer tools → Actions**, and attach the response when you open an issue.
+- Found a bug? Press **Export debug info** on the device (or run `battmind.export_debug`) right after it happened, and follow the
+  notification: it links to the file and to a prefilled GitHub issue. See [Report a problem](docs/faq-troubleshooting.md#report-a-problem).
 
 ---
 

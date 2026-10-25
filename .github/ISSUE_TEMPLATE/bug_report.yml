@@ -1,0 +1,44 @@
+name: Bug report
+description: BattMind did something wrong or failed
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! The easiest way: press **Export debug info** on the BattMind device (or run
+        the action `battmind.export_debug`) right after the problem, and open this form from the link in the
+        notification. The version and the time are then filled in.
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: What did BattMind do, and what did you expect it to do?
+    validations:
+      required: true
+  - type: input
+    id: when
+    attributes:
+      label: When did it happen?
+      description: Date and time (as exact as possible), so the matching calculation can be found in the debug file.
+    validations:
+      required: true
+  - type: textarea
+    id: debug_file
+    attributes:
+      label: Debug file
+      description: Drag the `.json.gz` file from the notification (or `battmind_debug/` in the config folder) into this field. It is anonymised, see the docs.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: BattMind version
+  - type: input
+    id: ha_version
+    attributes:
+      label: Home Assistant version
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else?
+      description: Screenshots, changes you made just before, other integrations involved...

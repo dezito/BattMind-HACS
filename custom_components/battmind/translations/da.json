@@ -494,6 +494,16 @@
         }
       }
     },
+    "export_debug": {
+      "name": "Eksportér debug-info",
+      "description": "Gemmer en anonymiseret debug-fil (battmind_debug) til et GitHub-issue og viser en notifikation med downloadlink og vejledning i at rapportere problemet.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Konfigurationsindgang",
+          "description": "Eksportér kun denne instans (standard: alle)."
+        }
+      }
+    },
     "recalc_charging_history_today": {
       "name": "Genberegn ladehistorik i dag",
       "description": "Genberegner dagens ladehistorik time for time.",
@@ -639,6 +649,9 @@
       },
       "export_data": {
         "name": "Eksportér data"
+      },
+      "export_debug": {
+        "name": "Eksportér debug-info"
       }
     },
     "sensor": {

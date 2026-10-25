@@ -49,6 +49,7 @@ from .helpers import float_or_none
 from .power import merge_rows
 from .prices import TARIFF_STATE_KEYS
 from .backup import async_load_backup, async_restore_databases, pending_restores
+from .debug_export import DebugRecorder
 from .storage import DB_NAMES, BattMindStorage, load_legacy_databases
 
 _LOGGER = logging.getLogger(__name__)
@@ -130,6 +131,8 @@ class BattMindCoordinator:
         self._log_handler: QueueHandler | None = None
 
         self.last_job: dict[str, Any] = {}
+        # last jobs and snapshots for the debug export (debug_export.py)
+        self.debug = DebugRecorder()
 
     # ------------------------------------------------------------------ #
     # Configured entities
@@ -517,6 +520,7 @@ class BattMindCoordinator:
                 self._executor, partial(self.engine.run_job, snapshot, func, *args)
             )
             await self._async_publish(result, job_name)
+            self.debug.record(job_name, args, snapshot, result, self.data.get("current_charging_rule"))
             _LOGGER.debug("Job %s ran in %s for %.3fs", job_name, result.worker_thread, result.duration)
             return result
 
