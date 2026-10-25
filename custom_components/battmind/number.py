@@ -31,7 +31,12 @@ class BattMindNumber(BattMindEntity, NumberEntity, RestoreEntity):
         self._attr_native_max_value = info["max"]
         self._attr_native_step = info["step"]
         self._attr_mode = NumberMode.BOX if info["mode"] == "box" else NumberMode.SLIDER
-        self._attr_native_unit_of_measurement = info["unit"]
+        # {valuta} / {valuta_kwh}: the currency of Home Assistant
+        self._attr_native_unit_of_measurement = (
+            info["unit"].format(valuta=coordinator.t("ui.common.valuta"), valuta_kwh=coordinator.t("ui.common.valuta_kwh"))
+            if info["unit"]
+            else None
+        )
         initial = coordinator.entry.data.get("initial_settings", {})
         self._default = float_or_none(initial.get(key))
         if self._default is None:

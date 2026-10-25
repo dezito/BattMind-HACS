@@ -21,7 +21,7 @@ OFF = {
 
 
 def realistic_snapshot(now: datetime.datetime, battery_level: float, settings: dict | None = None, negative: bool = False) -> Snapshot:
-    """Sell price = buy - 0.9 kr; negative: buy -0.4 kr (sell -0.9 kr) in NEGATIVE_HOURS today."""
+    """Sell price = buy - 0.9; negative: buy -0.4 (sell -0.9) in NEGATIVE_HOURS today."""
     snap = snapshot(now, battery_level, settings)
     buy = snap.price_data["attributes"]["sensor.price"]
     if negative:
@@ -72,7 +72,7 @@ def test_grid_charge_to_sell_buys_cheap_and_sells_expensive() -> None:
 
 
 def test_discharge_before_solar_when_the_solar_export_costs_money() -> None:
-    """Solar surplus sold at -0.9 kr at noon: empty the battery in the morning so the sun has room."""
+    """Solar surplus sold at -0.9 at noon: empty the battery in the morning so the sun has room."""
     engine, _ = planned(4, 95, {**OFF, "discharge_before_solar": True}, solar=True, negative=True)
     before_solar = [ts for ts, sale in sales(engine).items() if sale["title"] == "Sælger før solen fylder batteriet"]
     assert before_solar and all(ts.date() == DAY and ts.hour < 9 for ts in before_solar)
@@ -123,7 +123,7 @@ def test_optimizer_keeps_energy_worth_more_than_selling_it() -> None:
 
 
 def test_optimizer_respects_min_profit_per_kwh() -> None:
-    """A grid charging hour charges at full rate (like charge_if_needed), ~0.13 kr/kWh profit here."""
+    """A grid charging hour charges at full rate (like charge_if_needed), ~0.13/kWh profit here."""
     hours = [OptimizerHour(0, 1.0, 0.0, 0.0, 0.0), OptimizerHour(1, 1.4, 0.0, 5.0, 0.0)]
     assert optimize(hours, 5.0, CFG, 0.0).actions[0] == "grid_charging"
     strict = OptimizerConfig(**{**CFG.__dict__, "min_profit_per_kwh": 0.5})
@@ -145,7 +145,7 @@ def test_simulated_sale_is_limited_to_the_planned_kwh() -> None:
 
 
 def test_min_total_profit_does_not_block_using_the_battery() -> None:
-    """min_total_profit is for trades - an hour of house consumption earns less than 1 kr but must not be blocked."""
+    """min_total_profit is for trades - an hour of house consumption earns less than 1.00 but must not be blocked."""
 
     def no_profit_blocks(min_total_profit: float) -> set:
         engine, _ = planned(17, 90, {"only_discharge_on_profit": True, "min_total_profit": min_total_profit})
@@ -269,11 +269,11 @@ def test_battery_price_is_a_running_average() -> None:
     """Charged kWh come in at their price, used/sold kWh leave at the average (the price of the rest stays)."""
     from custom_components.battmind.engine_planner import _running_battery_price
 
-    # 5 kWh at 2.00 kr, 5 kWh charged at 1.00 kr -> 1.50 kr
+    # 5 kWh at 2.00, 5 kWh charged at 1.00 -> 1.50
     assert _running_battery_price(5.0, 2.0, [(5.0, 5.0, 1.0, 0.5)]) == pytest.approx(1.5)
     # using 4 kWh doesn't change the price of the rest
     assert _running_battery_price(5.0, 2.0, [(5.0, 5.0, 1.0, 0.5), (-4.0, 0.0, 0.0, 0.0)]) == pytest.approx(1.5)
-    # emptied and refilled with solar (sold for 0.50 kr otherwise): the old price is gone
+    # emptied and refilled with solar (sold for 0.50 otherwise): the old price is gone
     assert _running_battery_price(5.0, 2.0, [(-5.0, 0.0, 0.0, 0.0), (4.0, 0.0, 0.0, 0.5)]) == pytest.approx(0.5)
     # a charge hour with solar on top: the grid part at the grid price, the rest at the solar price
     assert _running_battery_price(0.0, 2.0, [(4.0, 1.0, 1.0, 0.5)]) == pytest.approx((1.0 + 3 * 0.5) / 4)

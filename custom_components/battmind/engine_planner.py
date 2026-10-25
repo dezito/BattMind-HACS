@@ -147,6 +147,10 @@ class PlannerMixin:
         valuta_kwh = t("ui.common.valuta_kwh")
         valuta = t("ui.common.valuta")
 
+        def r(key: str, **fmt) -> str:
+            """Planner explanation text (ui.reason.<key> of texts/<language>.json)."""
+            return t(f"ui.reason.{key}", **fmt)
+
         amount_of_days = int(config["days_to_predict"])
 
         # read-only below
@@ -710,8 +714,8 @@ class PlannerMixin:
                         average_profit = sum(profit_with_kwh) / sum(kwh_with_profit)
                         if not is_profitable(average_profit, min(kwh_available, kwh_needed)):
                             _LOGGER.debug(
-                                "Cheapest hour fill: skipping %s (%.2f %s/kWh x %.2f kWh below the minimum profit)",
-                                timestamp, average_profit, valuta, min(kwh_available, kwh_needed),
+                                "Cheapest hour fill: skipping %s (%.2f %s x %.2f kWh below the minimum profit)",
+                                timestamp, average_profit, valuta_kwh, min(kwh_available, kwh_needed),
                             )
                             continue
 
@@ -723,13 +727,13 @@ class PlannerMixin:
                             if timestamp in charge_hours and battery_level_added:
                                 charging_plan[day]["total_cost"] += cost_added
                                 reason = (
-                                    f"<details><summary>{emoji_parse({'charging': True})}Billigste timer ({price}/{battery_level_added:.0f}%)"
+                                    f"<details><summary>{emoji_parse({'charging': True})}{r('title.cheapest_hours')} ({price}/{battery_level_added:.0f}%)"
                                     f"{other_day_text(day, what_day)}</summary>"
-                                    f"Højeste batteriniveau tidspunkt: **{highest_battery_level_timestamp.strftime('%H:%M')}**<br>"
-                                    f"Højeste batteriniveau: **{highest_battery_level:.1f}%**<br>"
-                                    f"Aktuel elpris: **{price}** {valuta_kwh}<br>"
-                                    f"Gns. fortjeneste ved brug: **{average_profit:.2f} {valuta_kwh}**<br>"
-                                    f"Batteriniveau tilføjet: **{battery_level_added:.2f}%**<br>"
+                                    f"{r('highest_level_time')}: **{highest_battery_level_timestamp.strftime('%H:%M')}**<br>"
+                                    f"{r('highest_level')}: **{highest_battery_level:.1f}%**<br>"
+                                    f"{r('current_price')}: **{price}** {valuta_kwh}<br>"
+                                    f"{r('avg_profit_use')}: **{average_profit:.2f} {valuta_kwh}**<br>"
+                                    f"{r('level_added')}: **{battery_level_added:.2f}%**<br>"
                                     "</details>"
                                 )
                                 add_charging_session_to_day(timestamp, what_day, reason=reason)
@@ -787,15 +791,15 @@ class PlannerMixin:
                                 charging_plan[day]["total_cost"] += cost_added
                                 allow_discharge(sorted_timestamp)
                                 reason = (
-                                    f"<details><summary>{emoji_parse({'charging': True})}Dyreste timer ({price}/{battery_level_added:.0f}%)"
+                                    f"<details><summary>{emoji_parse({'charging': True})}{r('title.most_expensive_hours')} ({price}/{battery_level_added:.0f}%)"
                                     f"{other_day_text(day, what_day)}</summary>"
-                                    f"Prioriteret time: **{sorted_timestamp}**<br>"
-                                    f"Prioriteret batteriniveau: **{sorted_battery_level:.1f}%**<br>"
-                                    f"Prioriteret elpris: **{sorted_price}** {valuta_kwh}<br>"
-                                    f"Aktuel elpris: **{price} {valuta_kwh}**<br>"
-                                    f"Profit ved at lade til denne time: **{kwh_profit:.2f} {valuta_kwh}**<br>"
-                                    f"Plads uden at fortrænge solcelle: **{headroom_kwh:.2f} kWh**<br>"
-                                    f"Batteriniveau tilføjet: **{battery_level_added:.2f}%**<br>"
+                                    f"{r('prioritized_hour')}: **{sorted_timestamp}**<br>"
+                                    f"{r('prioritized_level')}: **{sorted_battery_level:.1f}%**<br>"
+                                    f"{r('prioritized_price')}: **{sorted_price}** {valuta_kwh}<br>"
+                                    f"{r('current_price')}: **{price} {valuta_kwh}**<br>"
+                                    f"{r('profit_charge_for_hour')}: **{kwh_profit:.2f} {valuta_kwh}**<br>"
+                                    f"{r('room_without_solar')}: **{headroom_kwh:.2f} kWh**<br>"
+                                    f"{r('level_added')}: **{battery_level_added:.2f}%**<br>"
                                     "</details>"
                                 )
                                 add_charging_session_to_day(timestamp, what_day, reason=reason)
@@ -863,14 +867,14 @@ class PlannerMixin:
                             charging_plan[day]["total_cost"] += cost_added
                             allow_discharge(needed_timestamp)
                             reason = (
-                                f"<details><summary>{emoji_parse({'needed_before_max_level_planner': True})}Brug for "
+                                f"<details><summary>{emoji_parse({'needed_before_max_level_planner': True})}{r('title.needed')} "
                                 f"({price}/{battery_level_added:.0f}%){other_day_text(day, what_day)}</summary>"
-                                f"Brug for strøm kl.: **{needed_timestamp.strftime('%H:%M')}** ({needed_price} {valuta_kwh})<br>"
-                                f"Højeste batteriniveau tidspunkt: **{highest_battery_level_timestamp.strftime('%H:%M')}**<br>"
-                                f"Højeste batteriniveau: **{highest_battery_level:.1f}%**<br>"
-                                f"Aktuel elpris: **{price}** {valuta_kwh}<br>"
-                                f"Profit pr. kWh: **{kwh_profit:.2f} {valuta_kwh}**<br>"
-                                f"Batteriniveau tilføjet: **{battery_level_added:.2f}%**<br>"
+                                f"{r('needed_at')}: **{needed_timestamp.strftime('%H:%M')}** ({needed_price} {valuta_kwh})<br>"
+                                f"{r('highest_level_time')}: **{highest_battery_level_timestamp.strftime('%H:%M')}**<br>"
+                                f"{r('highest_level')}: **{highest_battery_level:.1f}%**<br>"
+                                f"{r('current_price')}: **{price}** {valuta_kwh}<br>"
+                                f"{r('profit_per_kwh')}: **{kwh_profit:.2f} {valuta_kwh}**<br>"
+                                f"{r('level_added')}: **{battery_level_added:.2f}%**<br>"
                                 "</details>"
                             )
                             add_charging_session_to_day(timestamp, what_day, reason=reason)
@@ -916,15 +920,15 @@ class PlannerMixin:
                             charging_plan[day]["hour_cost_prediction"][forecast_type][hour]["percentage"]
                         )
                         charging_plan[day]["blocked_discharge_timestamps"][timestamp] = (
-                            f"<details><summary>{emoji_parse({'only_discharge_on_profit': True})}Ingen fortjeneste ({profit:.2f})</summary>"
-                            f"Battery level: **{sum(charging_plan[day]['battery_level_flow'][hour]):.1f}%**<br>"
-                            f"Battery kWh cost (basis): **{raw:.2f} {valuta_kwh}**<br>"
-                            f"Charge/Discharge loss: **{loss_cost:.2f} {valuta_kwh}**<br>"
-                            f"Wear cost per kWh: **{abs(config['solar']['powerwall_wear_cost_per_kwh']):.2f} {valuta_kwh}**<br>"
-                            f"**Samlet battery kWh cost**: **{battery_kwh_cost:.2f} {valuta_kwh}**<br>"
-                            f"Aktuel elpris: **{price} {valuta_kwh}**<br>"
-                            f"Minimum fortjeneste pr. kWh: **{min_profit_per_kwh:.2f} {valuta_kwh}**<br>"
-                            f"Fortjeneste pr. kWh: **{profit:.2f} {valuta_kwh}**<br>"
+                            f"<details><summary>{emoji_parse({'only_discharge_on_profit': True})}{r('title.no_profit')} ({profit:.2f})</summary>"
+                            f"{r('battery_level')}: **{sum(charging_plan[day]['battery_level_flow'][hour]):.1f}%**<br>"
+                            f"{r('battery_cost_basis')}: **{raw:.2f} {valuta_kwh}**<br>"
+                            f"{r('loss_cost')}: **{loss_cost:.2f} {valuta_kwh}**<br>"
+                            f"{r('wear_cost')}: **{abs(config['solar']['powerwall_wear_cost_per_kwh']):.2f} {valuta_kwh}**<br>"
+                            f"**{r('battery_cost_total')}**: **{battery_kwh_cost:.2f} {valuta_kwh}**<br>"
+                            f"{r('current_price')}: **{price} {valuta_kwh}**<br>"
+                            f"{r('min_profit_per_kwh')}: **{min_profit_per_kwh:.2f} {valuta_kwh}**<br>"
+                            f"{r('profit_per_kwh')}: **{profit:.2f} {valuta_kwh}**<br>"
                             "</details>"
                         )
 
@@ -973,16 +977,16 @@ class PlannerMixin:
                             f"({kwh_to_percentage(sum(prioritized_kwh)):.1f}%)"
                         )
                         charging_plan[day]["blocked_discharge_timestamps"][timestamp] = (
-                            f"<details><summary>{emoji_parse({'prioritize_discharge_hours_by_energy_cost': True})}Dyreste timer prioriteret "
+                            f"<details><summary>{emoji_parse({'prioritize_discharge_hours_by_energy_cost': True})}{r('title.most_expensive_prioritized')} "
                             f"({prioritized_hours_string.replace(' ', '')})</summary>"
-                            "(battery_kwh ≤ minimum threshold)<br>"
-                            f"Prioriterede timer: **{prioritized_hours_string}**<br>"
-                            f"Prioriterede kWh: **{prioritized_kwh_string}**<br>"
-                            f"Highest battery level time: **{highest_battery_level_timestamp}**<br>"
-                            f"Highest battery kWh: **{kwh_to_percentage(highest_battery_kwh):.1f}%**<br>"
-                            f"Current battery kWh: **{kwh_to_percentage(battery_kwh):.1f}%**<br>"
-                            f"Minimum allowed kWh: **{kwh_to_percentage(powerwall_kwh_min):.1f}%**<br>"
-                            f"Kwh needed for discharge: **{kwh_to_percentage(kwh_needed):.1f}%**<br>"
+                            f"{r('reaches_minimum')}<br>"
+                            f"{r('prioritized_hours')}: **{prioritized_hours_string}**<br>"
+                            f"{r('prioritized_kwh')}: **{prioritized_kwh_string}**<br>"
+                            f"{r('highest_level_time')}: **{highest_battery_level_timestamp}**<br>"
+                            f"{r('highest_level')}: **{kwh_to_percentage(highest_battery_kwh):.1f}%**<br>"
+                            f"{r('current_level')}: **{kwh_to_percentage(battery_kwh):.1f}%**<br>"
+                            f"{r('lowest_allowed_level')}: **{kwh_to_percentage(powerwall_kwh_min):.1f}%**<br>"
+                            f"{r('needed_for_discharge')}: **{kwh_to_percentage(kwh_needed):.1f}%**<br>"
                             "</details>"
                         )
                     else:
@@ -1144,42 +1148,42 @@ class PlannerMixin:
                     for item, take in taken:
                         item[2] -= take
                         changes.append((item[1], take))
-                        usage_text += f"Kl. {item[1].strftime('%H:%M')}: {take:.2f} kWh ({item[0]:.2f} {valuta_kwh})<br>"
+                        usage_text += f"{r('at_time', time=item[1].strftime('%H:%M'))}: {take:.2f} kWh ({item[0]:.2f} {valuta_kwh})<br>"
                         if item[2] <= 0.01:
                             # the battery isn't used in this hour, the energy is sold instead
                             usage_data = charging_plan[days_between(current_hour, item[1])]
                             if item[1] in usage_data["discharge_timestamps"]:
                                 usage_data["discharge_timestamps"].remove(item[1])
                             usage_data["blocked_discharge_timestamps"][item[1]] = (
-                                f"<details><summary>{emoji_parse({'most_profit': True})}Strøm sælges i stedet kl. {timestamp.strftime('%H:%M')}</summary>"
-                                f"Elpris nu: **{item[0]:.2f} {valuta_kwh}**<br>"
-                                f"Salgspris kl. {timestamp.strftime('%H:%M')}: **{price:.2f} {valuta_kwh}**<br>"
+                                f"<details><summary>{emoji_parse({'most_profit': True})}{r('title.sold_instead_at', time=timestamp.strftime('%H:%M'))}</summary>"
+                                f"{r('price_now')}: **{item[0]:.2f} {valuta_kwh}**<br>"
+                                f"{r('sell_price_at', time=timestamp.strftime('%H:%M'))}: **{price:.2f} {valuta_kwh}**<br>"
                                 "</details>"
                             )
                     usage = [item for item in usage if item[2] > 0.01]
 
                     grid_sell_profit = (price - battery_kwh_cost) * kwh
-                    _LOGGER.debug("Most profit: selling %.2f kWh at %s (%.2f kr more than using it)", kwh, timestamp, gain)
+                    _LOGGER.debug("Most profit: selling %.2f kWh at %s (%.2f more than using it)", kwh, timestamp, gain)
                     fixed_price_calc_text = (
                         f"{sell_price:.2f} - {grid_sell_prices.get(timestamp, 0.0):.2f} =" if not using_grid_sell_price else ""
                     )
                     charging_plan[what_day]["force_discharge_timestamps"][timestamp] = {
-                        "title": "Sælger i stedet for at bruge",
+                        "title": r("title.sell_instead_of_use"),
                         "emoji": emoji_parse({"most_profit": True}),
                         "kwh": kwh,
                         "profit": grid_sell_profit,
                         "reason": (
-                            f"<details><summary>{emoji_parse({'most_profit': True})}Sælger i stedet for at bruge<br>"
+                            f"<details><summary>{emoji_parse({'most_profit': True})}{r('title.sell_instead_of_use')}<br>"
                             f"({kwh:.1f} kWh / +{gain:.2f} {valuta})</summary>"
-                            f"Battery kWh cost (basis): **{raw:.2f} {valuta_kwh}**<br>"
-                            f"Charge/Discharge loss: **{loss_cost:.2f} {valuta_kwh}**<br>"
-                            f"Wear cost per kWh: **{abs(config['solar']['powerwall_wear_cost_per_kwh']):.2f} {valuta_kwh}**<br>"
-                            f"**Samlet battery kWh cost**: **{battery_kwh_cost:.2f} {valuta_kwh}**<br>"
-                            f"Grid sell price: **{fixed_price_calc_text}{price:.2f} {valuta_kwh}**<br>"
-                            f"kWh sold: **{kwh:.2f} kWh**<br>"
-                            f"Profit from selling: **{grid_sell_profit:.2f} {valuta}**<br>"
-                            f"Købes i stedet fra nettet:<br>{usage_text}"
-                            f"Gevinst i forhold til at bruge strømmen: **{gain:.2f} {valuta}**<br>"
+                            f"{r('battery_cost_basis')}: **{raw:.2f} {valuta_kwh}**<br>"
+                            f"{r('loss_cost')}: **{loss_cost:.2f} {valuta_kwh}**<br>"
+                            f"{r('wear_cost')}: **{abs(config['solar']['powerwall_wear_cost_per_kwh']):.2f} {valuta_kwh}**<br>"
+                            f"**{r('battery_cost_total')}**: **{battery_kwh_cost:.2f} {valuta_kwh}**<br>"
+                            f"{r('grid_sell_price')}: **{fixed_price_calc_text}{price:.2f} {valuta_kwh}**<br>"
+                            f"{r('kwh_sold')}: **{kwh:.2f} kWh**<br>"
+                            f"{r('profit_selling')}: **{grid_sell_profit:.2f} {valuta}**<br>"
+                            f"{r('bought_instead')}:<br>{usage_text}"
+                            f"{r('gain_vs_use')}: **{gain:.2f} {valuta}**<br>"
                             "</details>"
                         ),
                     }
@@ -1195,11 +1199,11 @@ class PlannerMixin:
 
                 if excess_kwh_available < min_sell_kwh or excess_kwh_available <= 0.0:
                     charging_plan[day]["force_discharge_timestamps_empty"] = (
-                        "<details><summary>⚠️ Ingen overskydende kWh tilgængelig at sælge</summary>"
-                        f"Laveste batteriniveau timestamp: **{lowest_timestamp}**<br>"
-                        f"Laveste batteriniveau: **{lowest_battery_level:.1f}%**<br>"
-                        f"Batteri kWh tilgængelig at sælge: **{excess_kwh_available:.2f} kWh**<br>"
-                        f"Minimum kWh at sælge: **{min_sell_kwh:.2f} kWh**<br>"
+                        f"<details><summary>⚠️ {r('title.no_excess')}</summary>"
+                        f"{r('lowest_level_time')}: **{lowest_timestamp}**<br>"
+                        f"{r('lowest_level')}: **{lowest_battery_level:.1f}%**<br>"
+                        f"{r('kwh_available_to_sell')}: **{excess_kwh_available:.2f} kWh**<br>"
+                        f"{r('min_kwh_to_sell')}: **{min_sell_kwh:.2f} kWh**<br>"
                         "</details>"
                     )
                     return
@@ -1257,12 +1261,12 @@ class PlannerMixin:
                                 continue
                             if excess_profit < min_total_profit:
                                 _LOGGER.debug(
-                                    "Sell excess: day %s %s profit too low (%.2f kr < %.2f kr)",
+                                    "Sell excess: day %s %s profit too low (%.2f < %.2f)",
                                     day, timestamp, excess_profit, min_total_profit,
                                 )
                                 continue
                         _LOGGER.debug(
-                            "Sell excess: day %s selling %.2f kWh at %s (profit %.2f kr, min %.2f kr)",
+                            "Sell excess: day %s selling %.2f kWh at %s (profit %.2f, min %.2f)",
                             day, excess_current, timestamp, excess_profit, min_total_profit,
                         )
 
@@ -1278,20 +1282,20 @@ class PlannerMixin:
                             f"{sell_price:.2f} - {grid_sell_prices.get(timestamp, 0.0):.2f} =" if not using_grid_sell_price else ""
                         )
                         charging_plan[what_day]["force_discharge_timestamps"][timestamp] = {
-                            "title": "Sælger overskydende kWh",
+                            "title": r("title.sell_excess"),
                             "emoji": emoji_parse({"sell_excess_kwh_available": True}),
                             "kwh": excess_current,
                             "profit": excess_profit,
                             "reason": (
-                                f"<details><summary>{emoji_parse({'sell_excess_kwh_available': True})}Sælger overskydende kWh<br>"
-                                f"({excess_current:.1f} kWh / {excess_profit:.2f} kr){other_day}</summary>"
-                                f"Battery kWh cost (basis): **{loop_raw:.2f} {valuta_kwh}**<br>"
-                                f"Charge/Discharge loss: **{loop_loss_cost:.2f} {valuta_kwh}**<br>"
-                                f"Wear cost per kWh: **{abs(config['solar']['powerwall_wear_cost_per_kwh']):.2f} {valuta_kwh}**<br>"
-                                f"**Samlet battery kWh cost**: **{loop_battery_kwh_cost:.2f} {valuta_kwh}**<br>"
-                                f"Grid price: **{fixed_price_calc_text}{price:.2f} {valuta_kwh}**<br>"
-                                f"Excess kWh sold: **{excess_current:.2f} kWh**<br>"
-                                f"Profit from selling: **{excess_profit:.2f} {valuta}**<br>"
+                                f"<details><summary>{emoji_parse({'sell_excess_kwh_available': True})}{r('title.sell_excess')}<br>"
+                                f"({excess_current:.1f} kWh / {excess_profit:.2f} {valuta}){other_day}</summary>"
+                                f"{r('battery_cost_basis')}: **{loop_raw:.2f} {valuta_kwh}**<br>"
+                                f"{r('loss_cost')}: **{loop_loss_cost:.2f} {valuta_kwh}**<br>"
+                                f"{r('wear_cost')}: **{abs(config['solar']['powerwall_wear_cost_per_kwh']):.2f} {valuta_kwh}**<br>"
+                                f"**{r('battery_cost_total')}**: **{loop_battery_kwh_cost:.2f} {valuta_kwh}**<br>"
+                                f"{r('grid_sell_price')}: **{fixed_price_calc_text}{price:.2f} {valuta_kwh}**<br>"
+                                f"{r('excess_kwh_sold')}: **{excess_current:.2f} kWh**<br>"
+                                f"{r('profit_selling')}: **{excess_profit:.2f} {valuta}**<br>"
                                 "</details>"
                             ),
                         }
@@ -1304,18 +1308,18 @@ class PlannerMixin:
                     profit = max_price - battery_kwh_cost
                     hour_excluded = ""
                     if exclude_hours and max_price_timestamp and max_price_timestamp.hour in exclude_hours:
-                        hour_excluded = f"⚠️ Maks pris tidspunktet er i de ekskluderede timer: <b>{max_price_timestamp.hour}:00</b><br>"
+                        hour_excluded = f"⚠️ {r('max_price_excluded')}: <b>{max_price_timestamp.hour}:00</b><br>"
                     charging_plan[day]["force_discharge_timestamps_empty"] = (
-                        f"<details><summary>⚠️Ingen gode tidspunkter at sælge overskydende kWh på ({profit:.2f})</summary>"
+                        f"<details><summary>⚠️{r('title.no_good_sell_time')} ({profit:.2f})</summary>"
                         f"{hour_excluded}"
-                        f"Battery kWh cost (basis): <b>{raw:.2f} {valuta_kwh}</b><br>"
-                        f"Charge/Discharge loss: <b>{loss_cost:.2f} {valuta_kwh}</b><br>"
-                        f"Wear cost per kWh: <b>{abs(config['solar']['powerwall_wear_cost_per_kwh']):.2f} {valuta_kwh}</b><br>"
-                        f"<b>Samlet battery kWh cost: {battery_kwh_cost:.2f} {valuta_kwh}</b><br>"
-                        f"Maks pris tidspunkt i dag: <b>{max_price_timestamp if max_price_timestamp else 'N/A'}</b><br>"
-                        f"Maks pris for at sælge i dag: <b>{max_price:.2f} {valuta_kwh}</b><br>"
-                        f"Minimum fortjeneste pr. kWh: <b>{get_min_profit_per_kwh():.2f} {valuta_kwh}</b><br>"
-                        f"Profit from selling: <b>{profit:.2f} {valuta_kwh}</b><br>"
+                        f"{r('battery_cost_basis')}: <b>{raw:.2f} {valuta_kwh}</b><br>"
+                        f"{r('loss_cost')}: <b>{loss_cost:.2f} {valuta_kwh}</b><br>"
+                        f"{r('wear_cost')}: <b>{abs(config['solar']['powerwall_wear_cost_per_kwh']):.2f} {valuta_kwh}</b><br>"
+                        f"<b>{r('battery_cost_total')}: {battery_kwh_cost:.2f} {valuta_kwh}</b><br>"
+                        f"{r('max_price_time')}: <b>{max_price_timestamp if max_price_timestamp else 'N/A'}</b><br>"
+                        f"{r('max_sell_price')}: <b>{max_price:.2f} {valuta_kwh}</b><br>"
+                        f"{r('min_profit_per_kwh')}: <b>{get_min_profit_per_kwh():.2f} {valuta_kwh}</b><br>"
+                        f"{r('profit_selling')}: <b>{profit:.2f} {valuta_kwh}</b><br>"
                         "</details>"
                     )
 
@@ -1366,13 +1370,13 @@ class PlannerMixin:
                         "kwh": old_kwh,
                         "profit": profit,
                         "reason": (
-                            f"<details><summary>{emoji_parse({'force_powerwall_max_hours_old_discharge': True})}Gammel strøm bruges ({profit:.2f})</summary>"
-                            f"Battery kWh cost (basis): **{old_price:.2f} {valuta_kwh}**<br>"
-                            f"Charge/Discharge loss: **{battery_loss_cost:.2f} {valuta_kwh}**<br>"
-                            f"Wear cost per kWh: **{abs(config['solar']['powerwall_wear_cost_per_kwh']):.2f} {valuta_kwh}**<br>"
-                            f"**Samlet battery kWh cost**: **{battery_kwh_cost:.2f} {valuta_kwh}**<br>"
-                            f"Grid buy price: **{price:.2f} {valuta_kwh}**<br>"
-                            f"Profit from using battery: **{profit:.2f} {valuta}**<br>"
+                            f"<details><summary>{emoji_parse({'force_powerwall_max_hours_old_discharge': True})}{r('title.old_energy_used')} ({profit:.2f})</summary>"
+                            f"{r('battery_cost_basis')}: **{old_price:.2f} {valuta_kwh}**<br>"
+                            f"{r('loss_cost')}: **{battery_loss_cost:.2f} {valuta_kwh}**<br>"
+                            f"{r('wear_cost')}: **{abs(config['solar']['powerwall_wear_cost_per_kwh']):.2f} {valuta_kwh}**<br>"
+                            f"**{r('battery_cost_total')}**: **{battery_kwh_cost:.2f} {valuta_kwh}**<br>"
+                            f"{r('grid_buy_price')}: **{price:.2f} {valuta_kwh}**<br>"
+                            f"{r('profit_using_battery')}: **{profit:.2f} {valuta}**<br>"
                             "</details>"
                         ),
                     }
@@ -1404,18 +1408,18 @@ class PlannerMixin:
                         f"{sell_price:.2f} - {grid_sell_prices.get(timestamp, 0.0):.2f} =" if not using_grid_sell_price else ""
                     )
                     charging_plan[day]["force_discharge_timestamps"][timestamp] = {
-                        "title": "Sælger gammel strøm",
+                        "title": r("title.old_energy_sold"),
                         "emoji": emoji_parse({"force_powerwall_max_hours_old_discharge": True}),
                         "kwh": kwh,
                         "profit": (price - battery_kwh_cost) * kwh,
                         "reason": (
-                            f"<details><summary>{emoji_parse({'force_powerwall_max_hours_old_discharge': True})}Sælger gammel strøm<br>"
+                            f"<details><summary>{emoji_parse({'force_powerwall_max_hours_old_discharge': True})}{r('title.old_energy_sold')}<br>"
                             f"({kwh:.1f} kWh / +{gain_per_kwh * kwh:.2f} {valuta})</summary>"
-                            f"**Samlet battery kWh cost**: **{battery_kwh_cost:.2f} {valuta_kwh}**<br>"
-                            f"Grid sell price: **{fixed_price_calc_text}{price:.2f} {valuta_kwh}**<br>"
-                            f"Gns. elpris ved brug: **{usage_value:.2f} {valuta_kwh}**<br>"
-                            f"kWh sold: **{kwh:.2f} kWh**<br>"
-                            f"Gevinst i forhold til at bruge strømmen: **{gain_per_kwh * kwh:.2f} {valuta}**<br>"
+                            f"**{r('battery_cost_total')}**: **{battery_kwh_cost:.2f} {valuta_kwh}**<br>"
+                            f"{r('grid_sell_price')}: **{fixed_price_calc_text}{price:.2f} {valuta_kwh}**<br>"
+                            f"{r('avg_price_use')}: **{usage_value:.2f} {valuta_kwh}**<br>"
+                            f"{r('kwh_sold')}: **{kwh:.2f} kWh**<br>"
+                            f"{r('gain_vs_use')}: **{gain_per_kwh * kwh:.2f} {valuta}**<br>"
                             "</details>"
                         ),
                     }
@@ -1478,7 +1482,7 @@ class PlannerMixin:
 
                 gain = percentage_to_kwh(sum((original_charged[h] - charged[h]) * prices[h] for h in available)) / efficiency
                 moved_text = "".join(
-                    f"Kl. {h:02d}:00: {percentage_to_kwh(charged[h] - original_charged[h]) / efficiency:.2f} kWh ({prices[h]:.2f} {valuta_kwh})<br>"
+                    f"{r('at_time', time=f'{h:02d}:00')}: {percentage_to_kwh(charged[h] - original_charged[h]) / efficiency:.2f} kWh ({prices[h]:.2f} {valuta_kwh})<br>"
                     for h in sorted(available)
                     if percentage_to_kwh(charged[h] - original_charged[h]) / efficiency >= 0.01
                 )
@@ -1488,13 +1492,13 @@ class PlannerMixin:
                     ts = start.replace(hour=h, minute=0, second=0, microsecond=0)
                     blocked[ts] = {
                         "reason": (
-                            f"<details><summary>{emoji_parse({'blocked_solar_charge': True})}Blokeret solcelle ladning{charged_at}</summary>"
-                            f"<b>Før blokering:</b> {sum(original[h]):.1f}%<br>"
-                            f"<b>Efter blokering:</b> {sum(flow[h]):.1f}%<br>"
-                            f"<b>Solcelleoverskud sælges:</b> {percentage_to_kwh(available[h]) / efficiency:.2f} kWh<br>"
-                            f"<b>Salgspris:</b> {prices[h]:.2f} {valuta_kwh}<br>"
-                            f"<b>Forventet gevinst for dagen:</b> {gain:.2f} {valuta}<br><br>"
-                            f"<b>Batteriet lades i stedet:</b><br>{moved_text}</details>"
+                            f"<details><summary>{emoji_parse({'blocked_solar_charge': True})}{r('title.blocked_solar')}{charged_at}</summary>"
+                            f"<b>{r('before_blocking')}:</b> {sum(original[h]):.1f}%<br>"
+                            f"<b>{r('after_blocking')}:</b> {sum(flow[h]):.1f}%<br>"
+                            f"<b>{r('solar_sold')}:</b> {percentage_to_kwh(available[h]) / efficiency:.2f} kWh<br>"
+                            f"<b>{r('sell_price')}:</b> {prices[h]:.2f} {valuta_kwh}<br>"
+                            f"<b>{r('expected_gain_day')}:</b> {gain:.2f} {valuta}<br><br>"
+                            f"<b>{r('charged_instead')}:</b><br>{moved_text}</details>"
                         )
                     }
                     if ts in data["discharge_timestamps"]:
@@ -1525,10 +1529,10 @@ class PlannerMixin:
                     if timestamp in charge_hours and battery_level_added:
                         charging_plan[day]["total_cost"] += cost_added
                         reason = (
-                            f"<details><summary>{emoji_parse({'negative_price_planner': True})}Negativ pris ({price}/{battery_level_added:.0f}%)</summary>"
-                            f"Aktuel elpris: **{price} {valuta_kwh}**<br>"
-                            f"Fortjeneste pr. kWh selv uden brug: **{kwh_profit:.2f} {valuta_kwh}**<br>"
-                            f"Batteriniveau tilføjet: **{battery_level_added:.2f}%**<br>"
+                            f"<details><summary>{emoji_parse({'negative_price_planner': True})}{r('title.negative_price')} ({price}/{battery_level_added:.0f}%)</summary>"
+                            f"{r('current_price')}: **{price} {valuta_kwh}**<br>"
+                            f"{r('profit_without_use')}: **{kwh_profit:.2f} {valuta_kwh}**<br>"
+                            f"{r('level_added')}: **{battery_level_added:.2f}%**<br>"
                             "</details>"
                         )
                         add_charging_session_to_day(timestamp, what_day, reason=reason)
@@ -1599,26 +1603,26 @@ class PlannerMixin:
                             f"{sell_price:.2f} - {grid_sell_prices.get(sell_timestamp, 0.0):.2f} =" if not using_grid_sell_price else ""
                         )
                         data["force_discharge_timestamps"][sell_timestamp] = {
-                            "title": "Sælger strøm købt billigt",
+                            "title": r("title.sell_bought_cheap"),
                             "emoji": emoji_parse({"grid_charge_to_sell": True}),
                             "kwh": delivered_kwh,
                             "profit": kwh_profit * delivered_kwh,
                             "reason": (
-                                f"<details><summary>{emoji_parse({'grid_charge_to_sell': True})}Sælger strøm købt billigt<br>"
+                                f"<details><summary>{emoji_parse({'grid_charge_to_sell': True})}{r('title.sell_bought_cheap')}<br>"
                                 f"({delivered_kwh:.1f} kWh / +{kwh_profit * delivered_kwh:.2f} {valuta})</summary>"
-                                f"Købt kl. **{buy_timestamp.strftime('%d/%m %H:%M')}** til **{buy_price:.2f} {valuta_kwh}**<br>"
-                                f"Grid sell price: **{fixed_price_calc_text}{price:.2f} {valuta_kwh}**<br>"
-                                f"Ladetab + slid pr. kWh: **{calc_battery_loss_cost(buy_price) + abs(config['solar']['powerwall_wear_cost_per_kwh']):.2f} {valuta_kwh}**<br>"
-                                f"Fortjeneste pr. kWh: **{kwh_profit:.2f} {valuta_kwh}**<br>"
+                                f"{r('bought_at', time=buy_timestamp.strftime('%d/%m %H:%M'), price=f'{buy_price:.2f} {valuta_kwh}')}<br>"
+                                f"{r('grid_sell_price')}: **{fixed_price_calc_text}{price:.2f} {valuta_kwh}**<br>"
+                                f"{r('loss_wear_per_kwh')}: **{calc_battery_loss_cost(buy_price) + abs(config['solar']['powerwall_wear_cost_per_kwh']):.2f} {valuta_kwh}**<br>"
+                                f"{r('profit_per_kwh')}: **{kwh_profit:.2f} {valuta_kwh}**<br>"
                                 "</details>"
                             ),
                         }
                         reason = (
-                            f"<details><summary>{emoji_parse({'grid_charge_to_sell': True})}Køb for at sælge ({buy_price}/{battery_level_added:.0f}%)"
+                            f"<details><summary>{emoji_parse({'grid_charge_to_sell': True})}{r('title.buy_to_sell')} ({buy_price}/{battery_level_added:.0f}%)"
                             f"{other_day_text(day, buy_day)}</summary>"
-                            f"Sælges kl. **{sell_timestamp.strftime('%d/%m %H:%M')}** til **{price:.2f} {valuta_kwh}**<br>"
-                            f"Fortjeneste pr. kWh: **{kwh_profit:.2f} {valuta_kwh}**<br>"
-                            f"Batteriniveau tilføjet: **{battery_level_added:.2f}%**<br>"
+                            f"{r('sold_at', time=sell_timestamp.strftime('%d/%m %H:%M'), price=f'{price:.2f} {valuta_kwh}')}<br>"
+                            f"{r('profit_per_kwh')}: **{kwh_profit:.2f} {valuta_kwh}**<br>"
+                            f"{r('level_added')}: **{battery_level_added:.2f}%**<br>"
                             "</details>"
                         )
                         add_charging_session_to_day(buy_timestamp, buy_day, reason=reason)
@@ -1717,18 +1721,18 @@ class PlannerMixin:
                             f"{sell_price:.2f} - {grid_sell_prices.get(timestamp, 0.0):.2f} =" if not using_grid_sell_price else ""
                         )
                         data["force_discharge_timestamps"][timestamp] = {
-                            "title": "Sælger før solen fylder batteriet",
+                            "title": r("title.sell_before_solar"),
                             "emoji": emoji_parse({"discharge_before_solar": True}),
                             "kwh": kwh,
                             "profit": gain * kwh,
                             "reason": (
-                                f"<details><summary>{emoji_parse({'discharge_before_solar': True})}Sælger før solen fylder batteriet<br>"
+                                f"<details><summary>{emoji_parse({'discharge_before_solar': True})}{r('title.sell_before_solar')}<br>"
                                 f"({kwh:.1f} kWh / +{gain * kwh:.2f} {valuta})</summary>"
-                                f"Grid sell price: **{fixed_price_calc_text}{price:.2f} {valuta_kwh}**<br>"
-                                f"Solcelleoverskud sælges ellers til: **{solar_sell_price:.2f} {valuta_kwh}**<br>"
-                                f"Genopfyldning med sol inkl. tab og slid: **{refill_cost:.2f} {valuta_kwh}**<br>"
-                                f"Solcelleoverskud der ellers ikke kan være i batteriet: **{percentage_to_kwh(pushed_out) / efficiency:.2f} kWh**<br>"
-                                f"Gevinst: **{gain * kwh:.2f} {valuta}**<br>"
+                                f"{r('grid_sell_price')}: **{fixed_price_calc_text}{price:.2f} {valuta_kwh}**<br>"
+                                f"{r('solar_sold_otherwise')}: **{solar_sell_price:.2f} {valuta_kwh}**<br>"
+                                f"{r('refill_cost')}: **{refill_cost:.2f} {valuta_kwh}**<br>"
+                                f"{r('solar_not_fitting')}: **{percentage_to_kwh(pushed_out) / efficiency:.2f} kWh**<br>"
+                                f"{r('gain')}: **{gain * kwh:.2f} {valuta}**<br>"
                                 "</details>"
                             ),
                         }
@@ -1838,7 +1842,7 @@ class PlannerMixin:
                     ],
                 }
                 _LOGGER.debug(
-                    "Whole period optimisation over %s hours: optimal %.2f kr, rules %.2f kr, self consumption %.2f kr",
+                    "Whole period optimisation over %s hours: optimal %.2f, rules %.2f, self consumption %.2f",
                     len(hours), optimal.total, rules.total, self_consumption.total,
                 )
                 return hours, optimal, explanations
@@ -1852,16 +1856,16 @@ class PlannerMixin:
                 every cron interval), and a sale uses the most expensive sell periods of the hour.
                 """
                 charge_titles = {
-                    "cheapest_hour_fill_planner": "Billigste timer",
-                    "most_expensive_planner": "Dyreste timer",
-                    "needed_before_max_level_planner": "Brug for",
-                    "negative_price_planner": "Negativ pris",
-                    "grid_charge_to_sell": "Køb for at sælge",
+                    "cheapest_hour_fill_planner": r("title.cheapest_hours"),
+                    "most_expensive_planner": r("title.most_expensive_hours"),
+                    "needed_before_max_level_planner": r("title.needed"),
+                    "negative_price_planner": r("title.negative_price"),
+                    "grid_charge_to_sell": r("title.buy_to_sell"),
                 }
                 sale_titles = {
-                    "grid_charge_to_sell": "Sælger strøm købt billigt",
-                    "discharge_before_solar": "Sælger før solen fylder batteriet",
-                    "most_profit": "Sælger i stedet for at bruge",
+                    "grid_charge_to_sell": r("title.sell_bought_cheap"),
+                    "discharge_before_solar": r("title.sell_before_solar"),
+                    "most_profit": r("title.sell_instead_of_use"),
                 }
 
                 def when(index):
@@ -1886,7 +1890,7 @@ class PlannerMixin:
                     plan_day = new_plan[days_between(current_hour, timestamp)]
                     rule = explanation["rule"] if explanation else None
                     target = explanation["target"] if explanation else None
-                    level_text = f"Batteriniveau efter timen: **{level:.0f}%**<br>"
+                    level_text = f"{r('level_after_hour')}: **{level:.0f}%**<br>"
                     if action == "grid_charging" and grid_kwh >= 0.1:  # a few Wh is not worth a charge hour
                         percentage = kwh_to_percentage(grid_kwh) * efficiency
                         session = {
@@ -1900,20 +1904,20 @@ class PlannerMixin:
                             target_text = ""
                         elif rule == "grid_charge_to_sell":
                             target_text = (
-                                f"Sælges kl. **{when(target)}** til **{hours[target].sell:.2f} {valuta_kwh}**<br>"
-                                f"Fortjeneste pr. kWh: **{charge_kwh_profit(hour.buy, hours[target].sell):.2f} {valuta_kwh}**<br>"
+                                f"{r('sold_at', time=when(target), price=f'{hours[target].sell:.2f} {valuta_kwh}')}<br>"
+                                f"{r('profit_per_kwh')}: **{charge_kwh_profit(hour.buy, hours[target].sell):.2f} {valuta_kwh}**<br>"
                             )
                         else:
                             target_text = (
-                                f"Bruges kl. **{when(target)}** til **{hours[target].buy:.2f} {valuta_kwh}**<br>"
-                                f"Fortjeneste pr. kWh: **{charge_kwh_profit(hour.buy, hours[target].buy):.2f} {valuta_kwh}**<br>"
+                                f"{r('used_at', time=when(target), price=f'{hours[target].buy:.2f} {valuta_kwh}')}<br>"
+                                f"{r('profit_per_kwh')}: **{charge_kwh_profit(hour.buy, hours[target].buy):.2f} {valuta_kwh}**<br>"
                             )
                         new_charge_hours[timestamp] = session
                         plan_day["charging_sessions"][timestamp] = {
                             **session,
                             "reason": (
                                 f"<details><summary>{emoji_parse({rule: True})}{charge_titles[rule]} ({hour.buy:.2f}/{percentage:.0f}%)</summary>"
-                                f"Lader **{grid_kwh:.2f} kWh** til **{hour.buy:.2f} {valuta_kwh}**<br>"
+                                f"{r('charging_at', kwh=f'{grid_kwh:.2f} kWh', price=f'{hour.buy:.2f} {valuta_kwh}')}<br>"
                                 f"{target_text}{level_text}"
                                 "</details>"
                             ),
@@ -1923,17 +1927,14 @@ class PlannerMixin:
                     elif action == "force_discharge" and sold_kwh > 0.01:
                         title = sale_titles[rule]
                         if rule == "grid_charge_to_sell" and explanation.get("kind") == "recharged":
-                            title = "Sælger før billig opladning"
-                            detail = f"Lades op igen kl. **{when(target)}** til **{hours[target].buy:.2f} {valuta_kwh}**<br>"
+                            title = r("title.sell_before_cheap_charge")
+                            detail = f"{r('recharged_at', time=when(target), price=f'{hours[target].buy:.2f} {valuta_kwh}')}<br>"
                         elif rule == "grid_charge_to_sell" and target is not None:
-                            detail = f"Købt kl. **{when(target)}** til **{hours[target].buy:.2f} {valuta_kwh}**<br>"
+                            detail = f"{r('bought_at', time=when(target), price=f'{hours[target].buy:.2f} {valuta_kwh}')}<br>"
                         elif rule == "discharge_before_solar" and target is not None:
-                            detail = (
-                                f"Solen fylder batteriet igen kl. **{when(target)}**, "
-                                f"overskuddet sælges ellers til **{hours[target].sell:.2f} {valuta_kwh}**<br>"
-                            )
+                            detail = f"{r('solar_refills_at', time=when(target), price=f'{hours[target].sell:.2f} {valuta_kwh}')}<br>"
                         else:
-                            detail = "Strømmen er mere værd solgt nu end brugt senere<br>"
+                            detail = f"{r('worth_more_sold_now')}<br>"
                         emoji = emoji_parse({rule: True})
                         periods, _, _ = sell_prices_for_window(timestamp, timestamp + datetime.timedelta(hours=1))
                         periods = periods or {timestamp: hour.sell}
@@ -1947,7 +1948,7 @@ class PlannerMixin:
                                 "profit": sold_kwh / count * price,
                                 "reason": (
                                     f"<details><summary>{emoji}{title}<br>({sold_kwh / count:.1f} kWh / {price:.2f} {valuta_kwh})</summary>"
-                                    f"Salgspris: **{price:.2f} {valuta_kwh}**<br>{detail}{level_text}"
+                                    f"{r('sell_price')}: **{price:.2f} {valuta_kwh}**<br>{detail}{level_text}"
                                     "</details>"
                                 ),
                             }
@@ -1956,24 +1957,24 @@ class PlannerMixin:
                     elif action == "discharge_allowed":
                         plan_day["discharge_timestamps"].append(timestamp)
                     elif action == "blocked_solar_charge":
-                        later = f"Batteriet lades i stedet kl. **{when(target)}**<br>" if target is not None else ""
+                        later = f"{r('charged_instead_at', time=when(target))}<br>" if target is not None else ""
                         charged_at = f" ({hours[target].timestamp.strftime('%H:%M')})" if target is not None else ""
                         plan_day["blocked_solar_charge_timestamps"][timestamp] = {
                             "reason": (
-                                f"<details><summary>{emoji_parse({'blocked_solar_charge': True})}Blokeret solcelle ladning{charged_at}</summary>"
-                                f"Solcelleoverskud sælges til: **{hour.sell:.2f} {valuta_kwh}**<br>{later}{level_text}"
+                                f"<details><summary>{emoji_parse({'blocked_solar_charge': True})}{r('title.blocked_solar')}{charged_at}</summary>"
+                                f"{r('solar_sold_for')}: **{hour.sell:.2f} {valuta_kwh}**<br>{later}{level_text}"
                                 "</details>"
                             )
                         }
                     elif rule == "prioritize_discharge_hours_by_energy_cost":
                         later = (
-                            f"Strømmen bruges i stedet kl. **{when(target)}** til **{hours[target].buy:.2f} {valuta_kwh}**<br>"
-                            if target is not None else "Strømmen er mere værd senere<br>"
+                            f"{r('used_instead_at', time=when(target), price=f'{hours[target].buy:.2f} {valuta_kwh}')}<br>"
+                            if target is not None else f"{r('worth_more_later')}<br>"
                         )
-                        title = f"Dyreste timer prioriteret ({hours[target].timestamp.strftime('%H:%M')})" if target is not None else "Dyreste timer prioriteret"
+                        title = r("title.most_expensive_prioritized") + (f" ({hours[target].timestamp.strftime('%H:%M')})" if target is not None else "")
                         plan_day["blocked_discharge_timestamps"][timestamp] = (
                             f"<details><summary>{emoji_parse({'prioritize_discharge_hours_by_energy_cost': True})}{title}</summary>"
-                            f"Elpris nu: **{hour.buy:.2f} {valuta_kwh}**<br>{later}{level_text}"
+                            f"{r('price_now')}: **{hour.buy:.2f} {valuta_kwh}**<br>{later}{level_text}"
                             "</details>"
                         )
 
@@ -2243,7 +2244,7 @@ class PlannerMixin:
             self.append_overview_output("Charging plan changed, next 24 hours updated")
 
         overview = self._build_overview(charging_plan, charge_hours, battery_expenses, solar_over_production)
-        overview_text = "\n".join(overview) if overview else "Ingen data"
+        overview_text = "\n".join(overview) if overview else self.t("ui.reason.no_data")
         self.last_overview = overview_text
         self.set_attr("overview", "overview", overview_text)
 
@@ -2258,16 +2259,16 @@ class PlannerMixin:
         blocked = sum(len(charging_plan[day]["blocked_discharge_timestamps"]) for day in days)
         blocked_solar = sum(len(charging_plan[day]["blocked_solar_charge_timestamps"]) for day in days)
         _LOGGER.info(
-            "New plan: %s charge hours (%.2f kWh, %.2f kr), %s sell periods, %s blocked discharge hours, %s blocked solar hours",
+            "New plan: %s charge hours (%.2f kWh, %.2f), %s sell periods, %s blocked discharge hours, %s blocked solar hours",
             len(charges), charge_hours.get("total_kwh", 0.0), charge_hours.get("total_cost", 0.0),
             len(sales), blocked, blocked_solar,
         )
         for ts in charges:
             rules = [key for key, value in charge_hours[ts].items() if value is True]
-            _LOGGER.debug("  charge %s: %.2f kWh at %.2f kr/kWh (%s)", ts, charge_hours[ts]["kWh"], charge_hours[ts]["Price"], ", ".join(rules))
+            _LOGGER.debug("  charge %s: %.2f kWh at %.2f/kWh (%s)", ts, charge_hours[ts]["kWh"], charge_hours[ts]["Price"], ", ".join(rules))
         for day in days:
             for ts, data in sorted(charging_plan[day]["force_discharge_timestamps"].items()):
-                _LOGGER.debug("  sell %s: %.2f kWh, profit %.2f kr (%s)", ts, data["kwh"], data["profit"], data["title"])
+                _LOGGER.debug("  sell %s: %.2f kWh, profit %.2f (%s)", ts, data["kwh"], data["profit"], data["title"])
 
     # ------------------------------------------------------------------ #
     # Overview markdown
@@ -2288,7 +2289,7 @@ class PlannerMixin:
                 joined.update(data["force_powerwall_max_hours_old_discharge_timestamps"])
                 joined.update(data["blocked_discharge_timestamps"])
                 joined.update(data["blocked_solar_charge_timestamps"])
-                joined.update(_join_timestamps_by_hour(data["force_discharge_timestamps"]))
+                joined.update(_join_timestamps_by_hour(data["force_discharge_timestamps"], valuta, t("ui.common.total")))
                 joined.update(data["charging_sessions"])
                 if not joined:
                     continue
@@ -2672,7 +2673,7 @@ def _joined_reason(group: list[tuple[datetime.datetime, str]]) -> str:
     return f"<details><summary>{emoji_parse({'bundle': True})}{title}{values}{other_day}</summary>{hours}</details>"
 
 
-def _join_timestamps_by_hour(timestamps: dict) -> dict:
+def _join_timestamps_by_hour(timestamps: dict, valuta: str, total_label: str) -> dict:
     """Sell periods of the same hour and title in one reason (📦)."""
     grouped: dict = {}
     for timestamp, data in timestamps.items():
@@ -2708,7 +2709,7 @@ def _join_timestamps_by_hour(timestamps: dict) -> dict:
                 detail = detail[: -len("</details>")]
             period_details.append(
                 f"<details><summary>{first['emoji']}**{period['timestamp'].strftime('%H:%M')}:** "
-                f"{period['kwh']:.2f} kWh / {period['profit']:.2f} kr</summary>{detail}</details>"
+                f"{period['kwh']:.2f} kWh / {period['profit']:.2f} {valuta}</summary>{detail}</details>"
             )
         joined[first["timestamp"]] = {
             "title": first["title"],
@@ -2716,8 +2717,8 @@ def _join_timestamps_by_hour(timestamps: dict) -> dict:
             "profit": total_profit,
             "reason": (
                 f"<details><summary>{emoji_parse({'bundle': True})}{first['emoji']}{first['title']}<br>"
-                f"({total_kwh:.1f} kWh / {total_profit:.2f} kr)</summary>{''.join(period_details)}"
-                f"<br>**Total:** {total_kwh:.2f} kWh / {total_profit:.2f} kr</details>"
+                f"({total_kwh:.1f} kWh / {total_profit:.2f} {valuta})</summary>{''.join(period_details)}"
+                f"<br>**{total_label}:** {total_kwh:.2f} kWh / {total_profit:.2f} {valuta}</details>"
             ),
         }
     return joined

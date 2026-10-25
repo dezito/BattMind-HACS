@@ -9,6 +9,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.battmind.const import LANGUAGES, NUMBER_SETTINGS, SELECT_SETTINGS, SWITCH_SETTINGS, TEXT_SETTINGS, build_config
 from custom_components.battmind.dashboard import render_dashboard
+from custom_components.battmind.formatting import load_texts
 
 from .conftest import MOCK_OPTIONS, PREFIX, async_unload_and_join, set_source_states
 from .test_engine import OPTIONS
@@ -39,6 +40,33 @@ def test_every_language_renders_without_placeholders(language: str) -> None:
 def test_texts_follow_the_language() -> None:
     assert yaml.safe_load(rendered("da"))["views"][1]["title"] == "Indstillinger"
     assert yaml.safe_load(rendered("en"))["views"][1]["title"] == "Settings"
+
+
+def test_currency_follows_home_assistant() -> None:
+    texts = load_texts("en", "DKK")
+    assert (texts["ui.common.valuta"], texts["ui.common.valuta_kwh"]) == ("kr", "kr/kWh")
+    assert texts["dashboard.price_chart_title"].endswith("(kr/kWh)")
+    assert load_texts("da", "EUR")["ui.common.valuta_kwh"] == "€/kWh"
+    assert load_texts("da", "CHF")["ui.common.valuta"] == "CHF"
+    content = render_dashboard(build_config({**OPTIONS, "language": "da"}), "battmind", currency="EUR")
+    assert "€/kWh" in content and "kr/kWh" not in content and "{valuta" not in content
+
+
+def test_every_language_has_every_text() -> None:
+    """A key missing in a language (and in English, the fallback) is shown as the raw key."""
+    import json
+    from pathlib import Path
+
+    def flat(data: dict, prefix: str = "") -> set[str]:
+        keys: set[str] = set()
+        for key, value in data.items():
+            keys |= flat(value, f"{prefix}{key}.") if isinstance(value, dict) else {f"{prefix}{key}"}
+        return keys
+
+    folder = Path(__file__).parents[1] / "custom_components" / "battmind" / "texts"
+    keys = {path.stem: flat(json.loads(path.read_text(encoding="utf-8"))) for path in folder.glob("*.json")}
+    every = set().union(*keys.values())
+    assert {language: sorted(every - found) for language, found in keys.items() if every - found} == {}
 
 
 @pytest.mark.parametrize(("days", "span"), [(3, "2.5d"), (2, "1.5d"), (7, "6.5d")])

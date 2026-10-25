@@ -534,7 +534,7 @@ class BattMindEngine(PlannerMixin, HistoryMixin, EnergyMixin, AnalysisMixin):
             return 0.0
 
     def get_powerwall_kwh_price(self) -> float:
-        """kr/kWh of the energy in the battery, estimated from what was charged the last 24 hours.
+        """Price per kWh of the energy in the battery, estimated from what was charged the last 24 hours.
 
         Used when the charging history has no price yet. Cached for the job, as the planner
         asks for it for every hour it evaluates.

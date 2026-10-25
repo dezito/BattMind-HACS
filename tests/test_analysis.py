@@ -68,7 +68,7 @@ def test_hindsight_moves_energy_to_the_expensive_hours() -> None:
     rows = [{"load": 1.0, "buy": 1.0, "sell": 0.5}] * 4 + [{"load": 1.0, "buy": 3.0, "sell": 0.5}] * 4
     no_battery = sum(grid_cost(r["load"], r["buy"], r["sell"]) for r in rows)
     optimal = hindsight_cost(rows, start=1.0, end=1.0, low=1.0, high=9.0, max_charge=3.0, max_discharge=3.0, efficiency=1.0, wear=0.0)
-    # 4 kWh moved from 1 kr to 3 kr hours (within a step of the 60 battery levels)
+    # 4 kWh moved from 1.00 to 3.00 price hours (within a step of the 60 battery levels)
     assert optimal == pytest.approx(no_battery - 8.0, abs=0.15)
     lossy = hindsight_cost(rows, start=1.0, end=1.0, low=1.0, high=9.0, max_charge=3.0, max_discharge=3.0, efficiency=0.9, wear=0.1)
     assert optimal < lossy < no_battery
@@ -227,7 +227,7 @@ def test_price_forecast_is_corrected_with_its_bias() -> None:
     days = engine.analysis_db["price_days"]
     for back in range(1, 8):
         days[(DAY - datetime.timedelta(days=back)).isoformat()] = {
-            # 1 day ahead 0.2 too high; 3 days ahead 2 kr too low (capped at 0.5)
+            # 1 day ahead 0.2 too high; 3 days ahead 2.00 too low (capped at 0.5)
             "1": {"n": 24, "abs": 4.8, "bias": 4.8},
             "3": {"n": 24, "abs": 48.0, "bias": -48.0},
             # 2 days ahead: too few days

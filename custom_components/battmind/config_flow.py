@@ -29,6 +29,7 @@ from .const import (
     OPTIONS_MENU,
     PRICE_PROVIDER_KEYS,
     SENSOR_KEYS,
+    currency_symbol,
     default_options,
     normalize_language,
 )
@@ -107,7 +108,7 @@ SELECTORS: dict[str, Any] = {
     "powerwall_discharging_power": _number(100, 100000, 100, "W"),
     "powerwall_charge_discharge_loss": _number(0, 0.9, 0.01),
     "use_charge_discharge_loss_from_history": BOOLEAN,
-    "powerwall_wear_cost_per_kwh": _number(0, 10, 0.01, "kr/kWh"),
+    "powerwall_wear_cost_per_kwh": _number(0, 10, 0.01, "{valuta_kwh}"),
     # consumption
     "power_consumption_entity_id": _entity("sensor", device_class="power"),
     "power_consumption_entity_id_include_powerwall_charging": BOOLEAN,
@@ -127,12 +128,12 @@ SELECTORS: dict[str, Any] = {
     "stromligning_sell_nettariff": _entity("sensor", integration="stromligning"),
     "stromligning_sell_systemtariff": _entity("sensor", integration="stromligning"),
     "stromligning_sell_surcharge": _entity("sensor", integration="stromligning"),
-    "refund": _number(0, 10, 0.001, "kr/kWh"),
-    "sell_fee": _number(0, 10, 0.001, "kr/kWh"),
+    "refund": _number(0, 10, 0.001, "{valuta_kwh}"),
+    "sell_fee": _number(0, 10, 0.001, "{valuta_kwh}"),
     # solar / weather
     "production_entity_id": _entity("sensor", device_class="power"),
     "inverter_discharging_power_limit": _number(100, 100000, 100, "W"),
-    "production_price": _number(-1, 10, 0.01, "kr/kWh"),
+    "production_price": _number(-1, 10, 0.01, "{valuta_kwh}"),
     "forecast_entity_id": _entity("sensor", integration="solcast_solar"),
     "hourly_service_entity_id": _entity("weather"),
     "daily_service_entity_id": _entity("weather"),
@@ -144,10 +145,10 @@ SELECTORS: dict[str, Any] = {
     "dashboard": BOOLEAN,
     "enable_diagnostic_file_log": BOOLEAN,
     "testing_mode": BOOLEAN,
-    "power_values_db_data_to_save": _number(1, 100, 1, "dage"),
+    "power_values_db_data_to_save": _number(1, 100, 1, "d"),
     "solar_available_db_data_to_save": _number(1, 100, 1),
-    "kwh_avg_prices_db_data_to_save": _number(1, 100, 1, "dage"),
-    "charging_history_db_data_to_save": _number(1, 60, 1, "måneder"),
+    "kwh_avg_prices_db_data_to_save": _number(1, 100, 1, "d"),
+    "charging_history_db_data_to_save": _number(1, 60, 1),  # months, see the field description
 }
 
 REQUIRED_KEYS = {
@@ -193,19 +194,29 @@ def _form_value(key: str, value: Any) -> Any:
     return value
 
 
-def build_schema(keys: list[str], values: dict[str, Any]) -> vol.Schema:
+def _selector(key: str, currency: str | None) -> Any:
+    """SELECTORS[key] with {valuta_kwh} in the unit replaced by the currency of Home Assistant."""
+    field = SELECTORS[key]
+    if isinstance(field, selector.NumberSelector) and "{valuta_kwh}" in str(field.config.get("unit_of_measurement")):
+        unit = field.config["unit_of_measurement"].replace("{valuta_kwh}", f"{currency_symbol(currency) or 'kr'}/kWh")
+        return selector.NumberSelector(selector.NumberSelectorConfig(**{**field.config, "unit_of_measurement": unit}))
+    return field
+
+
+def build_schema(keys: list[str], values: dict[str, Any], currency: str | None = None) -> vol.Schema:
     schema: dict[Any, Any] = {}
     for key in keys:
         value = _form_value(key, values.get(key))
+        field = _selector(key, currency)
         if key in ENTITY_OPTION_KEYS:
             marker = vol.Required if key in REQUIRED_KEYS else vol.Optional
-            schema[marker(key, description={"suggested_value": value or None})] = SELECTORS[key]
+            schema[marker(key, description={"suggested_value": value or None})] = field
         elif key == "ignore_consumption_from_entity_ids":
-            schema[vol.Optional(key, description={"suggested_value": value})] = SELECTORS[key]
+            schema[vol.Optional(key, description={"suggested_value": value})] = field
         elif key in REQUIRED_KEYS:
-            schema[vol.Required(key, default=value)] = SELECTORS[key]
+            schema[vol.Required(key, default=value)] = field
         else:
-            schema[vol.Optional(key, default=bool(value))] = SELECTORS[key]
+            schema[vol.Optional(key, default=bool(value))] = field
     return vol.Schema(schema)
 
 
@@ -321,7 +332,7 @@ class BattMindFlowPages:
             values_for_form.update(values)
         return self.async_show_form(  # type: ignore[attr-defined]
             step_id=step,
-            data_schema=build_schema(keys, values_for_form),
+            data_schema=build_schema(keys, values_for_form, self.hass.config.currency),  # type: ignore[attr-defined]
             errors=errors,
             description_placeholders={**self._placeholders(), "eds_url": ENERGIDATASERVICE_URL},
         )

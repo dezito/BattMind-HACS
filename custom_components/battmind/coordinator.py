@@ -156,9 +156,9 @@ class BattMindCoordinator:
 
     async def async_setup(self) -> None:
         # texts for the overview, history, charging rule and notifications (texts/<language>.json,
-        # English is the fallback for missing keys)
+        # English is the fallback for missing keys) with the currency of Home Assistant
         language = normalize_language(self.config.get("language"), normalize_language(self.hass.config.language))
-        self.texts = await self.hass.async_add_executor_job(load_texts, language)
+        self.texts = await self.hass.async_add_executor_job(load_texts, language, self.hass.config.currency)
         self.engine = BattMindEngine(self.config, self.prefix, self.texts)
 
         if self.config.get("enable_diagnostic_file_log"):
