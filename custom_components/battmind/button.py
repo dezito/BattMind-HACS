@@ -12,6 +12,7 @@ from .backup import BACKUP_DIR, async_export
 from .const import DOMAIN
 from .coordinator import BattMindCoordinator
 from .dashboard import async_reset_dashboard
+from .debug_export import async_export_debug, async_notify_debug
 from .entity import BattMindEntity
 
 
@@ -24,6 +25,7 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities: AddE
     entities = [
         BattMindEnforcePlanningButton(coordinator, "button", "enforce_planning"),
         BattMindExportButton(coordinator, "button", "export_data"),
+        BattMindExportDebugButton(coordinator, "button", "export_debug"),
     ]
     if coordinator.config.get("dashboard"):
         entities.append(BattMindResetDashboardButton(coordinator, "button", "reset_dashboard"))
@@ -51,6 +53,16 @@ class BattMindExportButton(BattMindEntity, ButtonEntity):
             title=f"📟BattMind ({prefix})",
             notification_id=f"{prefix}_backup",
         )
+
+
+class BattMindExportDebugButton(BattMindEntity, ButtonEntity):
+    """Write the anonymised debug file for a GitHub issue to battmind_debug."""
+
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    async def async_press(self) -> None:
+        name = await async_export_debug(self.hass, self.coordinator)
+        await async_notify_debug(self.hass, self.coordinator, name)
 
 
 class BattMindResetDashboardButton(BattMindEntity, ButtonEntity):

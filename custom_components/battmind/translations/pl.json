@@ -556,6 +556,9 @@
       },
       "export_data": {
         "name": "Eksportuj dane"
+      },
+      "export_debug": {
+        "name": "Eksportuj informacje debug"
       }
     },
     "sensor": {
@@ -659,6 +662,16 @@
         }
       },
       "name": "Pokaż informacje debugowania"
+    },
+    "export_debug": {
+      "name": "Eksportuj informacje debug",
+      "description": "Zapisuje zanonimizowany plik debug (battmind_debug) do zgłoszenia na GitHubie i pokazuje powiadomienie z linkiem do pobrania oraz instrukcją zgłoszenia problemu.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Wpis konfiguracji",
+          "description": "Eksportuj tylko ten wpis (domyślnie: wszystkie)."
+        }
+      }
     },
     "enforce_planning": {
       "description": "Przelicza plan ładowania teraz.",

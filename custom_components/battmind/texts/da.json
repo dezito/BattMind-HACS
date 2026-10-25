@@ -252,6 +252,9 @@
     "backup": {
       "exported": "Backup gemt som {file}",
       "imported": "Backup {file} gendannet (databaser: {databases})."
+    },
+    "debug": {
+      "exported": "**Debug-fil oprettet**\n\n1. Download den: {download} (linket virker i {hours} timer, filen ligger også som `{file}` i config-mappen).\n2. [Opret et GitHub-issue]({issue}) - version og tidspunkt er udfyldt.\n3. Beskriv hvad der skete, hvornår det skete og hvad du forventede, og træk filen ind i feltet *Debug file*.\n\nOpret filen så hurtigt som muligt efter problemet: den indeholder de seneste beregninger og logbeskeder.\n\nFilen indeholder dine indstillinger, priser, energihistorik og planer. Navne, entitetsnavne, koordinater, notify-tjenester, adresser og nøgler er fjernet eller erstattet. Intet bliver sendt nogen steder hen - du bestemmer selv, hvad du uploader."
     }
   },
   "dashboard": {
@@ -274,6 +277,7 @@
     "solar_forecast": "Solcelle prognose",
     "forecast": "Prognose",
     "debug_info": "Debug info",
+    "export_debug": "Eksportér debug",
     "recalc_history": "Genberegn dagens ladehistorik",
     "read_more": "Læs mere",
     "section_control": "Styring",

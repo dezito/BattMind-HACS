@@ -100,6 +100,25 @@ and did the inverter accept them?
 Call `battmind.recalc_charging_history_today` (or the button on the dashboard) to recalculate it from the
 power values.
 
+## Report a problem
+
+When BattMind does something wrong, create a debug file **as soon as possible** after it happened: it holds
+the latest calculations, the inputs they ran with and the latest log messages.
+
+1. Press the button **Export debug info** on the BattMind device (Settings → Devices & services → BattMind),
+   or run the action `battmind.export_debug` under **Developer tools → Actions**.
+2. A notification appears with a download link (valid for 24 hours) and a link that opens a GitHub issue with
+   the version and time filled in. The file is also saved in `battmind_debug/` in the config folder (the
+   newest 5 per instance are kept).
+3. Describe what happened, when it happened and what you expected, and drag the `.json.gz` file into the
+   field *Debug file*.
+
+The file contains your configuration, settings, prices, energy history, plans, databases and log messages.
+Before it is written, everything personal is removed: entity ids of other integrations are replaced by the
+setting they are used for (e.g. `sensor.power_consumption`), names of people, users, the home, the car and
+notify services become `<redacted>`, coordinates are rounded to whole degrees, and keys, addresses, e-mail
+addresses, URLs and IP addresses are removed. Nothing is sent anywhere by BattMind; you decide what you upload.
+
 ## Logs and debug info
 
 - Turn on **Diagnostic file log** under **Configure → Advanced**. The log is written to

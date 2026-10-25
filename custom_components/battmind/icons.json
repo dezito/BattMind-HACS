@@ -118,12 +118,18 @@
       },
       "export_data": {
         "default": "mdi:database-export"
+      },
+      "export_debug": {
+        "default": "mdi:bug-outline"
       }
     }
   },
   "services": {
     "debug_info": {
       "service": "mdi:bug"
+    },
+    "export_debug": {
+      "service": "mdi:bug-outline"
     },
     "recalc_charging_history_today": {
       "service": "mdi:database-sync"
