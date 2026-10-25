@@ -35,6 +35,7 @@ Have you set up another inverter? Please share your actions in an
 | Page | Content |
 |---|---|
 | [Dashboard and analysis](dashboard-analysis.md) | every card on the dashboard, and how to read the analysis |
+| [Emojis](emojis.md) | what every emoji in the plan, the history and the current rule means |
 | [Recipes](cookbook.md) | typical setups: no solar, solar with a fixed sell price, together with Cable Juice Planner … |
 | [Switching from the PyScript version](migration.md) | import of configuration and databases |
 | [FAQ and troubleshooting](faq-troubleshooting.md) | "why doesn't it charge now?", logs and debug info |
