@@ -14,6 +14,10 @@ charging history:
 - rule_days: charged/discharged kWh, cost and savings per charging rule, from the hourly
   entries of the charging history (the history combines old hours per day and loses the
   rules of each hour).
+- price_hours: the buy price forecast of the price integration per hour and days ahead
+  (without BattMind's daily adder), and the real price once it is known; kept a week.
+- price_days: when all real prices of a day are known, the forecast error per days ahead and
+  how well the forecast found the day's cheapest and most expensive hours.
 
 The first time the energy per hour of the last year is read from the recorder's long-term
 statistics (coordinator); forecasts, plans and scores only exist from now on. Everything is
@@ -24,8 +28,9 @@ from __future__ import annotations
 import datetime
 import logging
 
-from .const import CHARGING_TYPES
+from .const import CHARGING_TYPES, PRICE_ADDER_DAY_BETWEEN_DIVIDER
 from .engine_energy import derive_power_values
+from .helpers import days_between, reset_time_to_hour
 from .power import unit_factor_to_w
 
 _LOGGER = logging.getLogger(__name__)
@@ -53,6 +58,15 @@ DAY_SUMS = (
     "home", "ignored", "solar", "charged", "discharged", "solar_home", "battery_home", "grid_home",
     "solar_battery", "grid_battery", "export_solar", "export_battery", "solar_surplus",
 )
+PRICE_FORECAST_DAYS = 7  # days ahead a price forecast is recorded for
+PRICE_HOURS_DAYS = 7  # days the hourly forecasts and real prices are kept
+PRICE_CHART_DAYS = 2  # past days published for the hourly price chart
+PRICE_CHART_LEADS = (1, 2, 3)  # days ahead shown in the charts
+PRICE_DAY_MIN_HOURS = 20  # forecast hours needed to judge a day
+PRICE_RANK_HOURS = 4  # the cheapest / most expensive hours of a day the forecast should find
+PRICE_CORRECTION_DAYS = 30  # days the bias of the price forecast is measured over
+PRICE_CORRECTION_MIN_DAYS = 7  # days needed per days ahead before the forecast is corrected
+PRICE_CORRECTION_MAX = 0.5  # kr/kWh the forecast is corrected by at most
 MONTH_NAMES = (
     "january", "february", "march", "april", "may", "june",
     "july", "august", "september", "october", "november", "december",
@@ -194,6 +208,55 @@ def summarize_day(rows: list[dict], soc_start: float | None, minimum: float) -> 
     return result
 
 
+def hourly_prices(prices: dict) -> dict[datetime.datetime, float]:
+    """Prices per hour (15 minute prices averaged)."""
+    sums: dict[datetime.datetime, list[float]] = {}
+    for timestamp, price in prices.items():
+        if isinstance(timestamp, datetime.datetime) and _is_num(price):
+            bucket = sums.setdefault(reset_time_to_hour(timestamp), [0.0, 0.0])
+            bucket[0] += price
+            bucket[1] += 1
+    return {hour: total / count for hour, (total, count) in sums.items()}
+
+
+def evaluate_price_day(rows: list[dict]) -> dict[str, dict]:
+    """The forecast of a day's hours against the real prices, per days ahead.
+
+    rows: per hour {"real": price, "<days ahead>": forecast}. n hours, abs (sum |error|),
+    bias (sum error, > 0: forecast too high), max (worst hour); cheap/dear: how many of the
+    PRICE_RANK_HOURS cheapest/most expensive hours by the forecast really were, cheap_miss/
+    dear_miss: kr/kWh lost on average by picking those hours instead of the real ones.
+    """
+    result: dict[str, dict] = {}
+    rows = [row for row in rows if _is_num(row.get("real"))]
+    for lead in range(1, PRICE_FORECAST_DAYS + 1):
+        pairs = [(row[str(lead)], row["real"]) for row in rows if _is_num(row.get(str(lead)))]
+        if len(pairs) < PRICE_DAY_MIN_HOURS:
+            continue
+        errors = [forecast - real for forecast, real in pairs]
+        count = min(PRICE_RANK_HOURS, len(pairs))
+
+        def ranked(by_forecast: bool, reverse: bool) -> list[int]:
+            return sorted(range(len(pairs)), key=lambda i: pairs[i][0 if by_forecast else 1], reverse=reverse)[:count]
+
+        def real_sum(indexes: list[int]) -> float:
+            return sum(pairs[i][1] for i in indexes)
+
+        cheap, cheapest = ranked(True, False), ranked(False, False)
+        dear, dearest = ranked(True, True), ranked(False, True)
+        result[str(lead)] = {
+            "n": len(pairs),
+            "abs": round(sum(abs(error) for error in errors), 3),
+            "bias": round(sum(errors), 3),
+            "max": round(max(abs(error) for error in errors), 3),
+            "cheap": len(set(cheap) & set(cheapest)),
+            "cheap_miss": round((real_sum(cheap) - real_sum(cheapest)) / count, 3),
+            "dear": len(set(dear) & set(dearest)),
+            "dear_miss": round((real_sum(dearest) - real_sum(dear)) / count, 3),
+        }
+    return result
+
+
 def rules_of_entries(entries: list[dict]) -> dict[str, dict[str, float]]:
     """Charging history entries of a day per rule: charged kWh (c) and cost (cc), discharged kWh (d),
     their value (v: what the house did not buy + sales) and the savings (s)."""
@@ -239,10 +302,29 @@ class AnalysisMixin:
 
     def load_analysis_db(self, database) -> None:
         db = database if isinstance(database, dict) else {}
-        for key in ("hours", "days", "plans", "rule_days"):
+        for key in ("hours", "days", "plans", "rule_days", "price_hours", "price_days"):
             if not isinstance(db.get(key), dict):
                 db[key] = {}
         self.analysis_db = db
+
+    def price_forecast_corrections(self) -> dict[int, float]:
+        """kr/kWh added to the price forecast per days ahead: minus its bias the last 30 days.
+
+        Only for days ahead with PRICE_CORRECTION_MIN_DAYS judged days, at most
+        PRICE_CORRECTION_MAX either way, and only when the option is on.
+        """
+        if not self.config["prices"].get("use_forecast_correction"):
+            return {}
+        first = (self.now().date() - datetime.timedelta(days=PRICE_CORRECTION_DAYS)).isoformat()
+        selected = [day for date, day in self.analysis_db.get("price_days", {}).items() if date >= first and isinstance(day, dict)]
+        corrections = {}
+        for lead in range(1, PRICE_FORECAST_DAYS + 1):
+            entries = [day[str(lead)] for day in selected if isinstance(day.get(str(lead)), dict)]
+            hours = sum(_num(entry.get("n")) for entry in entries)
+            if len(entries) >= PRICE_CORRECTION_MIN_DAYS and hours:
+                bias = sum(_num(entry.get("bias")) for entry in entries) / hours
+                corrections[lead] = round(min(max(-bias, -PRICE_CORRECTION_MAX), PRICE_CORRECTION_MAX), 3)
+        return corrections
 
     def analysis_backfilled(self) -> bool:
         return self.analysis_db.get("backfilled") == ANALYSIS_BACKFILL_VERSION
@@ -253,6 +335,7 @@ class AnalysisMixin:
         """hour_end: record the hour, tomorrow's plan (at 23) and publish. Never fails the hour."""
         try:
             self._analysis_record_hour(timestamp.replace(minute=0, second=0, microsecond=0))
+            self._analysis_record_prices()
             if timestamp.hour == 23:
                 self._analysis_record_plan(timestamp.date() + datetime.timedelta(days=1))
         except Exception:  # noqa: BLE001
@@ -344,6 +427,36 @@ class AnalysisMixin:
         if optimal is None:
             return None
         return {"actual": round(actual, 3), "no_battery": round(no_battery, 3), "optimal": round(min(optimal, actual), 3)}
+
+    def _analysis_record_prices(self) -> None:
+        """The buy price forecast per days ahead, the real prices and the days they are all known for."""
+        provider = self.price_provider
+        if provider is None:
+            return
+        current_hour = reset_time_to_hour(self.now())
+        hours = self.analysis_db["price_hours"]
+        sources = provider.buy_price_sources
+        forecast = {ts: price for ts, price in provider.buy_prices.items() if str(sources.get(ts, "")).endswith(":forecast")}
+        for hour, price in hourly_prices(forecast).items():
+            lead = days_between(current_hour, hour)
+            if 1 <= lead <= PRICE_FORECAST_DAYS:
+                # the providers add lead / divider to forecasts to prefer known prices
+                hours.setdefault(hour.strftime("%Y-%m-%dT%H"), {})[str(lead)] = round(price - lead / PRICE_ADDER_DAY_BETWEEN_DIVIDER, 3)
+        for hour, price in hourly_prices(provider.buy_real_prices).items():
+            hours.setdefault(hour.strftime("%Y-%m-%dT%H"), {})["real"] = round(price, 3)
+
+        price_days = self.analysis_db["price_days"]
+        by_date: dict[str, list[dict]] = {}
+        for key in sorted(hours):
+            by_date.setdefault(key[:10], []).append(hours[key])
+        for date, rows in by_date.items():
+            # a whole day (23 hours on the day summer time starts)
+            if date not in price_days and sum(1 for row in rows if _is_num(row.get("real"))) >= 23:
+                price_days[date] = evaluate_price_day(rows)
+        oldest = (current_hour.date() - datetime.timedelta(days=PRICE_HOURS_DAYS)).isoformat()
+        for key in [key for key in hours if key[:10] < oldest]:
+            del hours[key]
+        self.mark_dirty("analysis")
 
     def _analysis_record_plan(self, date: datetime.date) -> None:
         """The evening before: grid charging, sale and solar surplus planned for date."""
@@ -456,7 +569,7 @@ class AnalysisMixin:
 
     def _analysis_prune(self) -> None:
         oldest = (self.now().date() - datetime.timedelta(days=ANALYSIS_DAYS)).isoformat()
-        for name in ("days", "plans", "rule_days"):
+        for name in ("days", "plans", "rule_days", "price_days"):
             table = self.analysis_db[name]
             for key in [key for key in table if key < oldest]:
                 del table[key]
@@ -673,6 +786,60 @@ class AnalysisMixin:
                 "bias": round(sum(p - a for p, a in pairs) / len(pairs), 2),
             }
 
+        # price forecast against the real prices ---------------------------------
+        def price_errors(first: datetime.date) -> list[dict]:
+            selected = [day for date, day in self.analysis_db["price_days"].items() if date >= first.isoformat()]
+            result = []
+            for lead in range(1, PRICE_FORECAST_DAYS + 1):
+                entries = [day[str(lead)] for day in selected if isinstance(day.get(str(lead)), dict)]
+                hours = sum(_num(entry.get("n")) for entry in entries)
+                if not hours:
+                    continue
+                ranked = len(entries) * PRICE_RANK_HOURS
+                result.append({
+                    "lead": lead,
+                    "days": len(entries),
+                    "mae": round(sum(_num(entry.get("abs")) for entry in entries) / hours, 3),
+                    "bias": round(sum(_num(entry.get("bias")) for entry in entries) / hours, 3),
+                    "max": round(max(_num(entry.get("max")) for entry in entries), 3),
+                    "cheap": round(sum(_num(entry.get("cheap")) for entry in entries) / ranked, 3),
+                    "cheap_miss": round(sum(_num(entry.get("cheap_miss")) for entry in entries) / len(entries), 3),
+                    "dear": round(sum(_num(entry.get("dear")) for entry in entries) / ranked, 3),
+                    "dear_miss": round(sum(_num(entry.get("dear_miss")) for entry in entries) / len(entries), 3),
+                })
+            return result
+
+        chart_first = (today - datetime.timedelta(days=PRICE_CHART_DAYS)).isoformat()
+        corrections = self.price_forecast_corrections()
+        price_last_30 = price_errors(today - datetime.timedelta(days=PRICE_CORRECTION_DAYS))
+        for entry in price_last_30:
+            entry["correction"] = corrections.get(entry["lead"])
+
+        def corrected(key: str, row: dict) -> float | None:
+            """The newest forecast of a coming hour as the plan uses it (with the correction)."""
+            lead = (datetime.date.fromisoformat(key[:10]) - today).days
+            if not corrections or _is_num(row.get("real")) or not _is_num(row.get(str(lead))):
+                return None
+            return round(row[str(lead)] + corrections.get(lead, 0.0), 3)
+
+        price_forecast = {
+            "rank_hours": PRICE_RANK_HOURS,
+            "correction_on": bool(self.config["prices"].get("use_forecast_correction")),
+            "correction_min_days": PRICE_CORRECTION_MIN_DAYS,
+            "last_7": price_errors(today - datetime.timedelta(days=7)),
+            "last_30": price_last_30,
+            "days": [
+                {"date": date, **{f"d{lead}": round(day[str(lead)]["abs"] / day[str(lead)]["n"], 3) for lead in PRICE_CHART_LEADS if str(lead) in day}}
+                for date, day in sorted(self.analysis_db["price_days"].items())[-ANALYSIS_LIST_DAYS:]
+                if day
+            ],
+            "hours": [
+                {"t": key, "real": row.get("real"), "corrected": corrected(key, row), **{f"d{lead}": row.get(str(lead)) for lead in PRICE_CHART_LEADS}}
+                for key, row in sorted(self.analysis_db["price_hours"].items())
+                if key[:10] >= chart_first
+            ],
+        }
+
         # hindsight score --------------------------------------------------------
         scores = []
         for date, day in sorted(closed.items()):
@@ -718,6 +885,7 @@ class AnalysisMixin:
             "self_sufficiency": {"last_7": sufficiency(last_7), "last_30": sufficiency(last_30), "all": sufficiency(all_days)},
             "forecast": forecast,
             "plans": plans,
+            "price_forecast": price_forecast,
             "solar_forecast": {key: solar_errors(source) for key, source in (("plan", "plan_solar"), ("database", "solar_database"), ("forecast", "solar_forecast"))},
             "scores": scores[-ANALYSIS_TABLE_DAYS:],
             "score_30": round(sum(row["saved"] for row in recent_scores) / possible_30, 3) if possible_30 > 0.05 else None,
