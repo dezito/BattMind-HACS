@@ -113,11 +113,39 @@ the latest calculations, the inputs they ran with and the latest log messages.
 3. Describe what happened, when it happened and what you expected, and drag the `.json.gz` file into the
    field *Debug file*.
 
-The file contains your configuration, settings, prices, energy history, plans, databases and log messages.
-Before it is written, everything personal is removed: entity ids of other integrations are replaced by the
-setting they are used for (e.g. `sensor.power_consumption`), names of people, users, the home, the car and
-notify services become `<redacted>`, coordinates are rounded to whole degrees, and keys, addresses, e-mail
-addresses, URLs and IP addresses are removed. Nothing is sent anywhere by BattMind; you decide what you upload.
+### What is in the debug file
+
+What's in the file is there so the problem can be found and the calculation replayed:
+
+- the configuration and the settings (switches, numbers, selects)
+- the state of the entities BattMind uses and of its own entities, including the plans and the overview
+- the last 50 calculations with the charging rule, errors and tracebacks
+- the inputs of the last 2 calculations and of the last calculation that failed (states, history, prices,
+  weather/solar forecast)
+- the internal state and the databases (charging history, power values, price history, analysis)
+- the last 1000 log messages of BattMind, and the end of the diagnostic file log when it is turned on
+- the BattMind and Home Assistant versions and the time zone
+
+### What is not in the debug file
+
+Everything is anonymised before the file is written:
+
+- **Passwords, API keys, tokens and secrets**: BattMind doesn't use any, and every value under a key with
+  `password`, `token`, `secret`, `api_key` or `webhook` in its name is removed. `secrets.yaml` is never read.
+- **Names**: names of people, Home Assistant users, the home (its name in Home Assistant) and notify services
+  become `<redacted>`, also inside log messages and texts.
+- **Entity names**: entity ids of other integrations are replaced by the setting they are used for, e.g.
+  `sensor.power_consumption` instead of `sensor.my_house_consumption`; other entities become `sensor.entity_1`
+  and so on. BattMind's own entities (`sensor.<prefix>_...`) are kept. Friendly names are removed.
+- **Location**: Coordinates are rounded to whole degrees (about 100 × 60 km), and sunrise/sunset times to 5
+  minutes. Addresses, streets, cities and postal codes are removed.
+- **Contact and network details**: e-mail addresses, URLs and IP addresses are removed everywhere, also in log
+  messages. Phone numbers, MAC addresses and host names are removed from entity attributes.
+- **Device identifiers**: VIN and serial numbers in entity attributes are removed.
+
+What remains is your energy data: consumption, prices, plans and history. Open the file (it is gzip
+compressed JSON) if you want to check it before you upload it. BattMind never sends anything by itself; the
+file only leaves your Home Assistant when you upload it.
 
 ## Logs and debug info
 
@@ -129,5 +157,6 @@ addresses, URLs and IP addresses are removed. Nothing is sent anywhere by BattMi
     logs:
       custom_components.battmind: debug
   ```
-- Call `battmind.debug_info` under **Developer tools → Actions**, and attach the response when you open an
-  [issue](https://github.com/dezito/BattMind-HACS/issues).
+- Call `battmind.debug_info` under **Developer tools → Actions** to see the internal state as a
+  notification. It is **not** anonymised, so don't post it; use the debug file from
+  [Report a problem](#report-a-problem) for issues.
