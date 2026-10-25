@@ -61,6 +61,8 @@ JOB_HISTORY = 50
 SNAPSHOTS = 2
 # jobs of the debug services themselves are not part of the history
 DEBUG_JOBS = {"debug_info", "debug_state"}
+# the snapshot of the last planning job is kept as well, so small jobs cannot push it out
+PLANNING_JOBS = {"charge_if_needed"}
 # larger job arguments (the databases of startup, statistics) are not kept
 MAX_ARG_ITEMS = 50
 STATE_TIMEOUT = 60
@@ -145,6 +147,7 @@ class DebugRecorder:
         self.jobs: deque[dict[str, Any]] = deque(maxlen=JOB_HISTORY)
         self.snapshots: deque[dict[str, Any]] = deque(maxlen=SNAPSHOTS)
         self.failed: dict[str, Any] | None = None
+        self.planning: dict[str, Any] | None = None
 
     def record(self, job_name: str, args: tuple, snapshot: Snapshot, result: JobResult, rule: Any) -> None:
         if job_name in DEBUG_JOBS:
@@ -163,6 +166,8 @@ class DebugRecorder:
         self.snapshots.append(item)
         if result.error:
             self.failed = item
+        if job_name in PLANNING_JOBS:
+            self.planning = item
 
 
 # ---------------------------------------------------------------------- #
@@ -252,7 +257,9 @@ class Redactor:
             return {"__dt__": value.isoformat()}
         if isinstance(value, datetime.date):
             return {"__date__": value.isoformat()}
-        if isinstance(value, (datetime.time, datetime.timedelta)):
+        if isinstance(value, datetime.time):
+            return {"__time__": value.isoformat()}
+        if isinstance(value, datetime.timedelta):
             return str(value)
         if dataclasses.is_dataclass(value) and not isinstance(value, type):
             return self.value({field.name: getattr(value, field.name) for field in dataclasses.fields(value)}, key)
@@ -335,7 +342,7 @@ async def async_export_debug(hass: HomeAssistant, coordinator: BattMindCoordinat
             "last_changed": state.last_changed.isoformat() if state else None,
         }
     snapshots = [{**item, "snapshot": snapshot_dict(item["snapshot"])} for item in recorder.snapshots]
-    failed = recorder.failed
+    failed, planning = recorder.failed, recorder.planning
     data = {
         "integration": DOMAIN,
         "format": DEBUG_FORMAT,
@@ -355,8 +362,11 @@ async def async_export_debug(hass: HomeAssistant, coordinator: BattMindCoordinat
         "jobs": list(recorder.jobs),
         "snapshots": snapshots,
         "failed_job": {**failed, "snapshot": snapshot_dict(failed["snapshot"])} if failed else None,
+        "planning_job": {**planning, "snapshot": snapshot_dict(planning["snapshot"])} if planning else None,
         "engine": engine_state,
         "databases": await coordinator.storage.async_load_raw(),
+        # the snapshots only carry prices when they were refreshed, the replay falls back to these
+        "price_data": coordinator._price_snapshot(),
         "log": list(LOG_BUFFER.records),
         "log_file": await hass.async_add_executor_job(_log_file_tail, hass.config.path(f"{DOMAIN}_{prefix}.log")),
     }
