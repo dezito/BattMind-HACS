@@ -83,8 +83,19 @@ Where the house's consumption came from per hour: first solar, then the battery,
 ### Forecast accuracy
 
 The average error per hour between the consumption the plan expected and the measured one, for each
-forecast type. ✅ marks the selected type, ⭐ the most accurate the last 30 days. **Bias** > 0: the plan
-expected too much. If another type is better, choose it under *Settings → Forecast type*.
+forecast type. ✅ marks the selected type, ⭐ the most accurate the last 30 days.
+
+| Column | Meaning |
+|---|---|
+| Avg. kWh/hour | what each type expected per hour on average over 30 days. The 📏 **Actual** row at the top is the measured consumption |
+| Error 7 / 30 days | the average error per hour in kWh |
+| Relative | the error as a share of the consumption |
+| Bias | > 0: the plan expected too much on average |
+
+The error is counted hour by hour, so a type can hit the average and still miss a lot in the single
+hours: the type closest to the actual average is not always ⭐. When another type is more accurate, a
+warning shows the numbers behind the suggestion: both types' error, how much smaller it is, and what
+each expected against the actual consumption. Choose the type under *Settings → Forecast type*.
 
 ### Hindsight score
 
