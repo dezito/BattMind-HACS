@@ -122,7 +122,7 @@ views:
                   if (!flow.length) return [];
 
 
-                  // Sæt med timestart (ms) for hver state-type
+                  // Set of hour starts (ms) per state type
 
                   const forceDischargeList =
                   entity.attributes.force_discharge_timestamps || [];
@@ -137,7 +137,7 @@ views:
                   );
 
 
-                  // 5-min grid fra første -> sidste time
+                  // 5 min grid from the first to the last hour
 
                   const first = new Date(flow[0].hour);
 
@@ -149,7 +149,7 @@ views:
 
                   const startMs = first.getTime();
 
-                  const endMs   = last.getTime() + 60 * 60 * 1000; // +1 time
+                  const endMs   = last.getTime() + 60 * 60 * 1000; // +1 hour
 
 
                   const step = 5 * 60 * 1000;
@@ -191,7 +191,7 @@ views:
                   if (!flow.length) return [];
 
 
-                  // Sæt med timestart (ms) for hver state-type
+                  // Set of hour starts (ms) per state type
 
                   const dischargeList = entity.attributes.discharge_timestamps
                   || [];
@@ -217,7 +217,7 @@ views:
                   );
 
 
-                  // 5-min grid fra første -> sidste time
+                  // 5 min grid from the first to the last hour
 
                   const first = new Date(flow[0].hour);
 
@@ -229,7 +229,7 @@ views:
 
                   const startMs = first.getTime();
 
-                  const endMs   = last.getTime() + 60 * 60 * 1000; // +1 time
+                  const endMs   = last.getTime() + 60 * 60 * 1000; // +1 hour
 
 
                   const step = 5 * 60 * 1000;
@@ -475,7 +475,7 @@ views:
                         yaxis_id: price
                         type: column
                         name: '@@incl_taxes@@'
-                        unit: kr.
+                        unit: '@@valuta@@'
                         color: green
                         data_generator: |
                           var data = []
@@ -533,7 +533,7 @@ views:
                         yaxis_id: price
                         type: area
                         name: '@@sell_price@@'
-                        unit: kr.
+                        unit: '@@valuta@@'
                         color: white
                         stroke_width: 0
                         data_generator: |
@@ -640,26 +640,26 @@ views:
                             var eds = (entity && entity.attributes) ? entity.attributes : {};
                             //if (eds.tomorrow_valid) return [];
 
-                            // Start: første forecast-hour (mest korrekt)
+                            // Start: the first forecast hour (most accurate)
                             var start = null;
                             if (eds.forecast && eds.forecast.length && eds.forecast[0] && eds.forecast[0].hour) {
                               start = new Date(eds.forecast[0].hour).getTime();
                             }
                             
-                            // Fallback: i morgen 00:00 lokal tid
+                            // Fallback: tomorrow 00:00 local time
                             if (!start || isNaN(start)) {
                               var now = new Date();
                               start = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0, 0).getTime();
                             }
                             
                             
-                            // Brug de samme rækker som du alligevel plotter
+                            // Use the same rows as the ones plotted
                             var rows = [];
                             if (eds.raw_today) rows = rows.concat(eds.raw_today);
                             if (eds.forecast) rows = rows.concat(eds.forecast);
                             if (eds.raw_tomorrow) rows = rows.concat(eds.raw_tomorrow);
 
-                            // Max pris til at fylde "hele højden"
+                            // Max price to fill "the full height"
                             var maxP = 0;
                             for (var i = 0; i < rows.length; i++) {
                               var p = Number(rows[i] && rows[i].price);
@@ -667,7 +667,7 @@ views:
                             }
                             if (maxP <= 0) maxP = 10;
 
-                            // Unikke tider sorteret
+                            // Unique times, sorted
                             var map = {};
                             for (var j = 0; j < rows.length; j++) {
                               var h = rows[j] && rows[j].hour;
@@ -678,7 +678,7 @@ views:
                             }
                             var times = Object.keys(map).map(function(x){ return Number(x); }).sort(function(a,b){ return a-b; });
 
-                            // Fail-safe: hvis vi ikke fik tider, lav 2 punkter så kortet ikke hænger
+                            // Fail-safe: without times, make 2 points so the card doesn't hang
                             if (!times.length) {
                               return [
                                 [new Date(start), maxP],
@@ -686,7 +686,7 @@ views:
                               ];
                             }
 
-                            // 0 før start, max efter start => udfylder resten
+                            // 0 before the start, max after it => fills the rest
                             var out = [];
                             for (var k = 0; k < times.length; k++) {
                               var tt = times[k];
@@ -948,13 +948,13 @@ views:
                         yaxis_id: price
                         type: column
                         name: '@@incl_taxes@@'
-                        unit: kr.
+                        unit: '@@valuta@@'
                         color: green
                         data_generator: |
                           const data = [];
 
                           // ------------------------------------------
-                          // I DAG
+                          // TODAY
                           // ------------------------------------------
 
                           const today =
@@ -1007,7 +1007,7 @@ views:
 
 
                           // ------------------------------------------
-                          // SIDSTE OFFICIELLE PRIS
+                          // LAST OFFICIAL PRICE
                           // ------------------------------------------
 
                           let officialEnd = 0;
@@ -1043,7 +1043,7 @@ views:
 
 
                           // ------------------------------------------
-                          // SIDSTE TOMORROW-TIDSPUNKT
+                          // LAST TOMORROW TIMESTAMP
                           // ------------------------------------------
 
                           let tomorrowEnd = officialEnd;
@@ -1125,7 +1125,7 @@ views:
                         yaxis_id: price
                         type: area
                         name: '@@sell_price@@'
-                        unit: kr.
+                        unit: '@@valuta@@'
                         color: white
                         stroke_width: 0
                         data_generator: |
@@ -1152,7 +1152,7 @@ views:
 
 
                           // ------------------------------------------
-                          // I DAG
+                          // TODAY
                           // ------------------------------------------
 
                           const today =
@@ -1197,7 +1197,7 @@ views:
 
 
                           // ------------------------------------------
-                          // SIDSTE PRIS FRA TOMORROW ENTITY
+                          // LAST PRICE FROM THE TOMORROW ENTITY
                           // ------------------------------------------
 
                           let availableEnd = 0;
@@ -1276,7 +1276,7 @@ views:
 
 
                           // ------------------------------------------
-                          // OPRET ALLE PRISTIMESTAMPS SOM 0
+                          // CREATE ALL PRICE TIMESTAMPS AS 0
                           // ------------------------------------------
 
                           const addTimes = (rows) => {
@@ -1293,7 +1293,7 @@ views:
                           };
 
 
-                          // I dag
+                          // Today
                           addTimes(
                             hass.states[
                               'sensor.stromligning_current_price_vat'
@@ -1301,7 +1301,7 @@ views:
                           );
 
 
-                          // I morgen - både forecast og officielle
+                          // Tomorrow - both forecast and official
                           const tomorrowEntity =
                             hass.states[
                               'binary_sensor.stromligning_tomorrow_available_vat'
@@ -1411,7 +1411,7 @@ views:
                           try {
 
                             // ------------------------------------------
-                            // I DAG
+                            // TODAY
                             // ------------------------------------------
 
                             const today =
@@ -1457,7 +1457,7 @@ views:
 
 
                             // ------------------------------------------
-                            // FIND STARTEN PÅ FORECAST
+                            // FIND THE START OF THE FORECAST
                             // ------------------------------------------
 
                             let forecastStart = 0;
@@ -1503,7 +1503,7 @@ views:
 
 
                             // ------------------------------------------
-                            // ALLE RÆKKER
+                            // ALL ROWS
                             // ------------------------------------------
 
                             const rows = [
@@ -1537,7 +1537,7 @@ views:
 
 
                             // ------------------------------------------
-                            // ALLE TIMESTAMPS
+                            // ALL TIMESTAMPS
                             // ------------------------------------------
 
                             const times = [
@@ -1575,7 +1575,7 @@ views:
 
 
                             // ------------------------------------------
-                            // 0 FØR FORECAST
+                            // 0 BEFORE THE FORECAST
                             // MAX EFTER FORECAST
                             // ------------------------------------------
 
@@ -1948,12 +1948,12 @@ views:
               {% if a.months -%}
               @@economy_intro@@
 
-              | @@month@@ | @@charged@@<br>kWh (☀️) | @@charge_price@@<br>kr/kWh | @@discharged@@<br>kWh | @@value@@<br>kr/kWh | @@spread@@<br>kr/kWh | @@avg_price@@<br>kr/kWh | @@savings@@<br>kr |
+              | @@month@@ | @@charged@@<br>kWh (☀️) | @@charge_price@@<br>@@valuta_kwh@@ | @@discharged@@<br>kWh | @@value@@<br>@@valuta_kwh@@ | @@spread@@<br>@@valuta_kwh@@ | @@avg_price@@<br>@@valuta_kwh@@ | @@savings@@<br>@@valuta@@ |
               |:---|---:|---:|---:|---:|---:|---:|---:|
               {% for m in a.months | reverse -%}
               | **{{ m.label }}** | {{ m.charged }}{% if m.charged_solar %} ({{ m.charged_solar }}){% endif %} | {{ n(m.charge_unit) }} | {{ m.discharged }} | {{ n(m.value_unit) }} | {{ n(m.spread) }} | {{ n(m.get('avg_price')) }} | {{ n(m.savings) }} |
               {% endfor %}
-              **@@total@@:** {{ a.total.charged }} kWh @@charged_lower@@, {{ a.total.discharged }} kWh @@discharged_lower@@ · @@savings@@ **{{ n(a.total.savings) }} kr**
+              **@@total@@:** {{ a.total.charged }} kWh @@charged_lower@@, {{ a.total.discharged }} kWh @@discharged_lower@@ · @@savings@@ **{{ n(a.total.savings) }} @@valuta@@**
               {%- else -%}
               <ha-alert alert-type="info">@@no_data@@</ha-alert>
               {%- endif %}
@@ -2015,7 +2015,7 @@ views:
               - decimals: 2
             all_series_config:
               type: line
-              unit: ' kr/kWh'
+              unit: ' @@valuta_kwh@@'
               float_precision: 2
               stroke_width: 2
               show:
@@ -2072,7 +2072,7 @@ views:
               {% if rules -%}
               **@@rules_charging@@**
 
-              | @@rule@@ | kWh | kr/kWh | @@estimated@@ |
+              | @@rule@@ | kWh | @@valuta_kwh@@ | @@estimated@@ |
               |:---|---:|---:|---:|
               {% for r in charging -%}
               | {{ r.emoji }} {{ r.name }} | {{ r.charged }} | {{ n(r.charge_unit) }} | {{ n(r.estimated) }} |
@@ -2080,7 +2080,7 @@ views:
 
               **@@rules_discharging@@**
 
-              | @@rule@@ | kWh | @@savings@@ kr |
+              | @@rule@@ | kWh | @@savings@@ @@valuta@@ |
               |:---|---:|---:|
               {% for r in discharging -%}
               | {{ r.emoji }} {{ r.name }} | {{ r.discharged }} | {{ n(r.savings) }} |
@@ -2111,9 +2111,9 @@ views:
               {% macro n(v, d=2) %}{{ v | round(d) if v is number else '–' }}{% endmacro %}
               {% set a = states.sensor.battmind_analysis.attributes %}
               {% if a.months -%}
-              @@cycles_intro_1@@ **{{ a.total.cycles }}** @@cycles_intro_2@@ ({{ a.battery_size }} kWh) · @@wear@@ **{{ n(a.total.wear) }} kr**
+              @@cycles_intro_1@@ **{{ a.total.cycles }}** @@cycles_intro_2@@ ({{ a.battery_size }} kWh) · @@wear@@ **{{ n(a.total.wear) }} @@valuta@@**
 
-              | @@month@@ | @@cycles@@ | @@savings@@ kr | @@wear@@ kr | kr/@@cycle@@ |
+              | @@month@@ | @@cycles@@ | @@savings@@ @@valuta@@ | @@wear@@ @@valuta@@ | @@valuta@@/@@cycle@@ |
               |:---|---:|---:|---:|---:|
               {% for m in a.months | reverse -%}
               | **{{ m.label }}** | {{ m.cycles }} | {{ n(m.savings) }} | {{ n(m.wear) }} | {{ n(m.savings_per_cycle) }} |
@@ -2138,7 +2138,7 @@ views:
               - decimals: 0
             all_series_config:
               type: column
-              unit: ' kr'
+              unit: ' @@valuta@@'
               float_precision: 2
               show:
                 legend_value: false
@@ -2441,7 +2441,7 @@ views:
               {% if a.scores -%}
               @@score_intro_1@@ **{{ (a.score_30 * 100) | round(0) | int ~ ' %' if a.score_30 is number else '–' }}** @@score_intro_2@@ ({{ a.score_days }} @@days@@)
 
-              | @@day@@ | Score | @@saved@@ kr | @@possible@@ kr |
+              | @@day@@ | Score | @@saved@@ @@valuta@@ | @@possible@@ @@valuta@@ |
               |:---|---:|---:|---:|
               {% for d in a.scores | reverse -%}
               | {{ d.date[8:10] }}/{{ d.date[5:7] }} | {{ (d.score * 100) | round(0) | int ~ ' %' if d.score is number else '–' }} | {{ n(d.saved) }} | {{ n(d.possible) }} |
@@ -2541,9 +2541,9 @@ views:
               {% set a = states.sensor.battmind_analysis.attributes %}
               {% set e = a.expensive_30 or {} %}
               {% if a.expensive -%}
-              @@expensive_intro_1@@ **{{ e.days_empty }}** @@expensive_intro_2@@ {{ e.days }} @@days@@ ({{ e.hours }} @@hours@@, {{ e.kwh }} kWh, {{ e.cost | round(2) }} kr)
+              @@expensive_intro_1@@ **{{ e.days_empty }}** @@expensive_intro_2@@ {{ e.days }} @@days@@ ({{ e.hours }} @@hours@@, {{ e.kwh }} kWh, {{ e.cost | round(2) }} @@valuta@@)
 
-              | @@day@@ | @@hours@@ | kWh | kr |
+              | @@day@@ | @@hours@@ | kWh | @@valuta@@ |
               |:---|---:|---:|---:|
               {% for d in a.expensive | reverse -%}
               | {{ d.date[8:10] }}/{{ d.date[5:7] }} | {{ '✅' if d.hours == 0 else d.hours }} | {{ d.kwh | round(1) }} | {{ d.cost | round(2) }} |
@@ -2687,7 +2687,7 @@ views:
             all_series_config:
               type: line
               curve: stepline
-              unit: ' kr/kWh'
+              unit: ' @@valuta_kwh@@'
               float_precision: 2
               stroke_width: 2
               show:
@@ -2761,7 +2761,7 @@ views:
                 decimals: 2
             all_series_config:
               type: line
-              unit: ' kr/kWh'
+              unit: ' @@valuta_kwh@@'
               float_precision: 3
               stroke_width: 2
               show:

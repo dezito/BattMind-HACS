@@ -44,7 +44,7 @@ class HistoryMixin:
             self.charging_history_total = {"charged_kwh": 0.0, "discharged_kwh": 0.0, "balance_kwh": 0.0}
             self._job_cache.pop("charging_loss", None)
             if not get_ending_byte_size:
-                self.set_attr("charging_history", "history", "**Ingen lade historik**")
+                self.set_attr("charging_history", "history", self.t("ui.reason.no_charging_history"))
             return
 
         def _num(value, default=0.0) -> float:
@@ -416,7 +416,7 @@ class HistoryMixin:
         self.history_footer_bytes = total_history_bytes_size - current_history_bytes_size + 1000
 
         if not get_ending_byte_size:
-            self.set_attr("charging_history", "history", "\n".join(history) if history else "**Ingen lade historik**")
+            self.set_attr("charging_history", "history", "\n".join(history) if history else self.t("ui.reason.no_charging_history"))
             if combined_db != self.charging_history_db:
                 self.charging_history_db = combined_db
                 self.mark_dirty("charging_history")
@@ -560,7 +560,7 @@ class HistoryMixin:
 
         if charge_kwh > 0.0 or discharge_kwh > 0.0:
             _LOGGER.info(
-                "Charging history %s: charged %.3f kWh, discharged %.3f kWh, charge cost %.2f kr, discharge cost %.2f kr",
+                "Charging history %s: charged %.3f kWh, discharged %.3f kWh, charge cost %.2f, discharge cost %.2f",
                 start, charge_kwh, discharge_kwh, charge_cost, discharge_cost,
             )
             self.charging_history_db[start] = session_dict

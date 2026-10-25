@@ -134,7 +134,7 @@ def test_grid_charging_only_in_cheap_hours(battery_level: float) -> None:
     engine = started_engine(now, battery_level)
     plan(engine, now, battery_level, CHEAPEST_ONLY)
     hours = charge_hours(engine)
-    assert hours, "an empty battery and 1.5 kr/kWh price spread should give grid charging"
+    assert hours, "an empty battery and 1.5/kWh price spread should give grid charging"
     assert not [ts for ts in hours if ts.hour not in CHEAP_HOURS]
     assert not [ts for ts in hours if ts.hour in EXPENSIVE_HOURS]
 
@@ -223,7 +223,7 @@ SOLAR_SURPLUS = [0.0] * 9 + [3.0] * 7 + [0.0] * 8  # 3 kWh/h 09-15 fills the bat
 def solar_engine(
     now: datetime.datetime, battery_level: float, solar: bool, extra_options: dict | None = None
 ) -> tuple[BattMindEngine, Snapshot]:
-    """Engine with a sell price entity (buy - 0.9 kr) and optionally a solar surplus prediction."""
+    """Engine with a sell price entity (buy - 0.9) and optionally a solar surplus prediction."""
     options = {**OPTIONS, "energidataservice_sell_entity_id": "sensor.sell", **(extra_options or {})}
     engine = BattMindEngine(build_config(options), "test", TEXTS)
 
@@ -326,7 +326,7 @@ def test_missing_prices_fall_back_to_offline_prices() -> None:
 
 
 def _price_history() -> dict:
-    """Price history where the price tells the weekday: 2.<weekday> kr in every hour."""
+    """Price history where the price tells the weekday: 2.<weekday> in every hour."""
     history = {hour: {dow: [2.0 + dow / 10] * 3 for dow in range(7)} for hour in range(24)}
     return {"history": history, "history_sell": deepcopy(history)}
 

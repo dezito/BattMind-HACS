@@ -20,8 +20,8 @@ FRACTIONS = (0.25, 0.5, 0.75, 1.0)
 @dataclass
 class OptimizerHour:
     timestamp: object
-    buy: float  # kr/kWh
-    sell: float  # kr/kWh
+    buy: float  # currency/kWh
+    sell: float  # currency/kWh
     consumption: float  # kWh used by the house (0 when the solar surplus covers it)
     solar: float  # kWh solar surplus after the house consumption
     can_sell: bool = True  # False in the excluded sell hours
@@ -37,7 +37,7 @@ class OptimizerConfig:
     max_charge: float  # kWh per hour (AC)
     max_discharge: float  # kWh per hour (AC)
     efficiency: float  # one way, round trip = efficiency²
-    wear: float  # kr per kWh out of the battery
+    wear: float  # currency per kWh out of the battery
     min_profit_per_kwh: float = 0.0  # steers the choice only: a kWh out of the battery has to earn this much
     min_sell_kwh: float = 0.0
     min_total_profit: float = 0.0  # steers the choice only: a charge hour / sale hour has to earn this much
@@ -50,15 +50,15 @@ class OptimizerResult:
     grid_kwh: list[float] = field(default_factory=list)  # kWh bought for the battery per hour
     sold_kwh: list[float] = field(default_factory=list)  # kWh sold from the battery per hour
     levels: list[float] = field(default_factory=list)  # % at the end of each hour
-    costs: list[float] = field(default_factory=list)  # kr per hour (negative = earned)
-    total: float = 0.0  # kr incl. the value of the energy left at the end
+    costs: list[float] = field(default_factory=list)  # currency per hour (negative = earned)
+    total: float = 0.0  # currency incl. the value of the energy left at the end
     end_value: float = 0.0
 
 
 def step_hour(
     hour: OptimizerHour, level: float, action: str, cfg: OptimizerConfig, limit: float | None = None, details: dict | None = None
 ) -> tuple[float, float, float, float]:
-    """(new level %, cost kr, kWh out of the battery, kWh bought for the battery) of one hour with one action.
+    """(new level %, cost, kWh out of the battery, kWh bought for the battery) of one hour with one action.
 
     limit: max kWh from the grid when grid charging / max kWh sold when force discharging
     (None = the full rate). details (optional) gets the kWh flows of the hour.

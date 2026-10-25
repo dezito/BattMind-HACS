@@ -155,7 +155,7 @@
         "data_description": {
           "production_entity_id": "Sensor med den aktuelle solproduktion (W/kW). Lad feltet være tomt hvis du ikke har solceller.",
           "inverter_discharging_power_limit": "Inverterens maks. AC-effekt. Begrænser hvor meget sol + batteri der er til rådighed samtidig.",
-          "production_price": "Pris i kr/kWh som soloverskud der sælges værdisættes til, f.eks. en fast afregningspris fra dit elselskab. Sæt til -1 for at bruge timesalgsprisen.",
+          "production_price": "Pris pr. kWh (i Home Assistants valuta) som soloverskud der sælges værdisættes til, f.eks. en fast afregningspris fra dit elselskab. Sæt til -1 for at bruge timesalgsprisen.",
           "forecast_entity_id": "Solcast PV Forecast sensor, f.eks. sensor.solcast_pv_forecast_forecast_today. De kommende dage findes automatisk."
         }
       },
@@ -384,7 +384,7 @@
         "data_description": {
           "production_entity_id": "Sensor med den aktuelle solproduktion (W/kW). Lad feltet være tomt hvis du ikke har solceller.",
           "inverter_discharging_power_limit": "Inverterens maks. AC-effekt. Begrænser hvor meget sol + batteri der er til rådighed samtidig.",
-          "production_price": "Pris i kr/kWh som soloverskud der sælges værdisættes til, f.eks. en fast afregningspris fra dit elselskab. Sæt til -1 for at bruge timesalgsprisen.",
+          "production_price": "Pris pr. kWh (i Home Assistants valuta) som soloverskud der sælges værdisættes til, f.eks. en fast afregningspris fra dit elselskab. Sæt til -1 for at bruge timesalgsprisen.",
           "forecast_entity_id": "Solcast PV Forecast sensor, f.eks. sensor.solcast_pv_forecast_forecast_today. De kommende dage findes automatisk."
         }
       },

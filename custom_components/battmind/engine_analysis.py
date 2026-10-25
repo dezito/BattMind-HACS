@@ -66,7 +66,7 @@ PRICE_DAY_MIN_HOURS = 20  # forecast hours needed to judge a day
 PRICE_RANK_HOURS = 4  # the cheapest / most expensive hours of a day the forecast should find
 PRICE_CORRECTION_DAYS = 30  # days the bias of the price forecast is measured over
 PRICE_CORRECTION_MIN_DAYS = 7  # days needed per days ahead before the forecast is corrected
-PRICE_CORRECTION_MAX = 0.5  # kr/kWh the forecast is corrected by at most
+PRICE_CORRECTION_MAX = 0.5  # currency/kWh the forecast is corrected by at most
 MONTH_NAMES = (
     "january", "february", "march", "april", "may", "june",
     "july", "august", "september", "october", "november", "december",
@@ -225,7 +225,7 @@ def evaluate_price_day(rows: list[dict]) -> dict[str, dict]:
     rows: per hour {"real": price, "<days ahead>": forecast}. n hours, abs (sum |error|),
     bias (sum error, > 0: forecast too high), max (worst hour); cheap/dear: how many of the
     PRICE_RANK_HOURS cheapest/most expensive hours by the forecast really were, cheap_miss/
-    dear_miss: kr/kWh lost on average by picking those hours instead of the real ones.
+    dear_miss: currency/kWh lost on average by picking those hours instead of the real ones.
     """
     result: dict[str, dict] = {}
     rows = [row for row in rows if _is_num(row.get("real"))]
@@ -308,7 +308,7 @@ class AnalysisMixin:
         self.analysis_db = db
 
     def price_forecast_corrections(self) -> dict[int, float]:
-        """kr/kWh added to the price forecast per days ahead: minus its bias the last 30 days.
+        """Currency/kWh added to the price forecast per days ahead: minus its bias the last 30 days.
 
         Only for days ahead with PRICE_CORRECTION_MIN_DAYS judged days, at most
         PRICE_CORRECTION_MAX either way, and only when the option is on.

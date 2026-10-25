@@ -155,7 +155,7 @@
         "data_description": {
           "production_entity_id": "Sensor with the current solar production (W/kW). Leave empty if you have no solar panels.",
           "inverter_discharging_power_limit": "Max AC power of the inverter. Limits how much solar + battery power is available at the same time.",
-          "production_price": "Price in kr/kWh used to value solar surplus that is sold, e.g. a fixed price from your electricity company. Set to -1 to use the hourly sell price.",
+          "production_price": "Price per kWh (in the currency of Home Assistant) used to value solar surplus that is sold, e.g. a fixed price from your electricity company. Set to -1 to use the hourly sell price.",
           "forecast_entity_id": "Solcast PV Forecast sensor, e.g. sensor.solcast_pv_forecast_forecast_today. The days ahead are found automatically."
         }
       },
@@ -384,7 +384,7 @@
         "data_description": {
           "production_entity_id": "Sensor with the current solar production (W/kW). Leave empty if you have no solar panels.",
           "inverter_discharging_power_limit": "Max AC power of the inverter. Limits how much solar + battery power is available at the same time.",
-          "production_price": "Price in kr/kWh used to value solar surplus that is sold, e.g. a fixed price from your electricity company. Set to -1 to use the hourly sell price.",
+          "production_price": "Price per kWh (in the currency of Home Assistant) used to value solar surplus that is sold, e.g. a fixed price from your electricity company. Set to -1 to use the hourly sell price.",
           "forecast_entity_id": "Solcast PV Forecast sensor, e.g. sensor.solcast_pv_forecast_forecast_today. The days ahead are found automatically."
         }
       },

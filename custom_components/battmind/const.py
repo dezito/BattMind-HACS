@@ -51,6 +51,29 @@ def normalize_language(value: str | None, fallback: str = "en") -> str:
     language = str(value or "").split("-")[0].split("_")[0].lower()
     return language if language in LANGUAGES else fallback
 
+
+# Symbol shown for hass.config.currency (ISO 4217); other currencies are shown with their code
+CURRENCY_SYMBOLS = {
+    "DKK": "kr",
+    "SEK": "kr",
+    "NOK": "kr",
+    "ISK": "kr",
+    "EUR": "€",
+    "GBP": "£",
+    "USD": "$",
+    "PLN": "zł",
+    "UAH": "₴",
+    "CZK": "Kč",
+    "HUF": "Ft",
+}
+
+
+def currency_symbol(currency: str | None) -> str | None:
+    """'DKK' -> 'kr', 'CHF' -> 'CHF', None/'' -> None (the language's own valuta texts are used)."""
+    if not currency:
+        return None
+    return CURRENCY_SYMBOLS.get(currency.upper(), currency.upper())
+
 WEATHER_CONDITION_DICT = {
     "sunny": 100,
     "windy": 80,
@@ -461,7 +484,7 @@ NUMBER_SETTINGS: dict[str, dict[str, Any]] = {
         "max": 1.0,
         "step": 0.01,
         "mode": "box",
-        "unit": "kr/kWh",
+        "unit": "{valuta_kwh}",
         "default": 0.5,
     },
     "cheap_price_period_rise_threshold": {
@@ -469,7 +492,7 @@ NUMBER_SETTINGS: dict[str, dict[str, Any]] = {
         "max": 1.0,
         "step": 0.01,
         "mode": "box",
-        "unit": "kr/kWh",
+        "unit": "{valuta_kwh}",
         "default": 0.1,
     },
     "min_profit_per_kwh": {
@@ -477,7 +500,7 @@ NUMBER_SETTINGS: dict[str, dict[str, Any]] = {
         "max": 10.0,
         "step": 0.01,
         "mode": "box",
-        "unit": "kr/kWh",
+        "unit": "{valuta_kwh}",
         "default": 0.0,
     },
     "min_total_profit": {
@@ -485,7 +508,7 @@ NUMBER_SETTINGS: dict[str, dict[str, Any]] = {
         "max": 100.0,
         "step": 0.01,
         "mode": "box",
-        "unit": "kr",
+        "unit": "{valuta}",
         "default": 0.0,
     },
     "min_sell_kwh": {

@@ -4,7 +4,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from .const import CHARGING_TYPES
+from .const import CHARGING_TYPES, currency_symbol
 
 
 def emoji_sorting(text: str) -> str:
@@ -74,9 +74,11 @@ def translate(texts: dict[str, str], key: str, default: str | None = None, **fmt
         return value
 
 
-def load_texts(language: str) -> dict[str, str]:
+def load_texts(language: str, currency: str | None = None) -> dict[str, str]:
     """Flattened runtime texts of texts/<language>.json, English is the fallback for missing keys.
 
+    currency: hass.config.currency; replaces the language's currency in ui.common.valuta* and
+    {valuta} / {valuta_kwh} in every text (also @@valuta@@ / @@valuta_kwh@@ in the dashboard).
     Blocking file I/O, run it in the executor.
     """
     texts: dict[str, str] = {}
@@ -93,4 +95,17 @@ def load_texts(language: str) -> dict[str, str]:
         path = folder / f"{name}.json"
         if path.is_file():
             flatten(json.loads(path.read_text(encoding="utf-8")))
+
+    if symbol := currency_symbol(currency):
+        for key in [key for key in texts if key.startswith("ui.common.valuta")]:
+            unit = texts[key]
+            texts[key] = symbol + unit[unit.find("/"):] if "/" in unit else symbol
+    valuta = {"{valuta}": texts.get("ui.common.valuta", "kr"), "{valuta_kwh}": texts.get("ui.common.valuta_kwh", "kr/kWh")}
+    for key, value in texts.items():
+        if isinstance(value, str) and "{valuta" in value:
+            for token, replacement in valuta.items():
+                value = value.replace(token, replacement)
+            texts[key] = value
+    texts["dashboard.valuta"] = valuta["{valuta}"]
+    texts["dashboard.valuta_kwh"] = valuta["{valuta_kwh}"]
     return texts

@@ -7,7 +7,8 @@ author's price/solar entities. At setup it is rewritten for this config entry:
 * external entities (Energi Data Service, Strømligning, Solcast) -> the configured ones
 * cards bound to an external entity that is not configured are removed
 * ``@@key@@`` placeholders -> ``dashboard.key`` of texts/<language>.json (BattMind's language),
-  ``@@forecast_span@@`` -> days_to_predict - 0.5 days
+  ``@@forecast_span@@`` -> days_to_predict - 0.5 days, ``@@valuta@@`` / ``@@valuta_kwh@@`` -> the
+  currency of Home Assistant
 
 The result is written to .storage and served as a Lovelace dashboard that can be edited in
 the UI: once the user saves it, the saved copy is shown instead of the generated one until
@@ -194,14 +195,17 @@ def _represent_str(dumper: yaml.SafeDumper, value: str) -> yaml.ScalarNode:
 _Dumper.add_representer(str, _represent_str)
 
 
-def render_dashboard(config: dict[str, Any], prefix: str, existing: set[str] | None = None) -> str:
+def render_dashboard(
+    config: dict[str, Any], prefix: str, existing: set[str] | None = None, currency: str | None = None
+) -> str:
     """Build the dashboard YAML for one instance (blocking file I/O).
 
     existing: entity ids that exist in Home Assistant; the debug button is removed when its switch is not among them
+    currency: hass.config.currency (None = the currency of the language's texts)
     """
     mapping = external_entities(config)
     template = yaml.safe_load(TEMPLATE.read_text(encoding="utf-8"))
-    texts = load_texts(normalize_language(config.get("language")))
+    texts = load_texts(normalize_language(config.get("language")), currency)
     # the charts show the forecast period: days_to_predict minus the half day already passed
     texts["dashboard.forecast_span"] = f"{max(float(config['days_to_predict']) - 0.5, 0.5):g}d"
     template = _translate(template, texts)
@@ -244,7 +248,7 @@ async def async_setup_dashboard(hass: HomeAssistant, entry: ConfigEntry, config:
     existing_ids = set(hass.states.async_entity_ids())
 
     def _render() -> bool:
-        return _write_if_changed(path, render_dashboard(config, prefix, existing_ids))
+        return _write_if_changed(path, render_dashboard(config, prefix, existing_ids, hass.config.currency))
 
     try:
         changed = await hass.async_add_executor_job(_render)
