@@ -2336,13 +2336,22 @@ views:
               {% if f.last_30 -%}
               @@forecast_intro@@ ({{ f.last_30.hours }} @@hours@@)
 
-              | @@forecast_type@@ | @@mae@@ 7 @@days@@ | @@mae@@ 30 @@days@@ | @@relative@@ | @@bias@@ |
-              |:---|---:|---:|---:|---:|
-              {% for kind, label in [('ema', 'EMA'), ('trend', 'Trend'), ('average', '@@average@@')] -%}
-              | {{ '✅ ' if kind == f.selected }}{{ '⭐ ' if kind == f.best }}{{ label }} | {{ n(f.last_7[kind].mae if f.last_7 else none) }} | {{ n(f.last_30[kind].mae) }} | {{ (f.last_30[kind].relative * 100) | round(0) | int ~ ' %' if f.last_30[kind].relative is number else '–' }} | {{ n(f.last_30[kind].bias) }} |
+              {% set labels = {'ema': 'EMA', 'trend': 'Trend', 'average': '@@average@@'} %}
+              | @@forecast_type@@ | @@forecast_avg@@ | @@mae@@ 7 @@days@@ | @@mae@@ 30 @@days@@ | @@relative@@ | @@bias@@ |
+              |:---|---:|---:|---:|---:|---:|
+              | 📏 @@forecast_actual@@ | {{ n(f.last_30.actual) }} | | | | |
+              {% for kind, label in labels.items() -%}
+              | {{ '✅ ' if kind == f.selected }}{{ '⭐ ' if kind == f.best }}{{ label }} | {{ n(f.last_30[kind].forecast) }} | {{ n(f.last_7[kind].mae if f.last_7 else none) }} | {{ n(f.last_30[kind].mae) }} | {{ (f.last_30[kind].relative * 100) | round(0) | int ~ ' %' if f.last_30[kind].relative is number else '–' }} | {{ n(f.last_30[kind].bias) }} |
               {% endfor %}
-              {% if f.best and f.best != f.selected %}
-              <ha-alert alert-type="warning">@@forecast_better@@</ha-alert>
+              {% if f.best and f.best != f.selected and f.selected in f.last_30 %}
+              {% set best, selected = f.last_30[f.best], f.last_30[f.selected] %}
+              {% set percent = ((1 - best.mae / selected.mae) * 100) | round(0) | int if selected.mae else 0 %}
+              {% set msg %}@@forecast_better@@{% endset %}
+              <ha-alert alert-type="warning">{{ msg
+                | replace('{best}', labels[f.best]) | replace('{selected}', labels[f.selected])
+                | replace('{best_mae}', n(best.mae)) | replace('{selected_mae}', n(selected.mae))
+                | replace('{percent}', percent | string) | replace('{actual}', n(f.last_30.actual))
+                | replace('{best_forecast}', n(best.forecast)) | replace('{selected_forecast}', n(selected.forecast)) }}</ha-alert>
               {% endif %}
               {%- else -%}
               <ha-alert alert-type="info">@@no_data_yet@@</ha-alert>

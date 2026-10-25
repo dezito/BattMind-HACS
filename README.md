@@ -65,7 +65,7 @@ every rule explained with examples, [inverter setups](docs/inverters/huawei.md) 
   - economy per month: charged (grid/solar), discharged, charge price, value of a discharged kWh, spread and savings
   - charged and discharged per rule, cycles and wear
   - measured round trip loss against the configured loss, and self-sufficiency (solar, battery, grid)
-  - the error of each consumption forecast type, with a hint when another type is more accurate
+  - the error of each consumption forecast type against the actual consumption, and why another type is suggested when it is more accurate
   - the price forecast against the real prices per day ahead: the error, and how often it found the cheapest and most expensive hours
   - a hindsight score per day, planned against what happened, days with an empty battery in the most expensive
     hours, and planned against measured solar surplus
