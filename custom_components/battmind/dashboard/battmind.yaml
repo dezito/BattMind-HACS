@@ -1898,11 +1898,7 @@ views:
             heading_style: subtitle
             icon: mdi:bug-outline
           - type: markdown
-            content: "<details><summary>@@read_more@@</summary>
-
-@@help_problem@@
-
-</details>"
+            content: "<details><summary>@@read_more@@</summary>\n\n@@help_problem@@\n\n</details>"
             grid_options:
               columns: full
           - type: entities
