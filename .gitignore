@@ -8,3 +8,6 @@ venv/
 *.log
 .coverage
 htmlcov/
+
+# debug exports (export_debug) handed in for analysis
+*_debug_*.json.gz

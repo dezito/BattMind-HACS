@@ -54,6 +54,8 @@ async def test_export_is_anonymised(hass: HomeAssistant, config_dir: Path, loade
     assert "sensor.power_consumption" in text
     assert data["config"]["home"]["entity_ids"]["power_consumption_entity_id"] == "sensor.power_consumption"
     assert f"sensor.{PREFIX}_" in text
+    # the replay falls back to these prices when the snapshots have none
+    assert data["price_data"]["attributes"]
     message = next(record["message"] for record in data["log"] if "192.168" not in record["message"] and "<ip>" in record["message"])
     assert message == "<redacted> at <ip> (<email>, <url>) has sensor.power_consumption"
 
@@ -93,6 +95,7 @@ async def test_replay_reproduces_the_plan(hass: HomeAssistant, config_dir: Path,
     response = await hass.services.async_call(DOMAIN, "export_debug", {}, blocking=True, return_response=True)
     export = debug_replay.load_export(str(config_dir.parent / response["files"][PREFIX]))
     assert export["snapshots"][-1]["job"] == "charge_if_needed"
+    assert export["planning_job"]["job"] == "charge_if_needed"
 
     result = await hass.async_add_executor_job(debug_replay.replay, export)
     assert result.error is None
