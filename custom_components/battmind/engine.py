@@ -423,15 +423,15 @@ class BattMindEngine(PlannerMixin, HistoryMixin, EnergyMixin, AnalysisMixin):
         cache = self.sell_price_cache if sell_prices else self.grid_price_cache
         kind = "sell" if sell_prices else "grid"
 
-        if "prices" in cache and not cache["using_offline_prices"] and not update_prices:
+        # forecasts corrected with their measured bias per day ahead (the analysis)
+        corrections = self.price_forecast_corrections()
+        if "prices" in cache and not cache["using_offline_prices"] and not update_prices and cache.get("corrections") == corrections:
             return cache["prices"]
 
         provider = self.price_provider
         prices = (provider.sell_prices if sell_prices else provider.buy_prices) if provider else {}
         if prices:
             sources = provider.sell_price_sources if sell_prices else provider.buy_price_sources
-            # forecasts corrected with their measured bias per day ahead (the analysis)
-            corrections = self.price_forecast_corrections()
             if corrections:
                 current_hour = reset_time_to_hour(now)
                 prices = {
@@ -453,6 +453,7 @@ class BattMindEngine(PlannerMixin, HistoryMixin, EnergyMixin, AnalysisMixin):
                 using_offline_prices=False,
                 sources=sources,
                 missing_hours=missing_hours,
+                corrections=corrections,
             )
             return prices
 

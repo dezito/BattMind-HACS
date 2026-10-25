@@ -136,13 +136,11 @@
         "description": "Amounts per kWh that change what charging and selling is worth.",
         "data": {
           "refund": "Refund",
-          "sell_fee": "Sell fee",
-          "use_price_forecast_correction": "Correct the price forecast"
+          "sell_fee": "Sell fee"
         },
         "data_description": {
           "refund": "Refund per kWh from state/grid company/supplier, subtracted from the buy price in the price history. 0 if none.",
-          "sell_fee": "Fee per kWh when selling to the grid. Included in the calculated sell price.",
-          "use_price_forecast_correction": "Correct the price forecast with how far off it was the last 30 days, per day ahead (after 7 days of measurements, at most ±0.50 kr). See the price forecast in the analysis."
+          "sell_fee": "Fee per kWh when selling to the grid. Included in the calculated sell price."
         }
       },
       "solar": {
@@ -367,13 +365,11 @@
         "description": "Amounts per kWh that change what charging and selling is worth.",
         "data": {
           "refund": "Refund",
-          "sell_fee": "Sell fee",
-          "use_price_forecast_correction": "Correct the price forecast"
+          "sell_fee": "Sell fee"
         },
         "data_description": {
           "refund": "Refund per kWh from state/grid company/supplier, subtracted from the buy price in the price history. 0 if none.",
-          "sell_fee": "Fee per kWh when selling to the grid. Included in the calculated sell price.",
-          "use_price_forecast_correction": "Correct the price forecast with how far off it was the last 30 days, per day ahead (after 7 days of measurements, at most ±0.50 kr). See the price forecast in the analysis."
+          "sell_fee": "Fee per kWh when selling to the grid. Included in the calculated sell price."
         }
       },
       "solar": {
@@ -596,6 +592,9 @@
       },
       "optimizer_control": {
         "name": "Control the battery with the whole period optimisation"
+      },
+      "price_forecast_correction": {
+        "name": "Correct the price forecast"
       }
     },
     "number": {

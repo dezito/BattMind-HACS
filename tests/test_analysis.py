@@ -256,7 +256,8 @@ def test_price_forecast_is_corrected_with_its_bias() -> None:
     row = next(row for row in published["hours"] if row["t"] == f"{tomorrow.isoformat()}T05")
     assert row["corrected"] == pytest.approx(row["d1"] - 0.2)
 
-    engine.config["prices"]["use_forecast_correction"] = False
-    assert engine.price_forecast_corrections() == {}
-    assert engine.run_job(snap, engine.update_grid_prices).error is None
-    assert engine.get_grid_prices()[hour] == provider[hour]
+    # the switch off: the cached prices are recalculated without a new price update
+    snap.settings["price_forecast_correction"] = False
+    assert engine.run_job(snap, engine.hour_end, now.replace(minute=0)).error is None
+    assert engine.run_job(snap, engine.price_forecast_corrections).value == {}
+    assert engine.run_job(snap, engine.get_grid_prices).value[hour] == provider[hour]

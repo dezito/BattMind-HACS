@@ -108,13 +108,11 @@
       "price_fees": {
         "data_description": {
           "refund": "Erstattungsbetrag vom Staat/Anbieter",
-          "sell_fee": "Verkaufsgebühr",
-          "use_price_forecast_correction": "Die Preisprognose um ihre Abweichung der letzten 30 Tage korrigieren, pro Tag voraus (nach 7 Tagen Messung, höchstens ±0,50 kr). Siehe die Preisprognose in der Analyse."
+          "sell_fee": "Verkaufsgebühr"
         },
         "data": {
           "refund": "Erstattung",
-          "sell_fee": "Verkaufsgebühr",
-          "use_price_forecast_correction": "Preisprognose korrigieren"
+          "sell_fee": "Verkaufsgebühr"
         },
         "description": "Beträge pro kWh, die den Wert von Laden und Verkaufen ändern.",
         "title": "Erstattung und Gebühren"
@@ -336,13 +334,11 @@
       "price_fees": {
         "data_description": {
           "refund": "Erstattungsbetrag vom Staat/Anbieter",
-          "sell_fee": "Verkaufsgebühr",
-          "use_price_forecast_correction": "Die Preisprognose um ihre Abweichung der letzten 30 Tage korrigieren, pro Tag voraus (nach 7 Tagen Messung, höchstens ±0,50 kr). Siehe die Preisprognose in der Analyse."
+          "sell_fee": "Verkaufsgebühr"
         },
         "data": {
           "refund": "Erstattung",
-          "sell_fee": "Verkaufsgebühr",
-          "use_price_forecast_correction": "Preisprognose korrigieren"
+          "sell_fee": "Verkaufsgebühr"
         },
         "description": "Beträge pro kWh, die den Wert von Laden und Verkaufen ändern.",
         "title": "Erstattung und Gebühren"
@@ -513,6 +509,9 @@
       },
       "optimizer_control": {
         "name": "Batterie mit Optimierung des ganzen Zeitraums steuern"
+      },
+      "price_forecast_correction": {
+        "name": "Preisprognose korrigieren"
       }
     },
     "number": {
