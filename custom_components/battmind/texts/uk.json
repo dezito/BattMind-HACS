@@ -353,7 +353,7 @@
     "view_overview": "Огляд",
     "view_settings": "Налаштування",
     "view_analysis": "Аналіз",
-    "soc_chart_title": "Прогноз SOC домашньої батареї 🟢Заряд 🟡Розряд 🔴Стоп",
+    "soc_chart_title": "Прогноз SOC домашньої батареї",
     "battery_forecast": "Прогноз батареї",
     "charge": "Заряд",
     "force_discharge": "Примусовий розряд",
