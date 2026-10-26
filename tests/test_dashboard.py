@@ -144,6 +144,8 @@ def test_overview_plan_chart_series_share_the_battery_flow_hours() -> None:
     assert chart["series"][0]["curve"] == "straight"
     assert chart["series"][0]["opacity"] == 0.25
     assert chart["series"][1]["opacity"] == 0.6
+    assert chart["series"][0]["show"]["in_brush"] is True
+    assert all(series["show"]["in_brush"] is False for series in chart["series"][1:])
     assert [series.get("show", {}).get("hidden_by_default", False) for series in chart["series"]] == [False, False, False, True, False]
 
 
@@ -155,10 +157,28 @@ def test_price_overview_shows_the_battery_plan() -> None:
             if node.get("type") == "custom:apexcharts-card" and node.get("series", [{}])[0].get("yaxis_id") == "price"
         )
         actions = [series for series in chart["series"] if series.get("yaxis_id") == "state"]
-        assert [series["name"] for series in actions] == ["Charge", "Force discharge", "Discharge"]
-        assert all(series["type"] == "column" and "_timestamps" in series["data_generator"] for series in actions)
-        assert [series.get("show", {}).get("hidden_by_default", False) for series in actions] == [False, False, True]
-        assert chart["apex_config"]["tooltip"]["enabledOnSeries"] == [0, 1, 2, 4, 5, 6]
+        assert chart["apex_config"]["stroke"]["curve"] == "stepline"
+        assert [series["name"] for series in actions] == ["Charge", "Force discharge"]
+        assert all(series["type"] == "area" and series["curve"] == "stepline" for series in actions)
+        assert all("_timestamps" in series["data_generator"] and "group_by" not in series for series in actions)
+        assert all(not series.get("show", {}).get("hidden_by_default", False) for series in actions)
+        assert all(series["show"]["in_brush"] is False for series in actions)
+        assert chart["apex_config"]["tooltip"]["enabledOnSeries"] == [0, 1, 2, 4, 5]
+        assert chart["apex_config"]["tooltip"]["followCursor"] is True
+        assert chart["apex_config"]["tooltip"]["fixed"]["enabled"] is False
+        custom = chart["apex_config"]["tooltip"]["custom"]
+        assert "const indices = [0, 1, 2, 4, 5];" in custom
+        assert custom.strip().endswith("}")
+        for index in (0, 1, 2, 4, 5):
+            generator = chart["series"][index]["data_generator"]
+            assert "const times = [...new Set(" in generator
+            assert "return times.map(time =>" in generator
+
+
+def test_overview_does_not_show_raw_powerwall_action_card() -> None:
+    overview = yaml.safe_load(rendered("en"))["views"][0]
+    cards = [node for node in walk(overview) if node.get("type") == "custom:mushroom-entity-card"]
+    assert all(card.get("entity") != "sensor.battmind_powerwall_action" for card in cards)
 
 
 def test_price_forecast_chart_series_share_the_same_hours() -> None:
