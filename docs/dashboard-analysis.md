@@ -4,7 +4,10 @@ With **Dashboard in the sidebar** on (default), each BattMind instance gets its 
 `/battmind-dashboard`. It is built on every startup from your setup: cards for price providers and a solar
 forecast you don't use are removed.
 
-It needs the HACS frontend cards `apexcharts-card`, `mushroom`, `config-template-card` and `card-mod`.
+It needs these HACS frontend cards: [ApexCharts Card](https://github.com/RomRider/apexcharts-card),
+[Mushroom](https://github.com/piitaya/lovelace-mushroom),
+[Config Template Card](https://github.com/iantrich/config-template-card) and
+[card-mod](https://github.com/thomasloven/lovelace-card-mod).
 
 ## Overview
 
