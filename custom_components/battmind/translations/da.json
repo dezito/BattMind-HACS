@@ -56,6 +56,8 @@
           "powerwall_discharging_power": "Maks. afladningseffekt",
           "powerwall_charge_discharge_loss": "Lade-/afladetab",
           "use_charge_discharge_loss_from_history": "Brug målt tab",
+          "battery_charging_efficiency_curve": "Virkningsgradskurve for ladning (valgfri)",
+          "battery_discharging_efficiency_curve": "Virkningsgradskurve for afladning (valgfri)",
           "powerwall_wear_cost_per_kwh": "Slitageomkostning"
         },
         "data_description": {
@@ -68,6 +70,8 @@
           "powerwall_discharging_power": "Den højeste effekt batteriet aflader med. Begrænser hvor meget der kan sælges pr. time.",
           "powerwall_charge_discharge_loss": "Tab for en hel op- og afladning som brøkdel: 0,1 = 10 % tab. Lægges oven i prisen på strømmen i batteriet.",
           "use_charge_discharge_loss_from_history": "Beregn tabet ud fra ladehistorikken i stedet (bruges når der er historik for 6 fulde ladecyklusser).",
+          "battery_charging_efficiency_curve": "Knyt AC-ladeeffekt i W til virkningsgrad i procent, f.eks. 1000 W = 88 %, 3000 W = 94 %, 5000 W = 96 %. BattMind interpolerer mellem punkterne. Lad feltet staa tomt for at bruge round-trip-tabet.",
+          "battery_discharging_efficiency_curve": "Knyt AC-afladeeffekt i W til virkningsgrad i procent, f.eks. 500 W = 82 %, 2000 W = 93 %, 5000 W = 96 %. BattMind interpolerer mellem punkterne. Lad feltet staa tomt for at bruge round-trip-tabet.",
           "powerwall_wear_cost_per_kwh": "Slitage pr. kWh der tages fra batteriet (batteriets pris / forventet levetid i kWh). Afladning skal tjene mere end dette."
         }
       },
@@ -224,6 +228,7 @@
       "prefix_in_use": "Dette prefix bruges allerede af en anden BattMind-instans.",
       "prefix_entities_exist": "Der findes allerede entiteter med dette prefix (f.eks. fra PyScript-versionen). Vælg et andet prefix for at køre begge samtidig.",
       "min_above_max": "Minimum niveau skal være lavere end maksimum niveau.",
+      "invalid_efficiency_curve": "Brug et objekt, der knytter effekt over 0 W til en virkningsgrad over 0 og hoejst 100 procent.",
       "no_price_provider": "Vælg mindst én prisleverandør.",
       "production_required": "En solprognose kræver en solproduktions-sensor."
     },
@@ -291,6 +296,8 @@
           "powerwall_discharging_power": "Maks. afladningseffekt",
           "powerwall_charge_discharge_loss": "Lade-/afladetab",
           "use_charge_discharge_loss_from_history": "Brug målt tab",
+          "battery_charging_efficiency_curve": "Virkningsgradskurve for ladning (valgfri)",
+          "battery_discharging_efficiency_curve": "Virkningsgradskurve for afladning (valgfri)",
           "powerwall_wear_cost_per_kwh": "Slitageomkostning"
         },
         "data_description": {
@@ -303,6 +310,8 @@
           "powerwall_discharging_power": "Den højeste effekt batteriet aflader med. Begrænser hvor meget der kan sælges pr. time.",
           "powerwall_charge_discharge_loss": "Tab for en hel op- og afladning som brøkdel: 0,1 = 10 % tab. Lægges oven i prisen på strømmen i batteriet.",
           "use_charge_discharge_loss_from_history": "Beregn tabet ud fra ladehistorikken i stedet (bruges når der er historik for 6 fulde ladecyklusser).",
+          "battery_charging_efficiency_curve": "Knyt AC-ladeeffekt i W til virkningsgrad i procent, f.eks. 1000 W = 88 %, 3000 W = 94 %, 5000 W = 96 %. BattMind interpolerer mellem punkterne. Lad feltet staa tomt for at bruge round-trip-tabet.",
+          "battery_discharging_efficiency_curve": "Knyt AC-afladeeffekt i W til virkningsgrad i procent, f.eks. 500 W = 82 %, 2000 W = 93 %, 5000 W = 96 %. BattMind interpolerer mellem punkterne. Lad feltet staa tomt for at bruge round-trip-tabet.",
           "powerwall_wear_cost_per_kwh": "Slitage pr. kWh der tages fra batteriet (batteriets pris / forventet levetid i kWh). Afladning skal tjene mere end dette."
         }
       },
@@ -463,6 +472,7 @@
       "prefix_in_use": "Dette prefix bruges allerede af en anden BattMind-instans.",
       "prefix_entities_exist": "Der findes allerede entiteter med dette prefix (f.eks. fra PyScript-versionen). Vælg et andet prefix for at køre begge samtidig.",
       "min_above_max": "Minimum niveau skal være lavere end maksimum niveau.",
+      "invalid_efficiency_curve": "Brug et objekt, der knytter effekt over 0 W til en virkningsgrad over 0 og hoejst 100 procent.",
       "no_price_provider": "Vælg mindst én prisleverandør.",
       "production_required": "En solprognose kræver en solproduktions-sensor."
     },

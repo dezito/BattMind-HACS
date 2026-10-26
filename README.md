@@ -40,7 +40,7 @@ documentation and the linked projects' published descriptions.
 | Focus and setup | Maximising battery savings and export income in a native HACS integration. | Home Assistant app with broad inverter support and deep configuration. | Add-on, Docker or Python optimisation of batteries and flexible loads. | Native HACS integration for vendor-independent battery control. |
 | Planning | Whole-period optimisation or selectable rules, 1–7 days ahead. | Lowest-cost plan from available price, load and solar forecasts. | Configurable mathematical optimisation horizon and time step. | Dynamic programming over the available and modelled forecast horizon. |
 | Prices and forecasts | Buy/sell prices, stored-energy cost, Solcast and forecasts learned from HA history. | Import/export tariffs with configured solar and load forecasts. | Configurable price, PV and load forecasts, including ML options. | Import/export prices, PV forecasts and learned household consumption. |
-| Loss and wear | Charge/discharge loss and configurable wear in planning and analysis. | Separate battery, inverter and charging losses plus cycle cost. | Battery efficiency and stress cost can be modelled. | Efficiency curves and degradation cost. |
+| Loss and wear | Round-trip loss, optional charge/discharge efficiency curves and configurable wear. | Separate battery, inverter and charging losses plus cycle cost. | Battery efficiency and stress cost can be modelled. | Efficiency curves and degradation cost. |
 | Charging and export | Grid charging, preserving energy for expensive hours and profitable forced export. | Modes from monitoring to automatic charging and forced export. | Determined by the selected model and connected automations. | Charge and discharge setpoints for several control modes. |
 | Inverter control | Generic actions mapped by the included blueprint. | Direct control of many supported inverter integrations. | Plan output connected to HA automations. | Generic setpoints connected through HA automations. |
 | Explanation and analysis | Named rules plus savings, wear, forecast accuracy and hindsight score. | Detailed plan, status, cost reports, web console and logs. | Publishes forecast and optimisation results. | Schedule, profitability and browser-based diagnostics. |
@@ -208,7 +208,7 @@ Setup is done in the UI, split into small pages with help texts:
 
 1. **Prefix and language:** the prefix becomes the start of all entity ids (default `battmind`)
 2. **Home battery:** battery level, power (optionally inverted sign), size, min./max. level,
-   charge/discharge power, charge/discharge loss and wear per kWh
+   charge/discharge power, charge/discharge loss, optional efficiency curves and wear per kWh
 3. **Consumption:** the house consumption, and whether it includes the battery's charging/discharging. You can also
    ignore consumers, e.g. the EV charger.
 4. **Price providers:** Energi Data Service and/or Strømligning (buy, sell and tariffs), refund and selling fee

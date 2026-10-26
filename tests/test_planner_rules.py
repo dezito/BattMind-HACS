@@ -174,6 +174,22 @@ def test_simulated_sale_is_limited_to_the_planned_kwh() -> None:
     assert full.levels[0] < planned.levels[0]
 
 
+def test_optimizer_interpolates_efficiency_at_the_actual_power() -> None:
+    cfg = OptimizerConfig(
+        **{
+            **CFG.__dict__,
+            "charge_efficiency_curve": ((1000.0, 0.8), (5000.0, 0.96)),
+            "discharge_efficiency_curve": ((1000.0, 0.75), (5000.0, 0.95)),
+        }
+    )
+    hour = OptimizerHour(0, 1.0, 0.0, 1.0, 0.0)
+    charged = step_hour(hour, 5.0, "grid_charging", cfg, limit=1.0)
+    discharged = step_hour(hour, 50.0, "discharge_allowed", cfg)
+
+    assert charged[0] == pytest.approx(13.0)
+    assert discharged[0] == pytest.approx(50.0 - 1.0 / 0.75 / 10.0 * 100.0)
+
+
 def test_min_total_profit_does_not_block_using_the_battery() -> None:
     """min_total_profit is for trades - an hour of house consumption earns less than 1.00 but must not be blocked."""
 

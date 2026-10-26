@@ -8,6 +8,7 @@ import re
 from collections import defaultdict
 
 from .engine_optimizer import OptimizerConfig, OptimizerHour, breakdown, optimize_per_day, optimize_with_rules, simulate
+from .efficiency import parse_efficiency_curve
 from .formatting import emoji_parse, emoji_text_format, get_list_values
 from .helpers import (
     average,
@@ -1806,6 +1807,13 @@ class PlannerMixin:
                     max_discharge=abs(max_kwh_discharging),
                     efficiency=efficiency,
                     wear=wear,
+                    charge_efficiency_curve=parse_efficiency_curve(
+                        config["solar"].get("battery_charging_efficiency_curve")
+                    ),
+                    discharge_efficiency_curve=parse_efficiency_curve(
+                        config["solar"].get("battery_discharging_efficiency_curve")
+                    ),
+                    curve_fallback_efficiency=self._fallback_efficiency(),
                     min_profit_per_kwh=get_min_profit_per_kwh(),
                     min_sell_kwh=self.number("min_sell_kwh"),
                     min_total_profit=self.get_min_total_profit(),

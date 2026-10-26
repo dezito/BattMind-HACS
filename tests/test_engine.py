@@ -246,6 +246,21 @@ def test_round_trip_loss_in_price_and_battery_level() -> None:
         assert session["battery_level"] == pytest.approx(engine.kwh_to_percentage(session["kWh"]) * 0.8**0.5, abs=0.05)
 
 
+def test_configured_efficiency_curves_override_the_round_trip_loss() -> None:
+    options = {
+        **OPTIONS,
+        "battery_charging_efficiency_curve": {"1000": 80, "5000": 96},
+        "battery_discharging_efficiency_curve": {"1000": 75, "5000": 95},
+    }
+    engine = BattMindEngine(build_config(options), "test", TEXTS)
+
+    assert engine.charging_efficiency(1.0) == pytest.approx(0.8)
+    assert engine.charging_efficiency(3.0) == pytest.approx(0.88)
+    assert engine.discharging_efficiency(1.0) == pytest.approx(0.75)
+    assert engine.battery_efficiency() == pytest.approx((0.96 * 0.95) ** 0.5)
+    assert engine.calc_battery_loss_cost(1.0) == pytest.approx((1.0 - 0.96 * 0.95) / (0.96 * 0.95))
+
+
 ALL_RULES = {
     key: True
     for key in (

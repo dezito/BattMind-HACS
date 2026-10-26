@@ -34,6 +34,7 @@ from .const import (
     normalize_language,
 )
 from .helpers import get_dict_value_with_path
+from .efficiency import parse_efficiency_curve
 from .storage import find_legacy_sources, load_legacy_config
 
 PREFIX_RE = re.compile(r"^[a-z][a-z0-9_]{0,49}$")
@@ -89,6 +90,7 @@ def _number(minimum: float, maximum: float, step: float, unit: str | None = None
 
 
 BOOLEAN = selector.BooleanSelector()
+OBJECT = selector.ObjectSelector()
 
 SELECTORS: dict[str, Any] = {
     "language": selector.SelectSelector(
@@ -111,6 +113,8 @@ SELECTORS: dict[str, Any] = {
     "powerwall_discharging_power": _number(100, 100000, 100, "W"),
     "powerwall_charge_discharge_loss": _number(0, 0.9, 0.01),
     "use_charge_discharge_loss_from_history": BOOLEAN,
+    "battery_charging_efficiency_curve": OBJECT,
+    "battery_discharging_efficiency_curve": OBJECT,
     "powerwall_wear_cost_per_kwh": _number(0, 10, 0.01, "{valuta_kwh}"),
     # consumption
     "power_consumption_entity_id": _entity("sensor", device_class="power"),
@@ -251,6 +255,12 @@ def validate_step(step: str, values: dict[str, Any]) -> dict[str, str]:
         errors["powerwall_battery_level_min"] = "min_above_max"
     if step == "battery_specs" and values["battery_temperature_min"] >= values["battery_temperature_max"]:
         errors["battery_temperature_min"] = "min_above_max"
+    if step == "battery_specs":
+        for key in ("battery_charging_efficiency_curve", "battery_discharging_efficiency_curve"):
+            try:
+                parse_efficiency_curve(values.get(key))
+            except ValueError:
+                errors[key] = "invalid_efficiency_curve"
     if step == "solar" and values.get("forecast_entity_id") and not values.get("production_entity_id"):
         errors["production_entity_id"] = "production_required"
     return errors

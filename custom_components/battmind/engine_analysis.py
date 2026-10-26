@@ -705,7 +705,7 @@ class AnalysisMixin:
                     kind["home" if rule == "discharging" else "sale"] += _num(bucket.get("s"))
         discharged = sum(total["d"] for total in totals.values())
         value_unit = sum(total["v"] for total in totals.values()) / discharged if discharged > 0.05 else None
-        efficiency_loss = min(abs(self.get_charging_loss()), 0.9)
+        efficiency_loss = self.effective_round_trip_loss()
         rules = []
         for rule, total in totals.items():
             entry = {
@@ -880,7 +880,7 @@ class AnalysisMixin:
             "rules": rules,
             "loss": {
                 "configured": round(solar_cfg["powerwall_charge_discharge_loss"], 3),
-                "used": round(self.get_charging_loss(), 3),
+                "used": round(self.effective_round_trip_loss(), 3),
                 "last_30": loss_window(last_30),
                 "all": loss_window(all_days),
             },
