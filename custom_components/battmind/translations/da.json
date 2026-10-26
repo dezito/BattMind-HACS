@@ -666,7 +666,7 @@
         "name": "Min. overskydende kWh til salg"
       },
       "usage_reserve": {
-        "name": "Reserve til huset (s?lges ikke)"
+        "name": "Reserve til huset (s\u00e6lges ikke)"
       },
       "powerwall_max_hours_old": {
         "name": "Maks. timer gamle kWh i husbatteri"
