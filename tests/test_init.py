@@ -1,16 +1,36 @@
 """Setup, entities, services and unload of a BattMind entry."""
 from __future__ import annotations
 
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 from homeassistant.components import persistent_notification
 from homeassistant.config_entries import ConfigEntryState
-from homeassistant.core import HomeAssistant
+from homeassistant.const import EVENT_HOMEASSISTANT_STARTED
+from homeassistant.core import CoreState, HomeAssistant
 from homeassistant.helpers import entity_registry as er
 
+from custom_components.battmind import _async_run_after_home_assistant_started
 from custom_components.battmind.const import DOMAIN, NUMBER_SETTINGS, SELECT_SETTINGS, SENSOR_KEYS, SWITCH_SETTINGS, TEXT_SETTINGS
 
 from .conftest import CONSUMPTION, PREFIX, async_advance, async_unload_and_join, set_source_states
+
+
+async def test_post_setup_work_waits_until_home_assistant_started(hass: HomeAssistant, mock_entry) -> None:
+    """Dashboard generation must not inspect other integrations too early."""
+    action = AsyncMock()
+    hass.set_state(CoreState.starting)
+
+    await _async_run_after_home_assistant_started(hass, mock_entry, action, "battmind_test_startup")
+    action.assert_not_awaited()
+
+    hass.set_state(CoreState.running)
+    hass.bus.async_fire(EVENT_HOMEASSISTANT_STARTED)
+    await hass.async_block_till_done()
+    action.assert_awaited_once_with()
+
+    action.reset_mock()
+    await _async_run_after_home_assistant_started(hass, mock_entry, action, "battmind_test_reload")
+    action.assert_awaited_once_with()
 
 
 async def test_setup_creates_entities(hass: HomeAssistant, loaded_entry) -> None:
