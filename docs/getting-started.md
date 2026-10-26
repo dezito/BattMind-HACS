@@ -26,6 +26,9 @@ For the dashboard you need the HACS frontend cards `apexcharts-card`, `mushroom`
 > forced discharging and the max. charge/discharge power. Look under *Developer tools → Actions* and *States*
 > for your inverter integration. You need them in [step 5](#5-control-the-battery).
 
+Optional for additional battery protection: a battery temperature sensor. The inverter/BMS remains the
+primary safety system.
+
 ## 2. Install
 
 1. **HACS** → ⋮ → **Custom repositories**: add `https://github.com/dezito/BattMind-HACS` as **Integration**.
@@ -47,6 +50,8 @@ prefix per battery. If the [PyScript version](migration.md) still runs, choose a
 - **Battery power:** BattMind expects **positive while discharging, negative while charging**. If your
   sensor is the other way round, enable **Invert**. Check it in *Developer tools → States* while the
   battery charges.
+- **Battery temperature:** optional. When selected, BattMind requests `battery_stopped` outside the safe
+  range and while the sensor is unavailable. Configure **Stop battery** in the control blueprint first.
 
 ### Home battery – specifications
 
@@ -59,6 +64,7 @@ prefix per battery. If the [PyScript version](migration.md) still runs, choose a
 | Charge/discharge loss | the **round trip** loss as a fraction: 0.1 = 10 %. A typical lithium battery with inverter loses 8–15 % |
 | Loss from history | after 6 full cycles BattMind measures the loss itself – leave it on |
 | Wear per kWh | battery price ÷ expected lifetime in kWh, e.g. 40 000 kr ÷ (10 kWh × 6000 cycles) ≈ 0.67 kr/kWh. Default is 0.10. A higher value makes BattMind more careful |
+| Min. / max. safe temperature | limits in °C from the battery manufacturer; defaults are 0 to 50 °C |
 
 The loss and the wear decide how big a price difference has to be before BattMind uses the battery. See
 [How BattMind plans](how-it-works.md#the-cost-of-a-kwh-from-the-battery).
@@ -122,7 +128,7 @@ yours. The easiest way is the blueprint that comes with the integration:
 
 1. *Settings → Automations & scenes → Blueprints* → **BattMind - control the home battery** → **Create automation**.
 2. Select the BattMind sensor.
-3. For each of the five actions, add what your inverter should do. See [Actions](actions.md) for what each
+3. For each of the six actions, add what your inverter should do. See [Actions](actions.md) for what each
    action means, and [Huawei Solar](inverters/huawei.md) for a complete example.
 4. Keep **Repeat interval** at 5 minutes (default): the action is sent again, so a lost command or a mode
    the inverter changed by itself is put right. Use 30 seconds for a battery controlled via Modbus.

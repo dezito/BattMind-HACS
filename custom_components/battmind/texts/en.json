@@ -223,6 +223,8 @@
       }
     },
     "charge_if_needed": {
+      "temperature_unavailable": "Battery stopped: temperature unavailable",
+      "temperature_safety_stop": "Battery stopped: {temperature} C outside {minimum}-{maximum} C",
       "no_charging_modes_active": "No charging modes active\nCharging {watt}W",
       "planned_charging": "Charging up to {emoji}",
       "not_charging": "Not charging",

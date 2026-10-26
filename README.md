@@ -137,6 +137,7 @@ BattMind sends **no commands** to your inverter. It exposes what the battery sho
 
 | `sensor.battmind_powerwall_action` | Meaning |
 |---|---|
+| `battery_stopped` | Stop charging and discharging because the configured battery temperature is unsafe or unavailable |
 | `grid_charging` | Charge the battery from the grid now |
 | `discharge_allowed` | Normal operation: the battery isn't really controlled – it charges from solar and discharges to the house as the inverter normally does |
 | `force_discharge` | Discharge / sell to the grid now (the most expensive hours) |
@@ -166,6 +167,7 @@ reloaded. If the file is deleted, the latest version is put back on the next res
 - A sensor for the **house consumption** (W)
 - Price integration: [Energi Data Service](https://github.com/MTrab/energidataservice) and/or [Strømligning](https://github.com/MTrab/stromligning)
 - Optional:
+  - battery temperature sensor for a configurable charge/discharge safety stop
   - solar production (W)
   - [Solcast PV Forecast](https://github.com/BJReplay/ha-solcast-solar)
   - a weather integration that supports `weather.get_forecasts` with cloud cover, e.g.

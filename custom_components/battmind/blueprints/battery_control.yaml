@@ -14,6 +14,8 @@ blueprint:
 
     |:---|:---|
 
+    | Stop battery | stop charging and discharging (temperature safety) |
+
     | Charge from grid | charge from the grid (cheap power) |
 
     | Forced discharge | discharge/sell to the grid (expensive power) |
@@ -82,6 +84,16 @@ blueprint:
       name: Actions
       icon: mdi:battery-sync
       input:
+        battery_stopped:
+          name: Stop battery
+          description: >-
+            The configured battery temperature is unsafe or unavailable.
+            Stop forced modes and set both charging and discharging power to 0.
+            This is an additional Home Assistant safeguard, not a replacement
+            for the battery management system.
+          default: []
+          selector:
+            action:
         grid_charging:
           name: Charge from grid
           description: >-
@@ -268,7 +280,7 @@ conditions:
   - alias: BattMind has a valid action
     condition: template
     value_template: >-
-      {{ action in ['grid_charging', 'force_discharge', 'discharge_allowed',
+      {{ action in ['battery_stopped', 'grid_charging', 'force_discharge', 'discharge_allowed',
                     'blocked_solar_charge', 'force_solar_only_charging'] }}
   - alias: Started or reloaded - only when the action is repeated
     condition: template
@@ -288,6 +300,9 @@ actions:
     repeat:
       sequence:
         - choose:
+            - alias: Stop battery
+              conditions: "{{ action == 'battery_stopped' }}"
+              sequence: !input battery_stopped
             - alias: Charge from grid
               conditions: "{{ action == 'grid_charging' }}"
               sequence: !input grid_charging

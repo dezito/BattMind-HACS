@@ -703,7 +703,29 @@ class BattMindEngine(PlannerMixin, HistoryMixin, EnergyMixin, AnalysisMixin):
         try:
             self.cheap_grid_charge_hours(force_recalculate=force_recalculate)
 
-            if (charge_hour := self.current_hour_in_charge_hours()) is not None:
+            temperature_entity = self.config["home"]["entity_ids"].get("battery_temperature_entity_id", "")
+            temperature = float_or_none(self.entity_state(temperature_entity)) if temperature_entity else None
+            if temperature is not None and self._snap:
+                unit = self._snap.units.get(temperature_entity)
+                if unit in ("°F", "F"):
+                    temperature = (temperature - 32.0) * 5.0 / 9.0
+                elif unit in ("K", "kelvin"):
+                    temperature -= 273.15
+            temperature_min = self.config["solar"]["battery_temperature_min"]
+            temperature_max = self.config["solar"]["battery_temperature_max"]
+
+            if temperature_entity and temperature is None:
+                action = "battery_stopped"
+                rule = t("ui.charge_if_needed.temperature_unavailable")
+            elif temperature is not None and not temperature_min <= temperature <= temperature_max:
+                action = "battery_stopped"
+                rule = t(
+                    "ui.charge_if_needed.temperature_safety_stop",
+                    temperature=f"{temperature:.1f}",
+                    minimum=f"{temperature_min:.1f}",
+                    maximum=f"{temperature_max:.1f}",
+                )
+            elif (charge_hour := self.current_hour_in_charge_hours()) is not None:
                 action = "grid_charging"
                 current_rules.update(active_charging_rules(self.charge_hours[charge_hour]))
                 rule = t("ui.charge_if_needed.planned_charging", emoji=emoji_parse(self.charge_hours[charge_hour]))

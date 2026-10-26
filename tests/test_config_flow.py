@@ -23,6 +23,8 @@ BATTERY_SPECS = {
     "powerwall_charge_discharge_loss": 0.1,
     "use_charge_discharge_loss_from_history": True,
     "powerwall_wear_cost_per_kwh": 0.1,
+    "battery_temperature_min": 0,
+    "battery_temperature_max": 50,
 }
 
 
@@ -138,6 +140,15 @@ async def test_battery_min_above_max(hass: HomeAssistant) -> None:
     result = await _configure(hass, result, "battery_specs", {**BATTERY_SPECS, "powerwall_battery_level_min": 90, "powerwall_battery_level_max": 80})
     assert result["step_id"] == "battery_specs"
     assert result["errors"] == {"powerwall_battery_level_min": "min_above_max"}
+
+    result = await _configure(
+        hass,
+        result,
+        "battery_specs",
+        {**BATTERY_SPECS, "battery_temperature_min": 50, "battery_temperature_max": 50},
+    )
+    assert result["step_id"] == "battery_specs"
+    assert result["errors"] == {"battery_temperature_min": "min_above_max"}
 
 
 async def test_no_price_provider(hass: HomeAssistant) -> None:

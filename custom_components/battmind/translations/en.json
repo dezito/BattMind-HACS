@@ -33,11 +33,13 @@
         "data": {
           "powerwall_battery_level_entity_id": "Battery level",
           "powerwall_watt_flow_entity_id": "Battery power flow",
+          "battery_temperature_entity_id": "Battery temperature (optional)",
           "invert_powerwall_watt_flow_entity_id": "Invert power flow"
         },
         "data_description": {
           "powerwall_battery_level_entity_id": "Sensor with the home battery state of charge in percent (0-100 %).",
           "powerwall_watt_flow_entity_id": "Sensor with the power into/out of the battery (W or kW). Expected: positive when discharging, negative when charging. Tip: block battery discharging while the EV is charging.",
+          "battery_temperature_entity_id": "Optional temperature sensor. When configured, BattMind stops the battery outside the safe range or while the sensor is unavailable.",
           "invert_powerwall_watt_flow_entity_id": "Enable if your sensor is positive when charging and negative when discharging."
         }
       },
@@ -48,6 +50,8 @@
           "powerwall_battery_size": "Usable capacity",
           "powerwall_battery_level_min": "Minimum level",
           "powerwall_battery_level_max": "Maximum level",
+          "battery_temperature_min": "Minimum safe temperature",
+          "battery_temperature_max": "Maximum safe temperature",
           "powerwall_charging_power_limit": "Max charging power",
           "powerwall_discharging_power": "Max discharging power",
           "powerwall_charge_discharge_loss": "Charge/discharge loss",
@@ -58,6 +62,8 @@
           "powerwall_battery_size": "Usable capacity of the home battery.",
           "powerwall_battery_level_min": "BattMind never plans below this level (the reserve you keep in the battery).",
           "powerwall_battery_level_max": "BattMind never plans charging above this level.",
+          "battery_temperature_min": "Stop charging and discharging below this temperature. Use the battery manufacturer's limit.",
+          "battery_temperature_max": "Stop charging and discharging above this temperature. Use the battery manufacturer's limit.",
           "powerwall_charging_power_limit": "Highest power the battery charges with. Used to calculate how many kWh can be charged per hour.",
           "powerwall_discharging_power": "Highest power the battery discharges with. Limits how much can be sold per hour.",
           "powerwall_charge_discharge_loss": "Round-trip loss as a fraction: 0.1 = 10 % loss. Added to the price of the energy in the battery.",
@@ -262,11 +268,13 @@
         "data": {
           "powerwall_battery_level_entity_id": "Battery level",
           "powerwall_watt_flow_entity_id": "Battery power flow",
+          "battery_temperature_entity_id": "Battery temperature (optional)",
           "invert_powerwall_watt_flow_entity_id": "Invert power flow"
         },
         "data_description": {
           "powerwall_battery_level_entity_id": "Sensor with the home battery state of charge in percent (0-100 %).",
           "powerwall_watt_flow_entity_id": "Sensor with the power into/out of the battery (W or kW). Expected: positive when discharging, negative when charging. Tip: block battery discharging while the EV is charging.",
+          "battery_temperature_entity_id": "Optional temperature sensor. When configured, BattMind stops the battery outside the safe range or while the sensor is unavailable.",
           "invert_powerwall_watt_flow_entity_id": "Enable if your sensor is positive when charging and negative when discharging."
         }
       },
@@ -277,6 +285,8 @@
           "powerwall_battery_size": "Usable capacity",
           "powerwall_battery_level_min": "Minimum level",
           "powerwall_battery_level_max": "Maximum level",
+          "battery_temperature_min": "Minimum safe temperature",
+          "battery_temperature_max": "Maximum safe temperature",
           "powerwall_charging_power_limit": "Max charging power",
           "powerwall_discharging_power": "Max discharging power",
           "powerwall_charge_discharge_loss": "Charge/discharge loss",
@@ -287,6 +297,8 @@
           "powerwall_battery_size": "Usable capacity of the home battery.",
           "powerwall_battery_level_min": "BattMind never plans below this level (the reserve you keep in the battery).",
           "powerwall_battery_level_max": "BattMind never plans charging above this level.",
+          "battery_temperature_min": "Stop charging and discharging below this temperature. Use the battery manufacturer's limit.",
+          "battery_temperature_max": "Stop charging and discharging above this temperature. Use the battery manufacturer's limit.",
           "powerwall_charging_power_limit": "Highest power the battery charges with. Used to calculate how many kWh can be charged per hour.",
           "powerwall_discharging_power": "Highest power the battery discharges with. Limits how much can be sold per hour.",
           "powerwall_charge_discharge_loss": "Round-trip loss as a fraction: 0.1 = 10 % loss. Added to the price of the energy in the battery.",

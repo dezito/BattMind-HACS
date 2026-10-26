@@ -20,7 +20,7 @@ from custom_components.battmind.blueprint_install import SOURCE
 from custom_components.battmind.const import DOMAIN
 
 ACTION_SENSOR = "sensor.battmind_powerwall_action"
-ACTIONS = ["grid_charging", "force_discharge", "discharge_allowed", "force_solar_only_charging", "blocked_solar_charge"]
+ACTIONS = ["battery_stopped", "grid_charging", "force_discharge", "discharge_allowed", "force_solar_only_charging", "blocked_solar_charge"]
 
 
 @pytest.fixture(autouse=True)
@@ -92,6 +92,13 @@ async def test_action_change_runs_action(hass: HomeAssistant, freezer: FrozenDat
     hass.states.async_set(ACTION_SENSOR, "grid_charging")
     await _settle()
     assert ran == ["grid_charging"]
+
+
+async def test_temperature_stop_runs_stop_action(hass: HomeAssistant, freezer: FrozenDateTimeFactory, ran: list[str]) -> None:
+    await _setup(hass, freezer)
+    hass.states.async_set(ACTION_SENSOR, "battery_stopped")
+    await _settle()
+    assert ran == ["battery_stopped"]
 
 
 async def test_repeat_off(hass: HomeAssistant, freezer: FrozenDateTimeFactory, ran: list[str]) -> None:

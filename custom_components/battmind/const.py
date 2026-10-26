@@ -29,6 +29,7 @@ HISTORY_BUFFER_HOURS = 50
 
 ENTITY_UNAVAILABLE_STATES = (None, "unavailable", "unknown")
 POWERWALL_ACTION_STATES = (
+    "battery_stopped",
     "grid_charging",
     "discharge_allowed",
     "force_solar_only_charging",
@@ -250,6 +251,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
             "power_consumption_entity_id": "",
             "powerwall_watt_flow_entity_id": "",
             "powerwall_battery_level_entity_id": "",
+            "battery_temperature_entity_id": "",
             "ignore_consumption_from_entity_ids": [],
         },
         "power_consumption_entity_id_include_powerwall_charging": False,
@@ -289,6 +291,8 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "powerwall_discharging_power": 5000.0,
         "powerwall_battery_level_min": 5.0,
         "powerwall_battery_level_max": 100.0,
+        "battery_temperature_min": 0.0,
+        "battery_temperature_max": 50.0,
         "powerwall_charge_discharge_loss": 0.1,
         "use_charge_discharge_loss_from_history": True,
         "powerwall_wear_cost_per_kwh": 0.1,
@@ -303,6 +307,7 @@ OPTION_PATHS: dict[str, str] = {
     # battery / home
     "powerwall_battery_level_entity_id": "home.entity_ids.powerwall_battery_level_entity_id",
     "powerwall_watt_flow_entity_id": "home.entity_ids.powerwall_watt_flow_entity_id",
+    "battery_temperature_entity_id": "home.entity_ids.battery_temperature_entity_id",
     "invert_powerwall_watt_flow_entity_id": "home.invert_powerwall_watt_flow_entity_id",
     "power_consumption_entity_id": "home.entity_ids.power_consumption_entity_id",
     "power_consumption_entity_id_include_powerwall_charging": "home.power_consumption_entity_id_include_powerwall_charging",
@@ -311,6 +316,8 @@ OPTION_PATHS: dict[str, str] = {
     "powerwall_battery_size": "solar.powerwall_battery_size",
     "powerwall_battery_level_min": "solar.powerwall_battery_level_min",
     "powerwall_battery_level_max": "solar.powerwall_battery_level_max",
+    "battery_temperature_min": "solar.battery_temperature_min",
+    "battery_temperature_max": "solar.battery_temperature_max",
     "powerwall_charging_power_limit": "solar.powerwall_charging_power_limit",
     "powerwall_discharging_power": "solar.powerwall_discharging_power",
     "powerwall_charge_discharge_loss": "solar.powerwall_charge_discharge_loss",
@@ -357,12 +364,15 @@ FLOW_STEPS: dict[str, list[str]] = {
     "battery_entities": [
         "powerwall_battery_level_entity_id",
         "powerwall_watt_flow_entity_id",
+        "battery_temperature_entity_id",
         "invert_powerwall_watt_flow_entity_id",
     ],
     "battery_specs": [
         "powerwall_battery_size",
         "powerwall_battery_level_min",
         "powerwall_battery_level_max",
+        "battery_temperature_min",
+        "battery_temperature_max",
         "powerwall_charging_power_limit",
         "powerwall_discharging_power",
         "powerwall_charge_discharge_loss",

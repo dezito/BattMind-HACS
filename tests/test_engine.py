@@ -124,6 +124,43 @@ def test_action_is_always_valid(hour: int, battery_level: float) -> None:
     assert 0 <= result.states["battery_level_needed"] <= 100
 
 
+@pytest.mark.parametrize(
+    ("temperature", "unit", "expected_action"),
+    [(20, "°C", None), (-1, "°C", "battery_stopped"), (51, "°C", "battery_stopped"),
+     (104, "°F", None), (122, "°F", "battery_stopped"), (273.15, "K", None)],
+)
+def test_battery_temperature_safety(temperature: float, unit: str, expected_action: str | None) -> None:
+    now = datetime.datetime.combine(DAY, datetime.time(10, 30))
+    options = {**OPTIONS, "battery_temperature_entity_id": "sensor.battery_temperature",
+               "battery_temperature_min": 0, "battery_temperature_max": 50}
+    engine = BattMindEngine(build_config(options), "test", TEXTS)
+    snap = snapshot(now, 50)
+    snap.entity_states["sensor.battery_temperature"] = str(temperature)
+    snap.units["sensor.battery_temperature"] = unit
+    assert engine.run_job(snap, engine.startup, {"power_values": _power_values_db()}).error is None
+    result = engine.run_job(snap, engine.charge_if_needed, True)
+    assert result.error is None, result.error
+    if expected_action is None:
+        assert result.states["powerwall_action"] != "battery_stopped"
+    else:
+        assert result.states["powerwall_action"] == expected_action
+
+
+@pytest.mark.parametrize("state", [None, "unknown", "unavailable", "not-a-number"])
+def test_unavailable_battery_temperature_stops_battery(state: str | None) -> None:
+    now = datetime.datetime.combine(DAY, datetime.time(10, 30))
+    options = {**OPTIONS, "battery_temperature_entity_id": "sensor.battery_temperature",
+               "battery_temperature_min": 0, "battery_temperature_max": 50}
+    engine = BattMindEngine(build_config(options), "test", TEXTS)
+    snap = snapshot(now, 50)
+    if state is not None:
+        snap.entity_states["sensor.battery_temperature"] = state
+    assert engine.run_job(snap, engine.startup, {"power_values": _power_values_db()}).error is None
+    result = engine.run_job(snap, engine.charge_if_needed, True)
+    assert result.error is None, result.error
+    assert result.states["powerwall_action"] == "battery_stopped"
+
+
 # only the rules that charge for the own consumption from the cheap hours
 CHEAPEST_ONLY = {"optimizer_control": False, "most_expensive_planner": False, "grid_charge_to_sell": False, "most_profit": False}
 
