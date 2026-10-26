@@ -3,10 +3,11 @@
 BattMind sends **no commands** to the inverter. It sets `sensor.<prefix>_powerwall_action` to what the
 battery should do right now, and your automation makes the inverter do it.
 
-## The five actions
+## The six actions
 
 | Action | The battery should | Typical inverter setting |
 |---|---|---|
+| `battery_stopped` | stop charging and discharging because the configured temperature is unsafe or unavailable | stop forced modes, set charge and discharge power to 0 |
 | `grid_charging` | charge from the grid now | forced charge from the grid at full power |
 | `force_discharge` | discharge to the house and sell the rest to the grid | forced discharge at full power |
 | `discharge_allowed` | **run normally** – BattMind doesn't really control the battery in this state | the inverter's normal self-consumption mode: charge from solar, discharge to the house |
@@ -14,7 +15,7 @@ battery should do right now, and your automation makes the inverter do it.
 | `blocked_solar_charge` | not charge from solar – the surplus is sold | charge power 0, discharge power max |
 
 `discharge_allowed` is the normal state. Most hours of the day are in it, and the battery simply does what
-the inverter does on its own. BattMind only steps in with the other four actions.
+the inverter does on its own. BattMind only steps in with the other five actions.
 
 Why the battery is in an action is shown in `sensor.<prefix>_current_charging_rule` (e.g. *Charging up to
 💸*) and in the plan on the dashboard.
@@ -34,12 +35,16 @@ inverters, because you choose what happens with Home Assistant's normal action e
 
 ### Actions
 
-One field per action: **Charge from grid**, **Forced discharge**, **Discharge allowed (normal operation)**,
-**Solar charging only** and **Solar charging blocked**. Typically *Number: Set value* on the battery's max.
+One field per action: **Stop battery**, **Charge from grid**, **Forced discharge**, **Discharge allowed
+(normal operation)**, **Solar charging only** and **Solar charging blocked**. Typically *Number: Set value* on the battery's max.
 charge/discharge power, *Switch: Turn on/off*, or a service from the inverter integration. Fields left
 empty do nothing.
 
 Tips per action:
+
+- **Stop battery** - stop forced charge/discharge and set both maximum powers to 0. This action must be
+  configured before you select a temperature sensor. It is a secondary safeguard, not a replacement for
+  the battery management system or the manufacturer's temperature protection.
 
 - **Charge from grid** – if the inverter's forced charge needs a duration or a target level, use a long
   duration (e.g. 120 min) and a target of 100 %. BattMind stops the charge by changing action when the

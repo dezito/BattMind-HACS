@@ -223,6 +223,8 @@
       }
     },
     "charge_if_needed": {
+      "temperature_unavailable": "Batteri stoppet: temperaturen er utilgaengelig",
+      "temperature_safety_stop": "Batteri stoppet: {temperature} C er uden for {minimum}-{maximum} C",
       "no_charging_modes_active": "Ingen laderegler aktiv\nLader {watt}W",
       "planned_charging": "Lader op til {emoji}",
       "not_charging": "Lader ikke",

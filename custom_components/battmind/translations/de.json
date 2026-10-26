@@ -5,12 +5,14 @@
         "data_description": {
           "powerwall_battery_level_entity_id": "Heimspeicher Batteriestand (Prozent)",
           "powerwall_watt_flow_entity_id": "Heimspeicher Watt-Fluss (positiv bei Entladung, negativ bei Ladung)",
+          "battery_temperature_entity_id": "Optional temperature sensor. BattMind stops the battery outside the safe range or while the sensor is unavailable.",
           "invert_powerwall_watt_flow_entity_id": "Vorzeichen für Heimspeicher Watt-Fluss umkehren, sodass Ladung positiv und Entladung negativ ist"
         },
         "data": {
           "invert_powerwall_watt_flow_entity_id": "Leistungsfluss umkehren",
           "powerwall_battery_level_entity_id": "Akkustand",
-          "powerwall_watt_flow_entity_id": "Leistungsfluss des Akkus"
+          "powerwall_watt_flow_entity_id": "Leistungsfluss des Akkus",
+          "battery_temperature_entity_id": "Battery temperature (optional)"
         },
         "description": "Die Sensoren, die BattMind von deinem Hausakku / Wechselrichter liest.",
         "title": "Hausakku - Sensoren"
@@ -21,6 +23,8 @@
           "powerwall_battery_level_min": "Minimaler Batteriestand in Prozent",
           "powerwall_battery_level_max": "Maximaler Batteriestand in Prozent",
           "powerwall_charging_power_limit": "Heimspeicher Lade-Leistungsgrenze (Watt)",
+          "battery_temperature_min": "Stop charging and discharging below this temperature. Use the battery manufacturer limit.",
+          "battery_temperature_max": "Stop charging and discharging above this temperature. Use the battery manufacturer limit.",
           "powerwall_discharging_power": "Heimspeicher Entladeleistung (Watt)",
           "powerwall_charge_discharge_loss": "Lade-/Entladeverlust in Prozent basierend auf Round-Trip-Effizienz (z.B. 10% Verlust = 0.1)",
           "use_charge_discharge_loss_from_history": "Verwende tatsächliche Lade- und Entladeverluste basierend auf dem Ladeverlauf anstelle des geschätzten Verlusts in der Konfiguration",
@@ -32,6 +36,8 @@
           "powerwall_battery_size": "Nutzbare Kapazität",
           "powerwall_charge_discharge_loss": "Lade-/Entladeverlust",
           "powerwall_charging_power_limit": "Max. Ladeleistung",
+          "battery_temperature_min": "Minimum safe temperature",
+          "battery_temperature_max": "Maximum safe temperature",
           "powerwall_discharging_power": "Max. Entladeleistung",
           "powerwall_wear_cost_per_kwh": "Verschleißkosten",
           "use_charge_discharge_loss_from_history": "Gemessenen Verlust nutzen"
@@ -231,12 +237,14 @@
         "data_description": {
           "powerwall_battery_level_entity_id": "Heimspeicher Batteriestand (Prozent)",
           "powerwall_watt_flow_entity_id": "Heimspeicher Watt-Fluss (positiv bei Entladung, negativ bei Ladung)",
+          "battery_temperature_entity_id": "Optional temperature sensor. BattMind stops the battery outside the safe range or while the sensor is unavailable.",
           "invert_powerwall_watt_flow_entity_id": "Vorzeichen für Heimspeicher Watt-Fluss umkehren, sodass Ladung positiv und Entladung negativ ist"
         },
         "data": {
           "invert_powerwall_watt_flow_entity_id": "Leistungsfluss umkehren",
           "powerwall_battery_level_entity_id": "Akkustand",
-          "powerwall_watt_flow_entity_id": "Leistungsfluss des Akkus"
+          "powerwall_watt_flow_entity_id": "Leistungsfluss des Akkus",
+          "battery_temperature_entity_id": "Battery temperature (optional)"
         },
         "description": "Die Sensoren, die BattMind von deinem Hausakku / Wechselrichter liest.",
         "title": "Hausakku - Sensoren"
@@ -247,6 +255,8 @@
           "powerwall_battery_level_min": "Minimaler Batteriestand in Prozent",
           "powerwall_battery_level_max": "Maximaler Batteriestand in Prozent",
           "powerwall_charging_power_limit": "Heimspeicher Lade-Leistungsgrenze (Watt)",
+          "battery_temperature_min": "Stop charging and discharging below this temperature. Use the battery manufacturer limit.",
+          "battery_temperature_max": "Stop charging and discharging above this temperature. Use the battery manufacturer limit.",
           "powerwall_discharging_power": "Heimspeicher Entladeleistung (Watt)",
           "powerwall_charge_discharge_loss": "Lade-/Entladeverlust in Prozent basierend auf Round-Trip-Effizienz (z.B. 10% Verlust = 0.1)",
           "use_charge_discharge_loss_from_history": "Verwende tatsächliche Lade- und Entladeverluste basierend auf dem Ladeverlauf anstelle des geschätzten Verlusts in der Konfiguration",
@@ -258,6 +268,8 @@
           "powerwall_battery_size": "Nutzbare Kapazität",
           "powerwall_charge_discharge_loss": "Lade-/Entladeverlust",
           "powerwall_charging_power_limit": "Max. Ladeleistung",
+          "battery_temperature_min": "Minimum safe temperature",
+          "battery_temperature_max": "Maximum safe temperature",
           "powerwall_discharging_power": "Max. Entladeleistung",
           "powerwall_wear_cost_per_kwh": "Verschleißkosten",
           "use_charge_discharge_loss_from_history": "Gemessenen Verlust nutzen"

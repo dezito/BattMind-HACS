@@ -223,6 +223,8 @@
       }
     },
     "charge_if_needed": {
+      "temperature_unavailable": "Battery stopped: temperature unavailable",
+      "temperature_safety_stop": "Battery stopped: {temperature} C outside {minimum}-{maximum} C",
       "no_charging_modes_active": "Немає активних режимів заряджання\nЗаряджання {watt}W",
       "planned_charging": "Заряджання до {emoji}",
       "not_charging": "Не заряджається",

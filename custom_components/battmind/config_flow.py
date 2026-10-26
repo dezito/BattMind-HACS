@@ -100,10 +100,13 @@ SELECTORS: dict[str, Any] = {
     # home battery
     "powerwall_battery_level_entity_id": _entity("sensor", device_class="battery"),
     "powerwall_watt_flow_entity_id": _entity("sensor", device_class="power"),
+    "battery_temperature_entity_id": _entity("sensor", device_class="temperature"),
     "invert_powerwall_watt_flow_entity_id": BOOLEAN,
     "powerwall_battery_size": _number(0.1, 1000, 0.1, "kWh"),
     "powerwall_battery_level_min": _number(0, 100, 1, "%"),
     "powerwall_battery_level_max": _number(0, 100, 1, "%"),
+    "battery_temperature_min": _number(-50, 100, 1, "°C"),
+    "battery_temperature_max": _number(-50, 100, 1, "°C"),
     "powerwall_charging_power_limit": _number(100, 100000, 100, "W"),
     "powerwall_discharging_power": _number(100, 100000, 100, "W"),
     "powerwall_charge_discharge_loss": _number(0, 0.9, 0.01),
@@ -159,6 +162,8 @@ REQUIRED_KEYS = {
     "powerwall_battery_size",
     "powerwall_battery_level_min",
     "powerwall_battery_level_max",
+    "battery_temperature_min",
+    "battery_temperature_max",
     "powerwall_charging_power_limit",
     "powerwall_discharging_power",
     "powerwall_charge_discharge_loss",
@@ -244,6 +249,8 @@ def validate_step(step: str, values: dict[str, Any]) -> dict[str, str]:
     errors: dict[str, str] = {}
     if step == "battery_specs" and values["powerwall_battery_level_min"] >= values["powerwall_battery_level_max"]:
         errors["powerwall_battery_level_min"] = "min_above_max"
+    if step == "battery_specs" and values["battery_temperature_min"] >= values["battery_temperature_max"]:
+        errors["battery_temperature_min"] = "min_above_max"
     if step == "solar" and values.get("forecast_entity_id") and not values.get("production_entity_id"):
         errors["production_entity_id"] = "production_required"
     return errors
