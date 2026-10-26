@@ -533,6 +533,9 @@
       "min_sell_kwh": {
         "name": "Min. nadwyżka kWh do sprzedaży"
       },
+      "usage_reserve": {
+        "name": "Rezerwa dla domu (nie sprzedawaj)"
+      },
       "powerwall_max_hours_old": {
         "name": "Maks. wiek kWh w magazynie energii"
       }

@@ -1663,6 +1663,9 @@ views:
               - entity: number.battmind_min_sell_kwh
                 name:
                   type: entity
+              - entity: number.battmind_usage_reserve
+                name:
+                  type: entity
               - entity: text.battmind_exclude_sell_hours
                 name:
                   type: entity

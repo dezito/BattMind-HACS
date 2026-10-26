@@ -1041,7 +1041,7 @@ class PlannerMixin:
                 A sale has to beat that buy price by min_profit_per_kwh, pay the battery kWh cost itself,
                 sell at least min_sell_kwh and earn min_total_profit (per hour, split over the price periods).
                 """
-                minimum = config["solar"]["powerwall_battery_level_min"]
+                minimum = max(config["solar"]["powerwall_battery_level_min"], self.number("usage_reserve"))
                 maximum = config["solar"]["powerwall_battery_level_max"]
                 min_profit_per_kwh = get_min_profit_per_kwh()
                 # selling has to earn something more than using the energy, also with min_profit_per_kwh = 0
@@ -1193,7 +1193,8 @@ class PlannerMixin:
                 day_periods_in_hour = self.price_provider.sell_periods_in_hour(charging_plan[day]["start_of_day"])
                 lowest_timestamp, lowest_battery_level, using_next_day = lowest_battery_level_until_next_charge(day)
 
-                lowest_battery_level = round(lowest_battery_level, 0) - config["solar"]["powerwall_battery_level_min"]
+                usage_minimum = max(config["solar"]["powerwall_battery_level_min"], self.number("usage_reserve"))
+                lowest_battery_level = round(lowest_battery_level, 0) - usage_minimum
                 excess_kwh_available = round(percentage_to_kwh(max(lowest_battery_level, 0.0)) * efficiency, 1)
                 min_sell_kwh = self.number("min_sell_kwh") / day_periods_in_hour
 
@@ -1242,7 +1243,7 @@ class PlannerMixin:
                             continue
                         loop_raw, loop_loss_cost, loop_battery_kwh_cost = _get_predicted_battery_cost(what_day, timestamp.hour)
                         periods_in_hour = self.price_provider.sell_periods_in_hour(timestamp)
-                        usable_kwh = percentage_to_kwh(max(sum(battery_level) - config["solar"]["powerwall_battery_level_min"], 0.0)) * efficiency
+                        usable_kwh = percentage_to_kwh(max(sum(battery_level) - usage_minimum, 0.0)) * efficiency
                         excess_current = min(excess_kwh_available, abs(max_kwh_discharging) / periods_in_hour, usable_kwh)
                         if excess_current < self.number("min_sell_kwh") / periods_in_hour:
                             continue
@@ -1335,6 +1336,7 @@ class PlannerMixin:
                     _LOGGER.debug("Old energy: day %s exceeds the max age (%s days), skipping", day, max_days_old)
                     return battery_expenses_keys
                 minimum = config["solar"]["powerwall_battery_level_min"]
+                usage_minimum = max(minimum, self.number("usage_reserve"))
                 from_timestamp = charging_plan[day]["start_of_day"].replace(hour=current_hour.hour if day == 0 else 0)
                 old_keys = [
                     key for key in battery_expenses_keys
@@ -1399,7 +1401,7 @@ class PlannerMixin:
                     if not flow:
                         continue
                     periods_in_hour = self.price_provider.sell_periods_in_hour(timestamp)
-                    kwh = min(old_kwh, abs(max_kwh_discharging) / periods_in_hour, percentage_to_kwh(max(sum(flow) - minimum, 0.0)) * efficiency)
+                    kwh = min(old_kwh, abs(max_kwh_discharging) / periods_in_hour, percentage_to_kwh(max(sum(flow) - usage_minimum, 0.0)) * efficiency)
                     if kwh < self.number("min_sell_kwh") / periods_in_hour or gain_per_kwh * kwh < self.get_min_total_profit() / periods_in_hour:
                         continue
                     old_kwh -= kwh
@@ -1681,6 +1683,11 @@ class PlannerMixin:
                     percentage_to_kwh(pushed_out),
                     min(percentage_to_kwh(max(sum(data["battery_level_flow"][hour]) - minimum, 0.0)) for hour in window),
                 ) * efficiency
+                usage_minimum = max(minimum, self.number("usage_reserve"))
+                sell_budget_kwh = min(
+                    percentage_to_kwh(pushed_out),
+                    min(percentage_to_kwh(max(sum(data["battery_level_flow"][hour]) - usage_minimum, 0.0)) for hour in window),
+                ) * efficiency
 
                 candidates = []
                 for hour in window:
@@ -1714,7 +1721,7 @@ class PlannerMixin:
                         data.setdefault("discharge_before_solar_timestamps", {})[timestamp] = gain * kwh
                         _LOGGER.debug("Discharge before solar: using %.2f kWh at %s (%.2f %s better than selling the solar)", kwh, timestamp, gain * kwh, valuta)
                     else:
-                        kwh = min(kwh, budget_kwh)
+                        kwh = min(kwh, budget_kwh, sell_budget_kwh)
                         if kwh < self.number("min_sell_kwh") / periods_in_hour or not is_profitable(gain, kwh, periods_in_hour):
                             continue
                         fixed_price_calc_text = (
@@ -1737,6 +1744,7 @@ class PlannerMixin:
                             ),
                         }
                     budget_kwh -= kwh
+                    sell_budget_kwh = max(sell_budget_kwh - kwh, 0.0)
 
             def shadow_plan(days):
                 """Whole horizon optimisation next to the rules (compared in the overview).
@@ -1801,6 +1809,7 @@ class PlannerMixin:
                     min_profit_per_kwh=get_min_profit_per_kwh(),
                     min_sell_kwh=self.number("min_sell_kwh"),
                     min_total_profit=self.get_min_total_profit(),
+                    usage_reserve=self.number("usage_reserve"),
                 )
                 # a kWh left in the battery at the end saves the average buy price later (after wear and
                 # the min. profit, else buying just to hold the energy at the end would pay)

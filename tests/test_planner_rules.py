@@ -7,7 +7,14 @@ import pytest
 
 from custom_components.battmind.const import build_config
 from custom_components.battmind.engine import BattMindEngine, Snapshot
-from custom_components.battmind.engine_optimizer import RULE_SWITCHES, OptimizerConfig, OptimizerHour, optimize, simulate
+from custom_components.battmind.engine_optimizer import (
+    RULE_SWITCHES,
+    OptimizerConfig,
+    OptimizerHour,
+    optimize,
+    simulate,
+    step_hour,
+)
 
 from .test_engine import DAY, OPTIONS, SOLAR_SURPLUS, TEXTS, _power_values_db, charge_hours, snapshot
 
@@ -133,6 +140,29 @@ def test_optimizer_respects_min_profit_per_kwh() -> None:
 def test_optimizer_never_sells_in_excluded_hours() -> None:
     hours = [OptimizerHour(0, 1.0, 5.0, 0.0, 0.0, can_sell=False)]
     assert optimize(hours, 80.0, CFG, end_value_per_kwh=0.0).actions != ["force_discharge"]
+
+
+def test_usage_reserve_is_kept_for_house_consumption() -> None:
+    """Forced export keeps the reserve, while normal self-consumption may use it."""
+    cfg = OptimizerConfig(**{**CFG.__dict__, "usage_reserve": 40.0})
+    sale = step_hour(OptimizerHour(0, 1.0, 5.0, 0.0, 0.0), 50.0, "force_discharge", cfg)
+    house = step_hour(OptimizerHour(0, 5.0, 0.0, 3.0, 0.0), 50.0, "discharge_allowed", cfg)
+
+    assert sale[0] == pytest.approx(40.0, abs=0.1)
+    assert house[0] < 40.0
+
+
+def test_house_use_has_priority_over_export_reserve() -> None:
+    """House use may cross the reserve in a sale hour, but no energy is exported below it."""
+    cfg = OptimizerConfig(**{**CFG.__dict__, "usage_reserve": 40.0})
+    details = {}
+    level, _, _, _ = step_hour(
+        OptimizerHour(0, 5.0, 5.0, 2.0, 0.0), 50.0, "force_discharge", cfg, details=details
+    )
+
+    assert level < 40.0
+    assert details["house"] == pytest.approx(2.0)
+    assert details["sold"] == pytest.approx(0.0)
 
 
 def test_simulated_sale_is_limited_to_the_planned_kwh() -> None:

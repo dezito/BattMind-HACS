@@ -533,6 +533,9 @@
       "min_sell_kwh": {
         "name": "Min. überschüssige kWh zum Verkauf"
       },
+      "usage_reserve": {
+        "name": "Reserve f?r das Haus (nicht verkaufen)"
+      },
       "powerwall_max_hours_old": {
         "name": "Max. Alter der kWh im Hausbatterie"
       }

@@ -11,6 +11,9 @@ See also [Buy to sell](charging.md#-buy-to-sell) (charge only to sell) and [Befo
 
 ## Profit requirements
 
+**Reserve for the house (not sold)** is a separate battery level that BattMind does not plan to export below.
+Normal self-consumption may still use this reserve down to the battery's minimum level.
+
 **Numbers:** *Min. profit per kWh*, *Min. total profit*, *Minimum excess kWh for export* · **Text:** *Exclude selling hours*
 
 They apply to **every** charge, discharge and sale rule, and to the [whole period optimisation](optimizer.md).
@@ -21,6 +24,7 @@ They apply to **every** charge, discharge and sale rule, and to the [whole perio
 | Min. total profit | 0.00 kr | a charge hour or a sale has to earn at least this in total per hour (split over the hour's price periods) |
 | Min. excess kWh for export | 0.2 kWh | the smallest amount sold per hour (split over the hour's price periods) |
 | Exclude selling hours | empty | hours where nothing is sold, e.g. `17,18,19` |
+| Reserve for the house (not sold) | 0% | BattMind stops forced export at this level; normal self-consumption may still use it |
 
 > [!TIP]
 > Raise **min. profit per kWh** (e.g. 0.10–0.30 kr) if the battery cycles a lot for small gains. Each cycle
