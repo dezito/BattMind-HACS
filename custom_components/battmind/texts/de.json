@@ -353,7 +353,7 @@
     "view_overview": "Übersicht",
     "view_settings": "Einstellungen",
     "view_analysis": "Analyse",
-    "soc_chart_title": "Hausbatterie SOC-Prognose 🟢Laden 🟡Entladen 🔴Stopp",
+    "soc_chart_title": "Hausbatterie SOC-Prognose",
     "battery_forecast": "Batterieprognose",
     "charge": "Laden",
     "force_discharge": "Zwangsentladung",

@@ -31,14 +31,33 @@ views:
               tooltip:
                 shared: true
                 intersect: false
+                custom: |
+                  EVAL:function({ series, dataPointIndex, w }) {
+                    const time = w.globals.seriesX?.[0]?.[dataPointIndex];
+                    const title = Number.isFinite(time)
+                      ? new Date(time).toLocaleString(undefined, {
+                          weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'
+                        })
+                      : '';
+                    const hidden = new Set(w.globals.collapsedSeriesIndices || []);
+                    const rows = series.map((values, index) => {
+                      if (hidden.has(index)) return '';
+                      const value = values[dataPointIndex];
+                      const valid = value !== null && value !== undefined && Number.isFinite(Number(value));
+                      const shown = !valid ? '-' : index === 0 ? `${Number(value).toFixed(0)} %` : Number(value).toFixed(0);
+                      return `<div style="display:flex;align-items:center;gap:8px;padding:3px 10px;">
+                        <span style="width:10px;height:10px;border-radius:50%;background:${w.globals.colors[index]};"></span>
+                        <span>${w.globals.seriesNames[index]}:</span><strong style="margin-left:auto;">${shown}</strong>
+                      </div>`;
+                    }).join('');
+                    return `<div class="apexcharts-tooltip-title" style="padding:6px 10px;">${title}</div>${rows}`;
+                  }
                 fixed:
                   enabled: true
                   position: topLeft
                 x:
                   show: true
                   format: ddd dd/MM HH:mm
-                enabledOnSeries:
-                  - 0
               stroke:
                 curve: smooth
               dataLabels:
@@ -53,12 +72,16 @@ views:
                 type: area
                 name: '@@battery_forecast@@'
                 yaxis_id: soc
-                color: blue
-                data_generator: >
+                color: '#4CAF50'
+                opacity: 0.25
+                data_generator: |
                   const flow = entity.attributes.battery_level_flow || [];
-
-                  return flow.map(p => [new Date(p.hour).setMinutes(59, 59, 59),
-                  p.battery_level]);
+                  return flow.map(p => {
+                    const hour = new Date(p.hour);
+                    hour.setMinutes(0, 0, 0);
+                    return [hour.getTime(), Number(p.battery_level)];
+                  });
+                curve: straight
                 stroke_width: 2
                 float_precision: 0
                 show:
@@ -69,43 +92,25 @@ views:
                 name: '@@charge@@'
                 type: area
                 yaxis_id: state
-                color: green
-                opacity: 0.5
+                color: '#2196F3'
+                opacity: 0.6
                 data_generator: |
                   const flow = entity.attributes.battery_level_flow || [];
-                  if (!flow.length) return [];
-
-                  const chargeList = entity.attributes.charge_timestamps || [];
                   const chargeHours = new Set(
-                    chargeList.map(ts => {
+                    (entity.attributes.charge_timestamps || []).map(ts => {
                       const d = new Date(ts);
                       d.setMinutes(0, 0, 0);
                       return d.getTime();
                     })
                   );
-
-                  const first = new Date(flow[0].hour);
-                  first.setMinutes(0, 0, 0);
-                  const last = new Date(flow[flow.length - 1].hour);
-                  last.setMinutes(0, 0, 0);
-                  const startMs = first.getTime();
-                  const endMs   = last.getTime() + 60 * 60 * 1000;
-
-                  const step = 5 * 60 * 1000;
-                  const points = [];
-
-                  for (let t = startMs; t <= endMs; t += step) {
-                    const d = new Date(t);
-                    const h = new Date(d);
-                    h.setMinutes(0, 0, 0);
-                    const hMs = h.getTime();
-
-                    const val = chargeHours.has(hMs) ? 1 : 0;
-                    points.push([d, val]);
-                  }
-
-                  return points;
-                stroke_width: 0
+                  return flow.map(p => {
+                    const hour = new Date(p.hour);
+                    hour.setMinutes(0, 0, 0);
+                    const time = hour.getTime();
+                    return [time, chargeHours.has(time) ? 1 : 0];
+                  });
+                curve: stepline
+                stroke_width: 1
                 float_precision: 0
                 show:
                   in_brush: true
@@ -114,65 +119,24 @@ views:
                 name: '@@force_discharge@@'
                 type: area
                 yaxis_id: state
-                color: orange
+                color: '#FF9800'
                 opacity: 0.33
-                data_generator: >
+                data_generator: |
                   const flow = entity.attributes.battery_level_flow || [];
-
-                  if (!flow.length) return [];
-
-
-                  // Set of hour starts (ms) per state type
-
-                  const forceDischargeList =
-                  entity.attributes.force_discharge_timestamps || [];
-
-
                   const forceDischargeHours = new Set(
-                    forceDischargeList.map(ts => {
+                    (entity.attributes.force_discharge_timestamps || []).map(ts => {
                       const d = new Date(ts);
                       d.setMinutes(0, 0, 0);
                       return d.getTime();
                     })
                   );
-
-
-                  // 5 min grid from the first to the last hour
-
-                  const first = new Date(flow[0].hour);
-
-                  first.setMinutes(0, 0, 0);
-
-                  const last = new Date(flow[flow.length - 1].hour);
-
-                  last.setMinutes(0, 0, 0);
-
-                  const startMs = first.getTime();
-
-                  const endMs   = last.getTime() + 60 * 60 * 1000; // +1 hour
-
-
-                  const step = 5 * 60 * 1000;
-
-                  const points = [];
-
-
-                  for (let t = startMs; t <= endMs; t += step) {
-                    const d = new Date(t);
-                    const h = new Date(d);
-                    h.setMinutes(0, 0, 0);
-                    const hMs = h.getTime();
-
-                    // Charge vinder over discharge
-                    let val = 0;
-                    if (forceDischargeHours.has(hMs)) {
-                      val = 1;
-                    }
-                    points.push([d, val]);
-                  }
-
-
-                  return points;
+                  return flow.map(p => {
+                    const hour = new Date(p.hour);
+                    hour.setMinutes(0, 0, 0);
+                    const time = hour.getTime();
+                    return [time, forceDischargeHours.has(time) ? 1 : 0];
+                  });
+                curve: stepline
                 stroke_width: 0
                 float_precision: 0
                 show:
@@ -183,76 +147,31 @@ views:
                 name: '@@discharge@@'
                 type: area
                 yaxis_id: state
-                color: yellow
+                color: '#FDD835'
                 opacity: 0.33
-                data_generator: >
+                data_generator: |
                   const flow = entity.attributes.battery_level_flow || [];
-
-                  if (!flow.length) return [];
-
-
-                  // Set of hour starts (ms) per state type
-
-                  const dischargeList = entity.attributes.discharge_timestamps
-                  || [];
-
-                  const chargeList    = entity.attributes.charge_timestamps ||
-                  [];
-
-
                   const dischargeHours = new Set(
-                    dischargeList.map(ts => {
+                    (entity.attributes.discharge_timestamps || []).map(ts => {
                       const d = new Date(ts);
                       d.setMinutes(0, 0, 0);
                       return d.getTime();
                     })
                   );
-
                   const chargeHours = new Set(
-                    chargeList.map(ts => {
+                    (entity.attributes.charge_timestamps || []).map(ts => {
                       const d = new Date(ts);
                       d.setMinutes(0, 0, 0);
                       return d.getTime();
                     })
                   );
-
-
-                  // 5 min grid from the first to the last hour
-
-                  const first = new Date(flow[0].hour);
-
-                  first.setMinutes(0, 0, 0);
-
-                  const last = new Date(flow[flow.length - 1].hour);
-
-                  last.setMinutes(0, 0, 0);
-
-                  const startMs = first.getTime();
-
-                  const endMs   = last.getTime() + 60 * 60 * 1000; // +1 hour
-
-
-                  const step = 5 * 60 * 1000;
-
-                  const points = [];
-
-
-                  for (let t = startMs; t <= endMs; t += step) {
-                    const d = new Date(t);
-                    const h = new Date(d);
-                    h.setMinutes(0, 0, 0);
-                    const hMs = h.getTime();
-
-                    // Charge vinder over discharge
-                    let val = 0;
-                    if (!chargeHours.has(hMs) && dischargeHours.has(hMs)) {
-                      val = 1;
-                    }
-                    points.push([d, val]);
-                  }
-
-
-                  return points;
+                  return flow.map(p => {
+                    const hour = new Date(p.hour);
+                    hour.setMinutes(0, 0, 0);
+                    const time = hour.getTime();
+                    return [time, !chargeHours.has(time) && dischargeHours.has(time) ? 1 : 0];
+                  });
+                curve: stepline
                 stroke_width: 0
                 float_precision: 0
                 show:
@@ -263,56 +182,24 @@ views:
                 name: '@@solar_only@@'
                 type: area
                 yaxis_id: state
-                color: red
+                color: '#F44336'
                 opacity: 0.25
-                data_generator: >
+                data_generator: |
                   const flow = entity.attributes.battery_level_flow || [];
-
-                  if (!flow.length) return [];
-
-
-                  const force_solar_only_chargingList =
-                  entity.attributes.force_solar_only_charging_timestamps || [];
-
-                  const force_solar_only_chargingHours = new Set(
-                    force_solar_only_chargingList.map(ts => {
+                  const solarOnlyHours = new Set(
+                    (entity.attributes.force_solar_only_charging_timestamps || []).map(ts => {
                       const d = new Date(ts);
                       d.setMinutes(0, 0, 0);
                       return d.getTime();
                     })
                   );
-
-
-                  const first = new Date(flow[0].hour);
-
-                  first.setMinutes(0, 0, 0);
-
-                  const last = new Date(flow[flow.length - 1].hour);
-
-                  last.setMinutes(0, 0, 0);
-
-                  const startMs = first.getTime();
-
-                  const endMs   = last.getTime() + 60 * 60 * 1000;
-
-
-                  const step = 5 * 60 * 1000;
-
-                  const points = [];
-
-
-                  for (let t = startMs; t <= endMs; t += step) {
-                    const d = new Date(t);
-                    const h = new Date(d);
-                    h.setMinutes(0, 0, 0);
-                    const hMs = h.getTime();
-
-                    const val = force_solar_only_chargingHours.has(hMs) ? 1 : 0;
-                    points.push([d, val]);
-                  }
-
-
-                  return points;
+                  return flow.map(p => {
+                    const hour = new Date(p.hour);
+                    hour.setMinutes(0, 0, 0);
+                    const time = hour.getTime();
+                    return [time, solarOnlyHours.has(time) ? 1 : 0];
+                  });
+                curve: stepline
                 stroke_width: 0
                 float_precision: 0
                 show:
@@ -428,6 +315,9 @@ views:
                           - 0
                           - 1
                           - 2
+                          - 4
+                          - 5
+                          - 6
                       stroke:
                         curve: straight
                       markers:
@@ -467,6 +357,10 @@ views:
                         decimals: 1
                         max: ~6.0
                         min: 0
+                      - id: state
+                        min: 0
+                        max: 1
+                        show: false
                     show:
                       loading: true
                       last_updated: true
@@ -704,6 +598,82 @@ views:
                         show:
                           in_brush: false
                           legend_value: false
+                      - entity: sensor.battmind_powerwall_action
+                        yaxis_id: state
+                        type: column
+                        name: '@@charge@@'
+                        unit: ''
+                        color: '#2ecc71'
+                        opacity: 0.22
+                        stroke_width: 0
+                        data_generator: |
+                          const prices = hass.states['sensor.energi_data_service']?.attributes || {};
+                          const rows = [...(prices.raw_today || []), ...(prices.forecast || []), ...(prices.tomorrow_valid ? prices.raw_tomorrow || [] : [])];
+                          const hours = new Set((entity.attributes.charge_timestamps || []).map(ts => {
+                            const d = new Date(ts); d.setMinutes(0, 0, 0); return d.getTime();
+                          }));
+                          const times = [...new Set(rows.map(row => new Date(row.hour).getTime()).filter(Number.isFinite))].sort((a, b) => a - b);
+                          return times.map(time => {
+                            const hour = new Date(time); hour.setMinutes(0, 0, 0);
+                            return [time, hours.has(hour.getTime()) ? 1 : 0];
+                          });
+                        group_by:
+                          func: max
+                          duration: 15min
+                        show:
+                          in_brush: true
+                          legend_value: false
+                      - entity: sensor.battmind_powerwall_action
+                        yaxis_id: state
+                        type: column
+                        name: '@@force_discharge@@'
+                        unit: ''
+                        color: '#ff9800'
+                        opacity: 0.22
+                        stroke_width: 0
+                        data_generator: |
+                          const prices = hass.states['sensor.energi_data_service']?.attributes || {};
+                          const rows = [...(prices.raw_today || []), ...(prices.forecast || []), ...(prices.tomorrow_valid ? prices.raw_tomorrow || [] : [])];
+                          const hours = new Set((entity.attributes.force_discharge_timestamps || []).map(ts => {
+                            const d = new Date(ts); d.setMinutes(0, 0, 0); return d.getTime();
+                          }));
+                          const times = [...new Set(rows.map(row => new Date(row.hour).getTime()).filter(Number.isFinite))].sort((a, b) => a - b);
+                          return times.map(time => {
+                            const hour = new Date(time); hour.setMinutes(0, 0, 0);
+                            return [time, hours.has(hour.getTime()) ? 1 : 0];
+                          });
+                        group_by:
+                          func: max
+                          duration: 15min
+                        show:
+                          in_brush: true
+                          legend_value: false
+                      - entity: sensor.battmind_powerwall_action
+                        yaxis_id: state
+                        type: column
+                        name: '@@discharge@@'
+                        unit: ''
+                        color: '#fdd835'
+                        opacity: 0.2
+                        stroke_width: 0
+                        data_generator: |
+                          const prices = hass.states['sensor.energi_data_service']?.attributes || {};
+                          const rows = [...(prices.raw_today || []), ...(prices.forecast || []), ...(prices.tomorrow_valid ? prices.raw_tomorrow || [] : [])];
+                          const hours = new Set((entity.attributes.discharge_timestamps || []).map(ts => {
+                            const d = new Date(ts); d.setMinutes(0, 0, 0); return d.getTime();
+                          }));
+                          const times = [...new Set(rows.map(row => new Date(row.hour).getTime()).filter(Number.isFinite))].sort((a, b) => a - b);
+                          return times.map(time => {
+                            const hour = new Date(time); hour.setMinutes(0, 0, 0);
+                            return [time, hours.has(hour.getTime()) ? 1 : 0];
+                          });
+                        group_by:
+                          func: max
+                          duration: 15min
+                        show:
+                          hidden_by_default: true
+                          in_brush: true
+                          legend_value: false
             grid_options:
               columns: full
               rows: auto
@@ -901,6 +871,9 @@ views:
                           - 0
                           - 1
                           - 2
+                          - 4
+                          - 5
+                          - 6
                       stroke:
                         curve: straight
                       markers:
@@ -940,6 +913,10 @@ views:
                         decimals: 1
                         max: ~6.0
                         min: 0
+                      - id: state
+                        min: 0
+                        max: 1
+                        show: false
                     show:
                       loading: true
                       last_updated: true
@@ -1601,6 +1578,91 @@ views:
                           duration: 15min
                         show:
                           in_brush: false
+                          legend_value: false
+                      - entity: sensor.battmind_powerwall_action
+                        yaxis_id: state
+                        type: column
+                        name: '@@charge@@'
+                        unit: ''
+                        color: '#2ecc71'
+                        opacity: 0.22
+                        stroke_width: 0
+                        data_generator: |
+                          const rows = [
+                            ...(hass.states['sensor.stromligning_current_price_vat']?.attributes?.prices || []),
+                            ...(hass.states['binary_sensor.stromligning_tomorrow_available_vat']?.attributes?.prices || []),
+                            ...(hass.states['sensor.stromligning_forecasts_vat']?.attributes?.prices || [])
+                          ];
+                          const hours = new Set((entity.attributes.charge_timestamps || []).map(ts => {
+                            const d = new Date(ts); d.setMinutes(0, 0, 0); return d.getTime();
+                          }));
+                          const times = [...new Set(rows.map(row => new Date(row.start).getTime()).filter(Number.isFinite))].sort((a, b) => a - b);
+                          return times.map(time => {
+                            const hour = new Date(time); hour.setMinutes(0, 0, 0);
+                            return [time, hours.has(hour.getTime()) ? 1 : 0];
+                          });
+                        group_by:
+                          func: max
+                          duration: 15min
+                        show:
+                          in_brush: true
+                          legend_value: false
+                      - entity: sensor.battmind_powerwall_action
+                        yaxis_id: state
+                        type: column
+                        name: '@@force_discharge@@'
+                        unit: ''
+                        color: '#ff9800'
+                        opacity: 0.22
+                        stroke_width: 0
+                        data_generator: |
+                          const rows = [
+                            ...(hass.states['sensor.stromligning_current_price_vat']?.attributes?.prices || []),
+                            ...(hass.states['binary_sensor.stromligning_tomorrow_available_vat']?.attributes?.prices || []),
+                            ...(hass.states['sensor.stromligning_forecasts_vat']?.attributes?.prices || [])
+                          ];
+                          const hours = new Set((entity.attributes.force_discharge_timestamps || []).map(ts => {
+                            const d = new Date(ts); d.setMinutes(0, 0, 0); return d.getTime();
+                          }));
+                          const times = [...new Set(rows.map(row => new Date(row.start).getTime()).filter(Number.isFinite))].sort((a, b) => a - b);
+                          return times.map(time => {
+                            const hour = new Date(time); hour.setMinutes(0, 0, 0);
+                            return [time, hours.has(hour.getTime()) ? 1 : 0];
+                          });
+                        group_by:
+                          func: max
+                          duration: 15min
+                        show:
+                          in_brush: true
+                          legend_value: false
+                      - entity: sensor.battmind_powerwall_action
+                        yaxis_id: state
+                        type: column
+                        name: '@@discharge@@'
+                        unit: ''
+                        color: '#fdd835'
+                        opacity: 0.2
+                        stroke_width: 0
+                        data_generator: |
+                          const rows = [
+                            ...(hass.states['sensor.stromligning_current_price_vat']?.attributes?.prices || []),
+                            ...(hass.states['binary_sensor.stromligning_tomorrow_available_vat']?.attributes?.prices || []),
+                            ...(hass.states['sensor.stromligning_forecasts_vat']?.attributes?.prices || [])
+                          ];
+                          const hours = new Set((entity.attributes.discharge_timestamps || []).map(ts => {
+                            const d = new Date(ts); d.setMinutes(0, 0, 0); return d.getTime();
+                          }));
+                          const times = [...new Set(rows.map(row => new Date(row.start).getTime()).filter(Number.isFinite))].sort((a, b) => a - b);
+                          return times.map(time => {
+                            const hour = new Date(time); hour.setMinutes(0, 0, 0);
+                            return [time, hours.has(hour.getTime()) ? 1 : 0];
+                          });
+                        group_by:
+                          func: max
+                          duration: 15min
+                        show:
+                          hidden_by_default: true
+                          in_brush: true
                           legend_value: false
             grid_options:
               columns: full
@@ -2630,6 +2692,24 @@ views:
               tooltip:
                 shared: true
                 intersect: false
+                custom: |
+                  EVAL:function({ series, dataPointIndex, w }) {
+                    const time = w.globals.seriesX[0][dataPointIndex];
+                    const title = new Date(time).toLocaleDateString(undefined, {
+                      weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric'
+                    });
+                    const rows = series.map((values, index) => {
+                      const value = values[dataPointIndex];
+                      const shown = value === null || value === undefined || !Number.isFinite(Number(value))
+                        ? '-'
+                        : `${Number(value).toFixed(1)} kWh`;
+                      return `<div style="display:flex;align-items:center;gap:8px;padding:3px 10px;">
+                        <span style="width:10px;height:10px;border-radius:50%;background:${w.globals.colors[index]};"></span>
+                        <span>${w.globals.seriesNames[index]}:</span><strong style="margin-left:auto;">${shown}</strong>
+                      </div>`;
+                    }).join('');
+                    return `<div class="apexcharts-tooltip-title" style="padding:6px 10px;">${title}</div>${rows}`;
+                  }
               chart:
                 height: 240px
               dataLabels:
@@ -2642,14 +2722,16 @@ views:
                 type: column
                 color: '#eda100'
                 data_generator: |
-                  return (entity.attributes.plans || []).filter(d => d.plan_solar !== undefined && d.plan_solar !== null).map(d => [new Date(d.date + 'T12:00:00').getTime(), d.solar]);
+                  const days = entity.attributes.plans || [];
+                  return days.map(d => [new Date(d.date + 'T12:00:00').getTime(), d.solar !== null && d.solar !== undefined ? d.solar : null]);
               - entity: sensor.battmind_analysis
                 name: '@@solar_plan@@'
                 type: line
                 stroke_width: 2
                 color: '#2a78d6'
                 data_generator: |
-                  return (entity.attributes.plans || []).filter(d => d.plan_solar !== undefined && d.plan_solar !== null).map(d => [new Date(d.date + 'T12:00:00').getTime(), d.plan_solar]);
+                  const days = entity.attributes.plans || [];
+                  return days.map(d => [new Date(d.date + 'T12:00:00').getTime(), d.plan_solar !== null && d.plan_solar !== undefined ? d.plan_solar : null]);
             grid_options:
               columns: full
       # the price forecast of the price integration against the real prices
@@ -2729,48 +2811,57 @@ views:
                 color: '#6250d6'
                 stroke_width: 3
                 data_generator: |
-                  return ((entity.attributes.price_forecast || {}).hours || []).filter(h => h.real !== null && h.real !== undefined).map(h => [new Date(h.t + ':00:00').getTime(), h.real]);
+                  const hours = ((entity.attributes.price_forecast || {}).hours || []);
+                  return hours.map(h => [new Date(h.t + ':00:00').getTime(), h.real !== null && h.real !== undefined ? h.real : null]);
               - entity: sensor.battmind_analysis
                 name: '@@price_forecast_1@@'
                 color: '#2a78d6'
                 data_generator: |
-                  return ((entity.attributes.price_forecast || {}).hours || []).filter(h => h.d1 !== null && h.d1 !== undefined).map(h => [new Date(h.t + ':00:00').getTime(), h.d1]);
+                  const hours = ((entity.attributes.price_forecast || {}).hours || []);
+                  return hours.map(h => [new Date(h.t + ':00:00').getTime(), h.d1 !== null && h.d1 !== undefined ? h.d1 : null]);
               - entity: sensor.battmind_analysis
                 name: '@@price_forecast_2@@'
                 color: '#1baf7a'
                 data_generator: |
-                  return ((entity.attributes.price_forecast || {}).hours || []).filter(h => h.d2 !== null && h.d2 !== undefined).map(h => [new Date(h.t + ':00:00').getTime(), h.d2]);
+                  const hours = ((entity.attributes.price_forecast || {}).hours || []);
+                  return hours.map(h => [new Date(h.t + ':00:00').getTime(), h.d2 !== null && h.d2 !== undefined ? h.d2 : null]);
               - entity: sensor.battmind_analysis
                 name: '@@price_forecast_3@@'
                 color: '#eb6834'
                 data_generator: |
-                  return ((entity.attributes.price_forecast || {}).hours || []).filter(h => h.d3 !== null && h.d3 !== undefined).map(h => [new Date(h.t + ':00:00').getTime(), h.d3]);
+                  const hours = ((entity.attributes.price_forecast || {}).hours || []);
+                  return hours.map(h => [new Date(h.t + ':00:00').getTime(), h.d3 !== null && h.d3 !== undefined ? h.d3 : null]);
               - entity: sensor.battmind_analysis
                 name: '@@price_forecast_4@@'
                 color: '#eda100'
                 data_generator: |
-                  return ((entity.attributes.price_forecast || {}).hours || []).filter(h => h.d4 !== null && h.d4 !== undefined).map(h => [new Date(h.t + ':00:00').getTime(), h.d4]);
+                  const hours = ((entity.attributes.price_forecast || {}).hours || []);
+                  return hours.map(h => [new Date(h.t + ':00:00').getTime(), h.d4 !== null && h.d4 !== undefined ? h.d4 : null]);
               - entity: sensor.battmind_analysis
                 name: '@@price_forecast_5@@'
                 color: '#0aa2b5'
                 data_generator: |
-                  return ((entity.attributes.price_forecast || {}).hours || []).filter(h => h.d5 !== null && h.d5 !== undefined).map(h => [new Date(h.t + ':00:00').getTime(), h.d5]);
+                  const hours = ((entity.attributes.price_forecast || {}).hours || []);
+                  return hours.map(h => [new Date(h.t + ':00:00').getTime(), h.d5 !== null && h.d5 !== undefined ? h.d5 : null]);
               - entity: sensor.battmind_analysis
                 name: '@@price_forecast_6@@'
                 color: '#d14b9a'
                 data_generator: |
-                  return ((entity.attributes.price_forecast || {}).hours || []).filter(h => h.d6 !== null && h.d6 !== undefined).map(h => [new Date(h.t + ':00:00').getTime(), h.d6]);
+                  const hours = ((entity.attributes.price_forecast || {}).hours || []);
+                  return hours.map(h => [new Date(h.t + ':00:00').getTime(), h.d6 !== null && h.d6 !== undefined ? h.d6 : null]);
               - entity: sensor.battmind_analysis
                 name: '@@price_forecast_7@@'
                 color: '#8a8a8a'
                 data_generator: |
-                  return ((entity.attributes.price_forecast || {}).hours || []).filter(h => h.d7 !== null && h.d7 !== undefined).map(h => [new Date(h.t + ':00:00').getTime(), h.d7]);
+                  const hours = ((entity.attributes.price_forecast || {}).hours || []);
+                  return hours.map(h => [new Date(h.t + ':00:00').getTime(), h.d7 !== null && h.d7 !== undefined ? h.d7 : null]);
               - entity: sensor.battmind_analysis
                 name: '@@price_forecast_corrected@@'
                 color: '#e34948'
                 stroke_width: 3
                 data_generator: |
-                  return ((entity.attributes.price_forecast || {}).hours || []).filter(h => h.corrected !== null && h.corrected !== undefined).map(h => [new Date(h.t + ':00:00').getTime(), h.corrected]);
+                  const hours = ((entity.attributes.price_forecast || {}).hours || []);
+                  return hours.map(h => [new Date(h.t + ':00:00').getTime(), h.corrected !== null && h.corrected !== undefined ? h.corrected : null]);
             grid_options:
               columns: full
           - type: custom:apexcharts-card
@@ -2882,6 +2973,7 @@ views:
             header:
               show: true
               title: '@@consumption_forecast@@'
+              show_states: false
             experimental:
               brush: true
             brush:
@@ -2899,8 +2991,32 @@ views:
                 fixed:
                   enabled: true
                   position: topLeft
+                x:
+                  show: true
+                  format: ddd dd/MM HH:mm
               chart:
-                height: 320px
+                height: 340px
+              dataLabels:
+                enabled: false
+              markers:
+                size: 0
+                hover:
+                  size: 5
+              legend:
+                position: bottom
+                horizontalAlign: center
+              grid:
+                borderColor: 'rgba(127,127,127,0.2)'
+                strokeDashArray: 4
+              stroke:
+                curve: smooth
+                dashArray:
+                  - 0
+                  - 0
+                  - 0
+                  - 6
+                  - 6
+                  - 6
             yaxis:
               - id: type
                 decimals: 2
@@ -2917,7 +3033,7 @@ views:
               type: line
               opacity: 0.75
               stroke_width: 2
-              curve: straight
+              curve: smooth
               yaxis_id: type
               unit: kWh
               show:
@@ -2927,89 +3043,107 @@ views:
                 entity: sensor.battmind_powerwall_action
                 color: orange
                 data_generator: |
-                  const d = entity.attributes.hour_cost_prediction_avg || {};
-                  return Object.entries(d)
-                    .map(([ts, v]) => {
-                      const d = new Date(ts);
-                      d.setMinutes(59,0,0);
-                      return [d.getTime(), Number(v)];
-                    })
-                    .filter(([t, v]) => Number.isFinite(t) && Number.isFinite(v))
-                    .sort((a,b) => a[0]-b[0]);
+                  const attrs = entity.attributes;
+                  const source = attrs.hour_cost_prediction_avg || {};
+                  const keys = [...new Set([
+                    ...Object.keys(attrs.hour_cost_prediction_avg || {}), ...Object.keys(attrs.hour_cost_prediction_ema || {}),
+                    ...Object.keys(attrs.hour_cost_prediction_trend || {}), ...Object.keys(attrs.hour_cost_prediction_sum_avg || {}),
+                    ...Object.keys(attrs.hour_cost_prediction_sum_ema || {}), ...Object.keys(attrs.hour_cost_prediction_sum_trend || {})
+                  ])].sort((a, b) => new Date(a) - new Date(b));
+                  return keys.map(ts => {
+                    const point = new Date(ts); point.setMinutes(59, 0, 0);
+                    const value = Number(source[ts]);
+                    return [point.getTime(), Number.isFinite(value) ? value : null];
+                  }).filter(([time]) => Number.isFinite(time));
               - name: EMA
                 entity: sensor.battmind_powerwall_action
                 color: blue
                 data_generator: |
-                  const d = entity.attributes.hour_cost_prediction_ema || {};
-                  return Object.entries(d)
-                    .map(([ts, v]) => {
-                      const d = new Date(ts);
-                      d.setMinutes(59,0,0);
-                      return [d.getTime(), Number(v)];
-                    })
-                    .filter(([t, v]) => Number.isFinite(t) && Number.isFinite(v))
-                    .sort((a,b) => a[0]-b[0]);
+                  const attrs = entity.attributes;
+                  const source = attrs.hour_cost_prediction_ema || {};
+                  const keys = [...new Set([
+                    ...Object.keys(attrs.hour_cost_prediction_avg || {}), ...Object.keys(attrs.hour_cost_prediction_ema || {}),
+                    ...Object.keys(attrs.hour_cost_prediction_trend || {}), ...Object.keys(attrs.hour_cost_prediction_sum_avg || {}),
+                    ...Object.keys(attrs.hour_cost_prediction_sum_ema || {}), ...Object.keys(attrs.hour_cost_prediction_sum_trend || {})
+                  ])].sort((a, b) => new Date(a) - new Date(b));
+                  return keys.map(ts => {
+                    const point = new Date(ts); point.setMinutes(59, 0, 0);
+                    const value = Number(source[ts]);
+                    return [point.getTime(), Number.isFinite(value) ? value : null];
+                  }).filter(([time]) => Number.isFinite(time));
               - name: Trend
                 entity: sensor.battmind_powerwall_action
                 color: green
                 data_generator: |
-                  const d = entity.attributes.hour_cost_prediction_trend || {};
-                  return Object.entries(d)
-                    .map(([ts, v]) => {
-                      const d = new Date(ts);
-                      d.setMinutes(59,0,0);
-                      return [d.getTime(), Number(v)];
-                    })
-                    .filter(([t, v]) => Number.isFinite(t) && Number.isFinite(v))
-                    .sort((a,b) => a[0]-b[0]);
-              - name: Sum Avg
+                  const attrs = entity.attributes;
+                  const source = attrs.hour_cost_prediction_trend || {};
+                  const keys = [...new Set([
+                    ...Object.keys(attrs.hour_cost_prediction_avg || {}), ...Object.keys(attrs.hour_cost_prediction_ema || {}),
+                    ...Object.keys(attrs.hour_cost_prediction_trend || {}), ...Object.keys(attrs.hour_cost_prediction_sum_avg || {}),
+                    ...Object.keys(attrs.hour_cost_prediction_sum_ema || {}), ...Object.keys(attrs.hour_cost_prediction_sum_trend || {})
+                  ])].sort((a, b) => new Date(a) - new Date(b));
+                  return keys.map(ts => {
+                    const point = new Date(ts); point.setMinutes(59, 0, 0);
+                    const value = Number(source[ts]);
+                    return [point.getTime(), Number.isFinite(value) ? value : null];
+                  }).filter(([time]) => Number.isFinite(time));
+              - name: '@@total@@ Avg'
                 entity: sensor.battmind_powerwall_action
                 color: darkorange
                 yaxis_id: sum
-                opacity: 0.25
-                stroke_width: 4
+                opacity: 0.8
+                stroke_width: 3
                 data_generator: |
-                  const d = entity.attributes.hour_cost_prediction_sum_avg || {};
-                  return Object.entries(d)
-                    .map(([ts, v]) => {
-                    const d = new Date(ts);
-                    d.setMinutes(59,0,0);
-                    return [d.getTime(), Number(v)];
-                    })
-                    .filter(([t, v]) => Number.isFinite(t) && Number.isFinite(v))
-                    .sort((a,b) => a[0]-b[0]);
-              - name: Sum EMA
+                  const attrs = entity.attributes;
+                  const source = attrs.hour_cost_prediction_sum_avg || {};
+                  const keys = [...new Set([
+                    ...Object.keys(attrs.hour_cost_prediction_avg || {}), ...Object.keys(attrs.hour_cost_prediction_ema || {}),
+                    ...Object.keys(attrs.hour_cost_prediction_trend || {}), ...Object.keys(attrs.hour_cost_prediction_sum_avg || {}),
+                    ...Object.keys(attrs.hour_cost_prediction_sum_ema || {}), ...Object.keys(attrs.hour_cost_prediction_sum_trend || {})
+                  ])].sort((a, b) => new Date(a) - new Date(b));
+                  return keys.map(ts => {
+                    const point = new Date(ts); point.setMinutes(59, 0, 0);
+                    const value = Number(source[ts]);
+                    return [point.getTime(), Number.isFinite(value) ? value : null];
+                  }).filter(([time]) => Number.isFinite(time));
+              - name: '@@total@@ EMA'
                 entity: sensor.battmind_powerwall_action
                 color: darkblue
                 yaxis_id: sum
-                opacity: 0.25
-                stroke_width: 4
+                opacity: 0.8
+                stroke_width: 3
                 data_generator: |
-                  const d = entity.attributes.hour_cost_prediction_sum_ema || {};
-                  return Object.entries(d)
-                    .map(([ts, v]) => {
-                    const d = new Date(ts);
-                    d.setMinutes(59,0,0);
-                    return [d.getTime(), Number(v)];
-                    })
-                    .filter(([t, v]) => Number.isFinite(t) && Number.isFinite(v))
-                    .sort((a,b) => a[0]-b[0]);
-              - name: Sum Trend
+                  const attrs = entity.attributes;
+                  const source = attrs.hour_cost_prediction_sum_ema || {};
+                  const keys = [...new Set([
+                    ...Object.keys(attrs.hour_cost_prediction_avg || {}), ...Object.keys(attrs.hour_cost_prediction_ema || {}),
+                    ...Object.keys(attrs.hour_cost_prediction_trend || {}), ...Object.keys(attrs.hour_cost_prediction_sum_avg || {}),
+                    ...Object.keys(attrs.hour_cost_prediction_sum_ema || {}), ...Object.keys(attrs.hour_cost_prediction_sum_trend || {})
+                  ])].sort((a, b) => new Date(a) - new Date(b));
+                  return keys.map(ts => {
+                    const point = new Date(ts); point.setMinutes(59, 0, 0);
+                    const value = Number(source[ts]);
+                    return [point.getTime(), Number.isFinite(value) ? value : null];
+                  }).filter(([time]) => Number.isFinite(time));
+              - name: '@@total@@ Trend'
                 entity: sensor.battmind_powerwall_action
                 color: darkgreen
                 yaxis_id: sum
-                opacity: 0.25
-                stroke_width: 4
+                opacity: 0.8
+                stroke_width: 3
                 data_generator: |
-                  const d = entity.attributes.hour_cost_prediction_sum_trend || {};
-                  return Object.entries(d)
-                    .map(([ts, v]) => {
-                    const d = new Date(ts);
-                    d.setMinutes(59,0,0);
-                    return [d.getTime(), Number(v)];
-                    })
-                    .filter(([t, v]) => Number.isFinite(t) && Number.isFinite(v))
-                    .sort((a,b) => a[0]-b[0]);
+                  const attrs = entity.attributes;
+                  const source = attrs.hour_cost_prediction_sum_trend || {};
+                  const keys = [...new Set([
+                    ...Object.keys(attrs.hour_cost_prediction_avg || {}), ...Object.keys(attrs.hour_cost_prediction_ema || {}),
+                    ...Object.keys(attrs.hour_cost_prediction_trend || {}), ...Object.keys(attrs.hour_cost_prediction_sum_avg || {}),
+                    ...Object.keys(attrs.hour_cost_prediction_sum_ema || {}), ...Object.keys(attrs.hour_cost_prediction_sum_trend || {})
+                  ])].sort((a, b) => new Date(a) - new Date(b));
+                  return keys.map(ts => {
+                    const point = new Date(ts); point.setMinutes(59, 0, 0);
+                    const value = Number(source[ts]);
+                    return [point.getTime(), Number.isFinite(value) ? value : null];
+                  }).filter(([time]) => Number.isFinite(time));
             grid_options:
               columns: full
               rows: auto

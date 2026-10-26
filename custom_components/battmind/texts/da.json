@@ -353,7 +353,7 @@
     "view_overview": "Oversigt",
     "view_settings": "Indstillinger",
     "view_analysis": "Analyse",
-    "soc_chart_title": "Husbatteri SOC prognose 🟢Lade 🟡Aflade 🔴Stop",
+    "soc_chart_title": "Husbatteri SOC prognose",
     "battery_forecast": "Batteri prognose",
     "charge": "Lade",
     "force_discharge": "Tvangsafladning",

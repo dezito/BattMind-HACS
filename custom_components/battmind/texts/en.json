@@ -353,7 +353,7 @@
     "view_overview": "Overview",
     "view_settings": "Settings",
     "view_analysis": "Analysis",
-    "soc_chart_title": "Home battery SOC forecast 🟢Charge 🟡Discharge 🔴Stop",
+    "soc_chart_title": "Home battery SOC forecast",
     "battery_forecast": "Battery forecast",
     "charge": "Charge",
     "force_discharge": "Force discharge",

@@ -353,7 +353,7 @@
     "view_overview": "Przegląd",
     "view_settings": "Ustawienia",
     "view_analysis": "Analiza",
-    "soc_chart_title": "Prognoza SOC baterii domowej 🟢Ładowanie 🟡Rozładowanie 🔴Stop",
+    "soc_chart_title": "Prognoza SOC baterii domowej",
     "battery_forecast": "Prognoza baterii",
     "charge": "Ładowanie",
     "force_discharge": "Wymuszone rozładowanie",

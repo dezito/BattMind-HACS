@@ -38,8 +38,12 @@ def test_every_language_renders_without_placeholders(language: str) -> None:
 
 
 def test_texts_follow_the_language() -> None:
-    assert yaml.safe_load(rendered("da"))["views"][1]["title"] == "Indstillinger"
-    assert yaml.safe_load(rendered("en"))["views"][1]["title"] == "Settings"
+    da = yaml.safe_load(rendered("da"))
+    en = yaml.safe_load(rendered("en"))
+    assert da["views"][1]["title"] == "Indstillinger"
+    assert en["views"][1]["title"] == "Settings"
+    assert da["views"][0]["sections"][0]["cards"][0]["header"]["title"] == "Husbatteri SOC prognose"
+    assert en["views"][0]["sections"][0]["cards"][0]["header"]["title"] == "Home battery SOC forecast"
 
 
 def test_currency_follows_home_assistant() -> None:
@@ -121,6 +125,86 @@ def test_every_chart_has_a_shared_non_intersecting_tooltip() -> None:
         tooltip = chart["apex_config"]["tooltip"]
         assert tooltip["shared"] is True
         assert tooltip["intersect"] is False
+
+
+def test_overview_plan_chart_series_share_the_battery_flow_hours() -> None:
+    overview = yaml.safe_load(rendered("en"))["views"][0]
+    chart = next(node for node in walk(overview) if node.get("type") == "custom:apexcharts-card" and len(node.get("series", [])) == 5)
+    assert "enabledOnSeries" not in chart["apex_config"]["tooltip"]
+    custom_tooltip = chart["apex_config"]["tooltip"]["custom"]
+    assert "series.map((values, index)" in custom_tooltip
+    assert "collapsedSeriesIndices" in custom_tooltip
+    assert "values[dataPointIndex]" in custom_tooltip
+    for series in chart["series"]:
+        generator = series["data_generator"]
+        assert "const flow = entity.attributes.battery_level_flow || [];" in generator
+        assert "return flow.map(p =>" in generator
+    assert all(series.get("curve") == "stepline" for series in chart["series"][1:])
+    assert [series["color"] for series in chart["series"]] == ["#4CAF50", "#2196F3", "#FF9800", "#FDD835", "#F44336"]
+    assert chart["series"][0]["curve"] == "straight"
+    assert chart["series"][0]["opacity"] == 0.25
+    assert chart["series"][1]["opacity"] == 0.6
+    assert [series.get("show", {}).get("hidden_by_default", False) for series in chart["series"]] == [False, False, False, True, False]
+
+
+def test_price_overview_shows_the_battery_plan() -> None:
+    for options in ({}, {"stromligning_buy_current_price": "sensor.sl_price"}):
+        content = yaml.safe_load(render_dashboard(build_config({**OPTIONS, **options, "language": "en"}), "battmind"))
+        chart = next(
+            node for node in walk(content)
+            if node.get("type") == "custom:apexcharts-card" and node.get("series", [{}])[0].get("yaxis_id") == "price"
+        )
+        actions = [series for series in chart["series"] if series.get("yaxis_id") == "state"]
+        assert [series["name"] for series in actions] == ["Charge", "Force discharge", "Discharge"]
+        assert all(series["type"] == "column" and "_timestamps" in series["data_generator"] for series in actions)
+        assert [series.get("show", {}).get("hidden_by_default", False) for series in actions] == [False, False, True]
+        assert chart["apex_config"]["tooltip"]["enabledOnSeries"] == [0, 1, 2, 4, 5, 6]
+
+
+def test_price_forecast_chart_series_share_the_same_hours() -> None:
+    content = yaml.safe_load(rendered("en"))
+    chart = next(node for node in walk(content) if node.get("type") == "custom:apexcharts-card" and node.get("graph_span") == "6d")
+    assert len(chart["series"]) == 9
+    for series in chart["series"]:
+        generator = series["data_generator"]
+        assert "const hours = ((entity.attributes.price_forecast || {}).hours || []);" in generator
+        assert "return hours.map(h =>" in generator
+        assert ".filter(" not in generator
+
+
+def test_solar_forecast_chart_series_share_the_same_days() -> None:
+    content = yaml.safe_load(rendered("en"))
+    chart = next(
+        node for node in walk(content)
+        if node.get("type") == "custom:apexcharts-card"
+        and node.get("series", [{}])[0].get("type") == "column"
+        and "entity.attributes.plans" in node.get("series", [{}])[0].get("data_generator", "")
+    )
+    assert len(chart["series"]) == 2
+    custom_tooltip = chart["apex_config"]["tooltip"]["custom"]
+    assert "w.globals.seriesNames[index]" in custom_tooltip
+    assert "values[dataPointIndex]" in custom_tooltip
+    for series in chart["series"]:
+        generator = series["data_generator"]
+        assert "const days = entity.attributes.plans || [];" in generator
+        assert "return days.map(d =>" in generator
+        assert ".filter(" not in generator
+
+
+def test_consumption_forecast_is_aligned_and_visually_distinguishes_totals() -> None:
+    content = yaml.safe_load(rendered("en"))
+    chart = next(
+        node for node in walk(content)
+        if node.get("type") == "custom:apexcharts-card" and node.get("header", {}).get("title") == "Consumption forecast"
+    )
+    assert len(chart["series"]) == 6
+    assert chart["apex_config"]["stroke"]["dashArray"] == [0, 0, 0, 6, 6, 6]
+    assert chart["apex_config"]["legend"]["position"] == "bottom"
+    assert [series["name"] for series in chart["series"][3:]] == ["Total Avg", "Total EMA", "Total Trend"]
+    for series in chart["series"]:
+        generator = series["data_generator"]
+        assert "const keys = [...new Set([" in generator
+        assert "return keys.map(ts =>" in generator
 
 
 async def test_sidebar_dashboard_can_be_edited_and_reset(hass: HomeAssistant, hass_ws_client, mock_entry: MockConfigEntry, tmp_path) -> None:
