@@ -113,6 +113,57 @@ def test_shadow_plan_covers_days_to_predict_and_beats_the_rules(days: int) -> No
     assert summary["optimal"] == shadow["optimal"]
 
 
+def test_what_if_simulator_does_not_change_the_active_plan() -> None:
+    now = datetime.datetime.combine(DAY, datetime.time(3, 30))
+    engine, _ = planned(3, 40, {"optimizer_control": True}, solar=True)
+    active_plan = engine.optimizer_shadow
+    snap = realistic_snapshot(now, 40, {"optimizer_control": True})
+    ids = engine.config["home"]["entity_ids"]
+    solar_id = engine.config["solar"]["entity_ids"]["production_entity_id"]
+    buy_id, sell_id = "sensor.historical_buy", "sensor.historical_sell"
+    start = datetime.datetime.combine(DAY - datetime.timedelta(days=1), datetime.time())
+    timestamps = [(start + datetime.timedelta(hours=hour)).timestamp() for hour in range(48)]
+    data = {
+        "buy_entity_id": buy_id,
+        "sell_entity_id": sell_id,
+        "stats": {
+            ids["power_consumption_entity_id"]: [(ts, 1000.0) for ts in timestamps],
+            ids["powerwall_watt_flow_entity_id"]: [(ts, 0.0) for ts in timestamps],
+            solar_id: [
+                (ts, 1500.0 if 9 <= datetime.datetime.fromtimestamp(ts).hour <= 15 else 0.0)
+                for ts in timestamps
+            ],
+            buy_id: [(ts, 0.5 if datetime.datetime.fromtimestamp(ts).hour < 6 else 2.0) for ts in timestamps],
+            sell_id: [(ts, 0.4 if datetime.datetime.fromtimestamp(ts).hour < 6 else 1.5) for ts in timestamps],
+        },
+    }
+    result = engine.run_job(
+        snap,
+        engine.what_if,
+        data,
+        {
+            "battery_size": 20,
+            "max_charging_power": 8000,
+            "round_trip_loss": 5,
+            "wear_cost_per_kwh": 0,
+        },
+    )
+
+    assert result.error is None, result.error
+    simulation = result.value
+    assert simulation["assumptions"]["battery_size"] == 20
+    assert simulation["assumptions"]["max_charging_power"] == 8000
+    assert simulation["assumptions"]["round_trip_loss"] == pytest.approx(5)
+    assert simulation["scenario"]["start"] == simulation["current"]["start"]
+    assert simulation["period"]["hours"] == 48
+    assert "plan" not in simulation
+    assert engine.optimizer_shadow is active_plan
+
+    unchanged = engine.run_job(snap, engine.what_if, data, {})
+    assert unchanged.error is None, unchanged.error
+    assert unchanged.value["difference"] == {"profit": 0.0, "bill": 0.0}
+
+
 CFG = OptimizerConfig(battery_size=10.0, level_min=5.0, level_max=100.0, max_charge=5.0, max_discharge=5.0, efficiency=0.95, wear=0.1)
 
 

@@ -112,6 +112,7 @@ every rule explained with examples, [inverter setups](docs/inverters/huawei.md) 
 - **[Cost price of the battery's energy](docs/how-it-works.md#the-cost-of-a-kwh-from-the-battery):** what the energy in the battery has cost (grid, solar, charge/discharge loss and wear)
 - **Detailed charging history and overview** as markdown
 - **[Analysis](docs/dashboard-analysis.md#analysis)** of what the battery earns and how well BattMind plans
+- **[What-if simulator](docs/what-if-simulator.md):** compare battery capacity, power, loss, wear and reserve without changing the active plan
   - economy per month: charged (grid/solar), discharged, charge price, value of a discharged kWh, spread and savings
   - charged and discharged per rule, cycles and wear
   - measured round trip loss against the configured loss, and self-sufficiency (solar, battery, grid)
