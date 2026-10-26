@@ -6,8 +6,13 @@ import logging
 import math
 import re
 from collections import defaultdict
+from copy import deepcopy
+from dataclasses import replace
 
 from .engine_optimizer import OptimizerConfig, OptimizerHour, breakdown, optimize_per_day, optimize_with_rules, simulate
+from .efficiency import efficiency_at_power, parse_efficiency_curve
+from .engine_energy import derive_power_values
+from .power import unit_factor_to_w
 from .formatting import emoji_parse, emoji_text_format, get_list_values
 from .helpers import (
     average,
@@ -108,6 +113,167 @@ def _optimize_solar_blocking(hours, delta, available, prices, candidates, start_
 
 class PlannerMixin:
     """The charging / discharging planner."""
+
+    def what_if(self, data: dict, overrides: dict) -> dict:
+        """Compare battery assumptions against historical hourly statistics."""
+        stats = data.get("stats") or {}
+        units = self._snap.units if self._snap else {}
+        home = self.config["home"]
+        ids = home["entity_ids"]
+
+        def series(entity_id: str, power: bool = True) -> dict[float, float]:
+            factor = unit_factor_to_w(units.get(entity_id)) if power else 1.0
+            return {
+                float(ts): float(value) * factor
+                for ts, value in stats.get(entity_id) or []
+                if isinstance(value, (int, float))
+            }
+
+        consumption = series(ids["power_consumption_entity_id"])
+        flow = series(ids["powerwall_watt_flow_entity_id"])
+        solar = series(self.config["solar"]["entity_ids"]["production_entity_id"])
+        ignored = [series(entity_id) for entity_id in ids["ignore_consumption_from_entity_ids"] or [] if entity_id]
+        buy = series(data["buy_entity_id"], power=False)
+        sell = series(data["sell_entity_id"], power=False)
+        positive_is_charging = home["invert_powerwall_watt_flow_entity_id"]
+        tz = self._snap.tz if self._snap else None
+        hours = []
+        for ts in sorted(set(consumption) & set(buy)):
+            battery = flow.get(ts, 0.0)
+            charging = max(battery if positive_is_charging else -battery, 0.0)
+            discharging = max(-battery if positive_is_charging else battery, 0.0)
+            values = derive_power_values(
+                home,
+                abs(consumption[ts]),
+                sum(abs(item.get(ts, 0.0)) for item in ignored),
+                charging,
+                discharging,
+                abs(solar.get(ts, 0.0)),
+            )
+            row = self._analysis_row(values)
+            net_use = row["use"]
+            produced = row["solar"]
+            hours.append(OptimizerHour(
+                datetime.datetime.fromtimestamp(ts, tz).replace(tzinfo=None),
+                buy[ts],
+                self.sell_value(sell.get(ts, buy[ts])),
+                max(net_use - produced, 0.0),
+                max(produced - net_use, 0.0),
+            ))
+        if not hours:
+            raise ValueError("No matching hourly consumption and price statistics were found")
+
+        solar_cfg = self.config["solar"]
+        max_charge = abs(self.max_kwh_charging)
+        max_discharge = abs(self.max_kwh_discharging)
+        fallback = self._fallback_efficiency()
+        base_cfg = OptimizerConfig(
+            battery_size=solar_cfg["powerwall_battery_size"],
+            level_min=solar_cfg["powerwall_battery_level_min"],
+            level_max=solar_cfg["powerwall_battery_level_max"],
+            max_charge=max_charge,
+            max_discharge=max_discharge,
+            efficiency=fallback,
+            wear=abs(solar_cfg["powerwall_wear_cost_per_kwh"]),
+            charge_efficiency_curve=parse_efficiency_curve(solar_cfg.get("battery_charging_efficiency_curve")),
+            discharge_efficiency_curve=parse_efficiency_curve(solar_cfg.get("battery_discharging_efficiency_curve")),
+            curve_fallback_efficiency=fallback,
+            min_profit_per_kwh=self.get_min_profit_per_kwh(),
+            min_sell_kwh=self.number("min_sell_kwh"),
+            min_total_profit=self.get_min_total_profit(),
+            usage_reserve=self.number("usage_reserve"),
+        )
+        cfg = base_cfg
+        changes = {}
+        mapping = {
+            "battery_size": "battery_size",
+            "minimum_level": "level_min",
+            "maximum_level": "level_max",
+            "wear_cost_per_kwh": "wear",
+            "usage_reserve": "usage_reserve",
+        }
+        for input_key, config_key in mapping.items():
+            if input_key in overrides:
+                changes[config_key] = float(overrides[input_key])
+        if "max_charging_power" in overrides:
+            changes["max_charge"] = float(overrides["max_charging_power"]) / 1000.0
+        if "max_discharging_power" in overrides:
+            changes["max_discharge"] = float(overrides["max_discharging_power"]) / 1000.0
+        if "round_trip_loss" in overrides:
+            loss = float(overrides["round_trip_loss"]) / 100.0
+            efficiency = math.sqrt(1.0 - loss)
+            changes.update(
+                efficiency=efficiency,
+                curve_fallback_efficiency=efficiency,
+                charge_efficiency_curve=(),
+                discharge_efficiency_curve=(),
+            )
+        cfg = replace(cfg, **changes)
+
+        def effective_efficiency(calc_cfg: OptimizerConfig) -> OptimizerConfig:
+            curve_fallback = calc_cfg.curve_fallback_efficiency or calc_cfg.efficiency
+            charge_efficiency = efficiency_at_power(
+                calc_cfg.charge_efficiency_curve, calc_cfg.max_charge * 1000.0, curve_fallback
+            )
+            discharge_efficiency = efficiency_at_power(
+                calc_cfg.discharge_efficiency_curve, calc_cfg.max_discharge * 1000.0, curve_fallback
+            )
+            return replace(calc_cfg, efficiency=math.sqrt(charge_efficiency * discharge_efficiency))
+
+        base_cfg = effective_efficiency(base_cfg)
+        cfg = effective_efficiency(cfg)
+
+        requested_start = overrides.get("starting_level")
+        start_level = float(requested_start if requested_start is not None else cfg.level_min)
+        current_start_level = float(requested_start if requested_start is not None else base_cfg.level_min)
+        if cfg.level_min >= cfg.level_max:
+            raise ValueError("Minimum level must be lower than maximum level")
+        if not cfg.level_min <= start_level <= cfg.level_max:
+            raise ValueError("Starting level must be between minimum and maximum level")
+        if not base_cfg.level_min <= current_start_level <= base_cfg.level_max:
+            raise ValueError("Starting level must also fit the configured battery limits")
+
+        def calculate(calc_cfg: OptimizerConfig, initial_level: float) -> dict:
+            end_value = calc_cfg.efficiency * max(
+                average([hour.buy for hour in hours]) - calc_cfg.wear - calc_cfg.min_profit_per_kwh, 0.0
+            )
+            result, _ = optimize_per_day(deepcopy(hours), initial_level, calc_cfg, end_value, self.enabled)
+            limits = [
+                grid if action == "grid_charging" else sold if action == "force_discharge" else None
+                for action, grid, sold in zip(result.actions, result.grid_kwh, result.sold_kwh)
+            ]
+            summary = breakdown(hours, initial_level, calc_cfg, result.actions, end_value, limits)
+            summary["start"] = summary["start"].isoformat()
+            summary["end"] = summary["end"].isoformat()
+            return summary
+
+        current = calculate(base_cfg, current_start_level)
+        summary = calculate(cfg, start_level)
+        return {
+            "period": {
+                "start": hours[0].timestamp.isoformat(),
+                "end": hours[-1].timestamp.isoformat(),
+                "hours": len(hours),
+                "days": len({hour.timestamp.date() for hour in hours}),
+            },
+            "assumptions": {
+                "battery_size": cfg.battery_size,
+                "minimum_level": cfg.level_min,
+                "maximum_level": cfg.level_max,
+                "starting_level": start_level,
+                "max_charging_power": cfg.max_charge * 1000.0,
+                "max_discharging_power": cfg.max_discharge * 1000.0,
+                "round_trip_loss": round((1.0 - cfg.efficiency**2) * 100.0, 2),
+                "wear_cost_per_kwh": cfg.wear,
+                "usage_reserve": cfg.usage_reserve,
+            },
+            "current": current,
+            "scenario": summary,
+            "difference": {
+                "profit": round(summary["profit"] - current["profit"], 2),
+                "bill": round(summary["with"]["bill"] - current["with"]["bill"], 2),
+            },
+        }
 
     def cheap_grid_charge_hours(self, force_recalculate: bool = False):  # noqa: C901
         config = self.config
@@ -1806,6 +1972,13 @@ class PlannerMixin:
                     max_discharge=abs(max_kwh_discharging),
                     efficiency=efficiency,
                     wear=wear,
+                    charge_efficiency_curve=parse_efficiency_curve(
+                        config["solar"].get("battery_charging_efficiency_curve")
+                    ),
+                    discharge_efficiency_curve=parse_efficiency_curve(
+                        config["solar"].get("battery_discharging_efficiency_curve")
+                    ),
+                    curve_fallback_efficiency=self._fallback_efficiency(),
                     min_profit_per_kwh=get_min_profit_per_kwh(),
                     min_sell_kwh=self.number("min_sell_kwh"),
                     min_total_profit=self.get_min_total_profit(),

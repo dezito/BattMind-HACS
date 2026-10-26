@@ -56,6 +56,8 @@
           "powerwall_discharging_power": "Max discharging power",
           "powerwall_charge_discharge_loss": "Charge/discharge loss",
           "use_charge_discharge_loss_from_history": "Use measured loss",
+          "battery_charging_efficiency_curve": "Charging efficiency curve (optional)",
+          "battery_discharging_efficiency_curve": "Discharging efficiency curve (optional)",
           "powerwall_wear_cost_per_kwh": "Wear cost"
         },
         "data_description": {
@@ -68,6 +70,8 @@
           "powerwall_discharging_power": "Highest power the battery discharges with. Limits how much can be sold per hour.",
           "powerwall_charge_discharge_loss": "Round-trip loss as a fraction: 0.1 = 10 % loss. Added to the price of the energy in the battery.",
           "use_charge_discharge_loss_from_history": "Calculate the loss from the charging history instead (used after 6 full charge cycles of history).",
+          "battery_charging_efficiency_curve": "Map AC charging power in W to efficiency in percent, for example 1000 W = 88 %, 3000 W = 94 %, 5000 W = 96 %. BattMind interpolates between points. Leave empty to use the round-trip loss.",
+          "battery_discharging_efficiency_curve": "Map AC discharging power in W to efficiency in percent, for example 500 W = 82 %, 2000 W = 93 %, 5000 W = 96 %. BattMind interpolates between points. Leave empty to use the round-trip loss.",
           "powerwall_wear_cost_per_kwh": "Cost of wear per kWh taken from the battery (battery price / expected lifetime in kWh). Discharging must earn more than this."
         }
       },
@@ -224,6 +228,7 @@
       "prefix_in_use": "This prefix is already used by another BattMind entry.",
       "prefix_entities_exist": "Entities with this prefix already exist (e.g. from the PyScript version). Choose another prefix to run both at the same time.",
       "min_above_max": "The minimum level must be lower than the maximum level.",
+      "invalid_efficiency_curve": "Use an object mapping power above 0 W to an efficiency above 0 and at most 100 percent.",
       "no_price_provider": "Choose at least one price provider.",
       "production_required": "A solar forecast requires a solar production sensor."
     },
@@ -291,6 +296,8 @@
           "powerwall_discharging_power": "Max discharging power",
           "powerwall_charge_discharge_loss": "Charge/discharge loss",
           "use_charge_discharge_loss_from_history": "Use measured loss",
+          "battery_charging_efficiency_curve": "Charging efficiency curve (optional)",
+          "battery_discharging_efficiency_curve": "Discharging efficiency curve (optional)",
           "powerwall_wear_cost_per_kwh": "Wear cost"
         },
         "data_description": {
@@ -303,6 +310,8 @@
           "powerwall_discharging_power": "Highest power the battery discharges with. Limits how much can be sold per hour.",
           "powerwall_charge_discharge_loss": "Round-trip loss as a fraction: 0.1 = 10 % loss. Added to the price of the energy in the battery.",
           "use_charge_discharge_loss_from_history": "Calculate the loss from the charging history instead (used after 6 full charge cycles of history).",
+          "battery_charging_efficiency_curve": "Map AC charging power in W to efficiency in percent, for example 1000 W = 88 %, 3000 W = 94 %, 5000 W = 96 %. BattMind interpolates between points. Leave empty to use the round-trip loss.",
+          "battery_discharging_efficiency_curve": "Map AC discharging power in W to efficiency in percent, for example 500 W = 82 %, 2000 W = 93 %, 5000 W = 96 %. BattMind interpolates between points. Leave empty to use the round-trip loss.",
           "powerwall_wear_cost_per_kwh": "Cost of wear per kWh taken from the battery (battery price / expected lifetime in kWh). Discharging must earn more than this."
         }
       },
@@ -463,6 +472,7 @@
       "prefix_in_use": "This prefix is already used by another BattMind entry.",
       "prefix_entities_exist": "Entities with this prefix already exist (e.g. from the PyScript version). Choose another prefix to run both at the same time.",
       "min_above_max": "The minimum level must be lower than the maximum level.",
+      "invalid_efficiency_curve": "Use an object mapping power above 0 W to an efficiency above 0 and at most 100 percent.",
       "no_price_provider": "Choose at least one price provider.",
       "production_required": "A solar forecast requires a solar production sensor."
     },
@@ -534,6 +544,23 @@
           "name": "Config entry",
           "description": "Only run for this BattMind entry (default: all)."
         }
+      }
+    },
+    "what_if": {
+      "name": "What-if simulator",
+      "description": "Compares the economy of the configured battery with temporary assumptions using up to one year of hourly long-term statistics. Nothing is saved and the active plan is not changed.",
+      "fields": {
+        "config_entry_id": {"name": "Config entry", "description": "Only simulate this BattMind entry (default: all)."},
+        "history_days": {"name": "History", "description": "Number of days of hourly long-term statistics to compare (default: 365)."},
+        "battery_size": {"name": "Usable battery capacity", "description": "Temporary usable capacity in kWh. Empty uses the configured value."},
+        "minimum_level": {"name": "Minimum battery level", "description": "Temporary minimum state of charge in percent."},
+        "maximum_level": {"name": "Maximum battery level", "description": "Temporary maximum state of charge in percent."},
+        "starting_level": {"name": "Starting battery level", "description": "State of charge at the start of both comparisons. Empty uses the configured minimum."},
+        "max_charging_power": {"name": "Maximum charging power", "description": "Temporary maximum AC charging power in W."},
+        "max_discharging_power": {"name": "Maximum discharging power", "description": "Temporary maximum AC discharging power in W."},
+        "round_trip_loss": {"name": "Round-trip loss", "description": "Temporary round-trip loss in percent. When set, it replaces the configured efficiency curves for this simulation."},
+        "wear_cost_per_kwh": {"name": "Wear cost", "description": "Temporary wear cost per discharged kWh."},
+        "usage_reserve": {"name": "Reserve for house use", "description": "Temporary percentage reserved for the house and not exported."}
       }
     },
     "export_data": {

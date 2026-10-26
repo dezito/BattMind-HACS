@@ -73,7 +73,8 @@ check the wear you set against the battery's guarantee (e.g. 6000 cycles).
 
 `1 − (discharged + change of the battery level) ÷ charged`, measured with the battery's power sensor (AC to
 AC), per month, the last 30 days and in total. **Used now** is the loss BattMind plans with: the configured
-one, or the measured one after 6 full cycles if *loss from history* is on.
+one, or the measured one after 6 full cycles if *loss from history* is on. When efficiency curves are
+configured, **Used now** is their combined loss at the configured maximum charge/discharge power.
 
 If the measured loss is far from the configured one, check the battery power sensor (and its sign) before
 changing the loss.

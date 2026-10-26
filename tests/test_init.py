@@ -11,6 +11,7 @@ from homeassistant.helpers import entity_registry as er
 
 from custom_components.battmind import _async_run_after_home_assistant_started
 from custom_components.battmind.const import DOMAIN, NUMBER_SETTINGS, SELECT_SETTINGS, SENSOR_KEYS, SWITCH_SETTINGS, TEXT_SETTINGS
+from custom_components.battmind.engine import JobResult
 
 from .conftest import CONSUMPTION, PREFIX, async_advance, async_unload_and_join, set_source_states
 
@@ -80,6 +81,42 @@ async def test_enforce_planning_service(hass: HomeAssistant, loaded_entry) -> No
     await hass.async_block_till_done(wait_background_tasks=True)
     assert loaded_entry.runtime_data.last_job["job"] == "charge_if_needed"
     assert loaded_entry.runtime_data.last_job["error"] is None
+
+
+async def test_what_if_service_returns_simulation_without_changing_options(
+    hass: HomeAssistant, loaded_entry
+) -> None:
+    options = dict(loaded_entry.options)
+    loaded_entry.runtime_data.async_what_if = AsyncMock(
+        return_value=JobResult(
+            value={
+                "period": {"days": 365},
+                "assumptions": {"battery_size": 20, "round_trip_loss": 5},
+                "current": {"profit": 100},
+                "scenario": {"profit": 125},
+                "difference": {"profit": 25, "bill": -25},
+            }
+        )
+    )
+    response = await hass.services.async_call(
+        DOMAIN,
+        "what_if",
+        {
+            "config_entry_id": loaded_entry.entry_id,
+            "battery_size": 20,
+            "round_trip_loss": 5,
+        },
+        blocking=True,
+        return_response=True,
+    )
+
+    simulation = response["simulations"][PREFIX]
+    assert simulation["assumptions"]["battery_size"] == 20
+    assert simulation["assumptions"]["round_trip_loss"] == 5
+    assert simulation["period"]["days"] == 365
+    assert "plan" not in simulation
+    loaded_entry.runtime_data.async_what_if.assert_awaited_once()
+    assert loaded_entry.options == options
 
 
 async def test_debug_info_service(hass: HomeAssistant, loaded_entry) -> None:

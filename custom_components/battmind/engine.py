@@ -38,6 +38,7 @@ from .engine_analysis import AnalysisMixin
 from .engine_energy import EnergyMixin
 from .engine_history import HistoryMixin
 from .engine_planner import PlannerMixin
+from .efficiency import efficiency_at_power, parse_efficiency_curve
 from .formatting import active_charging_rules, emoji_parse, emoji_rules, format_charging_rule, get_list_values, translate
 from .helpers import (
     average,
@@ -382,13 +383,32 @@ class BattMindEngine(PlannerMixin, HistoryMixin, EnergyMixin, AnalysisMixin):
         self._job_cache["charging_loss"] = loss
         return loss
 
-    def battery_efficiency(self) -> float:
-        """One way efficiency: the round trip loss is split evenly over charging and discharging."""
+    def _fallback_efficiency(self) -> float:
         return math.sqrt(1.0 - min(abs(self.get_charging_loss()), 0.9))
+
+    def charging_efficiency(self, power_kw: float | None = None) -> float:
+        """Charging efficiency at AC power, falling back to half the round-trip loss."""
+        curve = parse_efficiency_curve(self.config["solar"].get("battery_charging_efficiency_curve"))
+        power_kw = self.max_kwh_charging if power_kw is None else power_kw
+        return efficiency_at_power(curve, power_kw * 1000.0, self._fallback_efficiency())
+
+    def discharging_efficiency(self, power_kw: float | None = None) -> float:
+        """Discharging efficiency at AC power, falling back to half the round-trip loss."""
+        curve = parse_efficiency_curve(self.config["solar"].get("battery_discharging_efficiency_curve"))
+        power_kw = abs(self.max_kwh_discharging) if power_kw is None else power_kw
+        return efficiency_at_power(curve, power_kw * 1000.0, self._fallback_efficiency())
+
+    def battery_efficiency(self) -> float:
+        """Equivalent one-way efficiency used by the legacy rule planner."""
+        return math.sqrt(1.0 - self.effective_round_trip_loss())
+
+    def effective_round_trip_loss(self) -> float:
+        """Round-trip loss at configured maximum power, including optional curves."""
+        return 1.0 - self.charging_efficiency() * self.discharging_efficiency()
 
     def calc_battery_loss_cost(self, price: float) -> float:
         """Loss part of the price of 1 kWh out of the battery: it costs price / (1 - round trip loss)."""
-        loss = min(abs(self.get_charging_loss()), 0.9)
+        loss = self.effective_round_trip_loss()
         return price * loss / (1.0 - loss)
 
     # ------------------------------------------------------------------ #

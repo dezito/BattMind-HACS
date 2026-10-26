@@ -295,6 +295,8 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "battery_temperature_max": 50.0,
         "powerwall_charge_discharge_loss": 0.1,
         "use_charge_discharge_loss_from_history": True,
+        "battery_charging_efficiency_curve": {},
+        "battery_discharging_efficiency_curve": {},
         "powerwall_wear_cost_per_kwh": 0.1,
     },
     "testing_mode": False,
@@ -322,6 +324,8 @@ OPTION_PATHS: dict[str, str] = {
     "powerwall_discharging_power": "solar.powerwall_discharging_power",
     "powerwall_charge_discharge_loss": "solar.powerwall_charge_discharge_loss",
     "use_charge_discharge_loss_from_history": "solar.use_charge_discharge_loss_from_history",
+    "battery_charging_efficiency_curve": "solar.battery_charging_efficiency_curve",
+    "battery_discharging_efficiency_curve": "solar.battery_discharging_efficiency_curve",
     "powerwall_wear_cost_per_kwh": "solar.powerwall_wear_cost_per_kwh",
     # prices
     "energidataservice_buy_entity_id": "prices.entity_ids.energidataservice_buy_entity_id",
@@ -377,6 +381,8 @@ FLOW_STEPS: dict[str, list[str]] = {
         "powerwall_discharging_power",
         "powerwall_charge_discharge_loss",
         "use_charge_discharge_loss_from_history",
+        "battery_charging_efficiency_curve",
+        "battery_discharging_efficiency_curve",
         "powerwall_wear_cost_per_kwh",
     ],
     "consumption": [
@@ -586,5 +592,6 @@ SERVICE_DEBUG_INFO = "debug_info"
 SERVICE_EXPORT_DEBUG = "export_debug"
 SERVICE_RECALC_HISTORY_TODAY = "recalc_charging_history_today"
 SERVICE_ENFORCE_PLANNING = "enforce_planning"
+SERVICE_WHAT_IF = "what_if"
 SERVICE_EXPORT_DATA = "export_data"
 SERVICE_IMPORT_DATA = "import_data"

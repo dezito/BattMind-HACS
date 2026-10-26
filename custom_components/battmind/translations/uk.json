@@ -28,6 +28,8 @@
           "powerwall_discharging_power": "Потужність розряджання батареї (Вт)",
           "powerwall_charge_discharge_loss": "Втрати заряджання/розряджання (%)",
           "use_charge_discharge_loss_from_history": "Використовувати фактичні втрати заряджання та розряджання на основі історії заряджання замість оцінених втрат у конфігурації",
+          "battery_charging_efficiency_curve": "Map AC charging power in W to efficiency in percent, for example 1000 W = 88 %, 3000 W = 94 %, 5000 W = 96 %. BattMind interpolates between points. Leave empty to use the round-trip loss.",
+          "battery_discharging_efficiency_curve": "Map AC discharging power in W to efficiency in percent, for example 500 W = 82 %, 2000 W = 93 %, 5000 W = 96 %. BattMind interpolates between points. Leave empty to use the round-trip loss.",
           "powerwall_wear_cost_per_kwh": "Вартість зносу батареї за кВт·год"
         },
         "data": {
@@ -40,7 +42,9 @@
           "battery_temperature_max": "Maximum safe temperature",
           "powerwall_discharging_power": "Макс. потужність розряду",
           "powerwall_wear_cost_per_kwh": "Вартість зношування",
-          "use_charge_discharge_loss_from_history": "Використовувати виміряні втрати"
+          "use_charge_discharge_loss_from_history": "Використовувати виміряні втрати",
+          "battery_charging_efficiency_curve": "Charging efficiency curve (optional)",
+          "battery_discharging_efficiency_curve": "Discharging efficiency curve (optional)"
         },
         "description": "Використовується для перерахунку між % і кВт·год, обмеження плану та розрахунку вартості енергії в батареї.",
         "title": "Домашня батарея - характеристики"
@@ -225,6 +229,7 @@
     "error": {
       "invalid_prefix": "Використовуйте 1-50 малих літер, цифр або підкреслень, починаючи з літери.",
       "min_above_max": "Мінімальний рівень має бути нижчим за максимальний.",
+      "invalid_efficiency_curve": "Use an object mapping power above 0 W to an efficiency above 0 and at most 100 percent.",
       "no_price_provider": "Оберіть щонайменше одного постачальника цін.",
       "prefix_entities_exist": "Сутності з цим префіксом уже існують (напр. з версії PyScript). Оберіть інший префікс, щоб запускати обидві одночасно.",
       "prefix_in_use": "Цей префікс уже використовує інший запис BattMind.",
@@ -260,6 +265,8 @@
           "powerwall_discharging_power": "Потужність розряджання батареї (Вт)",
           "powerwall_charge_discharge_loss": "Втрати заряджання/розряджання (%)",
           "use_charge_discharge_loss_from_history": "Використовувати фактичні втрати заряджання та розряджання на основі історії заряджання замість оцінених втрат у конфігурації",
+          "battery_charging_efficiency_curve": "Map AC charging power in W to efficiency in percent, for example 1000 W = 88 %, 3000 W = 94 %, 5000 W = 96 %. BattMind interpolates between points. Leave empty to use the round-trip loss.",
+          "battery_discharging_efficiency_curve": "Map AC discharging power in W to efficiency in percent, for example 500 W = 82 %, 2000 W = 93 %, 5000 W = 96 %. BattMind interpolates between points. Leave empty to use the round-trip loss.",
           "powerwall_wear_cost_per_kwh": "Вартість зносу батареї за кВт·год"
         },
         "data": {
@@ -272,7 +279,9 @@
           "battery_temperature_max": "Maximum safe temperature",
           "powerwall_discharging_power": "Макс. потужність розряду",
           "powerwall_wear_cost_per_kwh": "Вартість зношування",
-          "use_charge_discharge_loss_from_history": "Використовувати виміряні втрати"
+          "use_charge_discharge_loss_from_history": "Використовувати виміряні втрати",
+          "battery_charging_efficiency_curve": "Charging efficiency curve (optional)",
+          "battery_discharging_efficiency_curve": "Discharging efficiency curve (optional)"
         },
         "description": "Використовується для перерахунку між % і кВт·год, обмеження плану та розрахунку вартості енергії в батареї.",
         "title": "Домашня батарея - характеристики"
@@ -466,6 +475,7 @@
     "error": {
       "invalid_prefix": "Використовуйте 1-50 малих літер, цифр або підкреслень, починаючи з літери.",
       "min_above_max": "Мінімальний рівень має бути нижчим за максимальний.",
+      "invalid_efficiency_curve": "Use an object mapping power above 0 W to an efficiency above 0 and at most 100 percent.",
       "no_price_provider": "Оберіть щонайменше одного постачальника цін.",
       "prefix_entities_exist": "Сутності з цим префіксом уже існують (напр. з версії PyScript). Оберіть інший префікс, щоб запускати обидві одночасно.",
       "prefix_in_use": "Цей префікс уже використовує інший запис BattMind.",
@@ -640,6 +650,23 @@
     }
   },
   "services": {
+    "what_if": {
+      "name": "What-if simulator",
+      "description": "Compares the economy of the configured battery with temporary assumptions using up to one year of hourly long-term statistics. Nothing is saved and the active plan is not changed.",
+      "fields": {
+        "config_entry_id": {"name": "Config entry", "description": "Only simulate this BattMind entry (default: all)."},
+        "history_days": {"name": "History", "description": "Number of days of hourly long-term statistics to compare (default: 365)."},
+        "battery_size": {"name": "Usable battery capacity", "description": "Temporary usable capacity in kWh. Empty uses the configured value."},
+        "minimum_level": {"name": "Minimum battery level", "description": "Temporary minimum state of charge in percent."},
+        "maximum_level": {"name": "Maximum battery level", "description": "Temporary maximum state of charge in percent."},
+        "starting_level": {"name": "Starting battery level", "description": "Temporary state of charge at the start of the simulation. Empty uses the current level."},
+        "max_charging_power": {"name": "Maximum charging power", "description": "Temporary maximum AC charging power in W."},
+        "max_discharging_power": {"name": "Maximum discharging power", "description": "Temporary maximum AC discharging power in W."},
+        "round_trip_loss": {"name": "Round-trip loss", "description": "Temporary round-trip loss in percent. When set, it replaces the configured efficiency curves for this simulation."},
+        "wear_cost_per_kwh": {"name": "Wear cost", "description": "Temporary wear cost per discharged kWh."},
+        "usage_reserve": {"name": "Reserve for house use", "description": "Temporary percentage reserved for the house and not exported."}
+      }
+    },
     "export_data": {
       "name": "Експортувати дані",
       "description": "Зберігає бази даних, налаштування й конфігурацію як файл резервної копії в теці конфігурації (battmind_backups).",

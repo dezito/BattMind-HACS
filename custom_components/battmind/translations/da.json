@@ -56,6 +56,8 @@
           "powerwall_discharging_power": "Maks. afladningseffekt",
           "powerwall_charge_discharge_loss": "Lade-/afladetab",
           "use_charge_discharge_loss_from_history": "Brug målt tab",
+          "battery_charging_efficiency_curve": "Virkningsgradskurve for ladning (valgfri)",
+          "battery_discharging_efficiency_curve": "Virkningsgradskurve for afladning (valgfri)",
           "powerwall_wear_cost_per_kwh": "Slitageomkostning"
         },
         "data_description": {
@@ -68,6 +70,8 @@
           "powerwall_discharging_power": "Den højeste effekt batteriet aflader med. Begrænser hvor meget der kan sælges pr. time.",
           "powerwall_charge_discharge_loss": "Tab for en hel op- og afladning som brøkdel: 0,1 = 10 % tab. Lægges oven i prisen på strømmen i batteriet.",
           "use_charge_discharge_loss_from_history": "Beregn tabet ud fra ladehistorikken i stedet (bruges når der er historik for 6 fulde ladecyklusser).",
+          "battery_charging_efficiency_curve": "Knyt AC-ladeeffekt i W til virkningsgrad i procent, f.eks. 1000 W = 88 %, 3000 W = 94 %, 5000 W = 96 %. BattMind interpolerer mellem punkterne. Lad feltet staa tomt for at bruge round-trip-tabet.",
+          "battery_discharging_efficiency_curve": "Knyt AC-afladeeffekt i W til virkningsgrad i procent, f.eks. 500 W = 82 %, 2000 W = 93 %, 5000 W = 96 %. BattMind interpolerer mellem punkterne. Lad feltet staa tomt for at bruge round-trip-tabet.",
           "powerwall_wear_cost_per_kwh": "Slitage pr. kWh der tages fra batteriet (batteriets pris / forventet levetid i kWh). Afladning skal tjene mere end dette."
         }
       },
@@ -224,6 +228,7 @@
       "prefix_in_use": "Dette prefix bruges allerede af en anden BattMind-instans.",
       "prefix_entities_exist": "Der findes allerede entiteter med dette prefix (f.eks. fra PyScript-versionen). Vælg et andet prefix for at køre begge samtidig.",
       "min_above_max": "Minimum niveau skal være lavere end maksimum niveau.",
+      "invalid_efficiency_curve": "Brug et objekt, der knytter effekt over 0 W til en virkningsgrad over 0 og hoejst 100 procent.",
       "no_price_provider": "Vælg mindst én prisleverandør.",
       "production_required": "En solprognose kræver en solproduktions-sensor."
     },
@@ -291,6 +296,8 @@
           "powerwall_discharging_power": "Maks. afladningseffekt",
           "powerwall_charge_discharge_loss": "Lade-/afladetab",
           "use_charge_discharge_loss_from_history": "Brug målt tab",
+          "battery_charging_efficiency_curve": "Virkningsgradskurve for ladning (valgfri)",
+          "battery_discharging_efficiency_curve": "Virkningsgradskurve for afladning (valgfri)",
           "powerwall_wear_cost_per_kwh": "Slitageomkostning"
         },
         "data_description": {
@@ -303,6 +310,8 @@
           "powerwall_discharging_power": "Den højeste effekt batteriet aflader med. Begrænser hvor meget der kan sælges pr. time.",
           "powerwall_charge_discharge_loss": "Tab for en hel op- og afladning som brøkdel: 0,1 = 10 % tab. Lægges oven i prisen på strømmen i batteriet.",
           "use_charge_discharge_loss_from_history": "Beregn tabet ud fra ladehistorikken i stedet (bruges når der er historik for 6 fulde ladecyklusser).",
+          "battery_charging_efficiency_curve": "Knyt AC-ladeeffekt i W til virkningsgrad i procent, f.eks. 1000 W = 88 %, 3000 W = 94 %, 5000 W = 96 %. BattMind interpolerer mellem punkterne. Lad feltet staa tomt for at bruge round-trip-tabet.",
+          "battery_discharging_efficiency_curve": "Knyt AC-afladeeffekt i W til virkningsgrad i procent, f.eks. 500 W = 82 %, 2000 W = 93 %, 5000 W = 96 %. BattMind interpolerer mellem punkterne. Lad feltet staa tomt for at bruge round-trip-tabet.",
           "powerwall_wear_cost_per_kwh": "Slitage pr. kWh der tages fra batteriet (batteriets pris / forventet levetid i kWh). Afladning skal tjene mere end dette."
         }
       },
@@ -463,6 +472,7 @@
       "prefix_in_use": "Dette prefix bruges allerede af en anden BattMind-instans.",
       "prefix_entities_exist": "Der findes allerede entiteter med dette prefix (f.eks. fra PyScript-versionen). Vælg et andet prefix for at køre begge samtidig.",
       "min_above_max": "Minimum niveau skal være lavere end maksimum niveau.",
+      "invalid_efficiency_curve": "Brug et objekt, der knytter effekt over 0 W til en virkningsgrad over 0 og hoejst 100 procent.",
       "no_price_provider": "Vælg mindst én prisleverandør.",
       "production_required": "En solprognose kræver en solproduktions-sensor."
     },
@@ -534,6 +544,23 @@
           "name": "Konfigurationsindgang",
           "description": "Kør kun for denne BattMind-instans (standard: alle)."
         }
+      }
+    },
+    "what_if": {
+      "name": "What-if-simulator",
+      "description": "Sammenligner ?konomien for det konfigurerede batteri med midlertidige v?rdier ud fra op til et ?rs langtidsstatistik. Intet gemmes, og den aktive plan ?ndres ikke.",
+      "fields": {
+        "config_entry_id": {"name": "Konfigurationspost", "description": "Simuler kun denne BattMind-post (standard: alle)."},
+        "history_days": {"name": "Historik", "description": "Antal dage med langtidsstatistik p? timebasis, der skal sammenlignes (standard: 365)."},
+        "battery_size": {"name": "Usable battery capacity", "description": "Temporary usable capacity in kWh. Empty uses the configured value."},
+        "minimum_level": {"name": "Minimum battery level", "description": "Temporary minimum state of charge in percent."},
+        "maximum_level": {"name": "Maximum battery level", "description": "Temporary maximum state of charge in percent."},
+        "starting_level": {"name": "Batteriniveau ved start", "description": "Ladeniveau ved starten af begge sammenligninger. Tom bruger det konfigurerede minimum."},
+        "max_charging_power": {"name": "Maximum charging power", "description": "Temporary maximum AC charging power in W."},
+        "max_discharging_power": {"name": "Maximum discharging power", "description": "Temporary maximum AC discharging power in W."},
+        "round_trip_loss": {"name": "Round-trip loss", "description": "Temporary round-trip loss in percent. When set, it replaces the configured efficiency curves for this simulation."},
+        "wear_cost_per_kwh": {"name": "Wear cost", "description": "Temporary wear cost per discharged kWh."},
+        "usage_reserve": {"name": "Reserve for house use", "description": "Temporary percentage reserved for the house and not exported."}
       }
     },
     "export_data": {

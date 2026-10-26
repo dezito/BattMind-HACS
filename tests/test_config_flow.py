@@ -150,6 +150,15 @@ async def test_battery_min_above_max(hass: HomeAssistant) -> None:
     assert result["step_id"] == "battery_specs"
     assert result["errors"] == {"battery_temperature_min": "min_above_max"}
 
+    result = await _configure(
+        hass,
+        result,
+        "battery_specs",
+        {**BATTERY_SPECS, "battery_charging_efficiency_curve": {"1000": 0}},
+    )
+    assert result["step_id"] == "battery_specs"
+    assert result["errors"] == {"battery_charging_efficiency_curve": "invalid_efficiency_curve"}
+
 
 async def test_no_price_provider(hass: HomeAssistant) -> None:
     result = await _to_price_provider(hass)

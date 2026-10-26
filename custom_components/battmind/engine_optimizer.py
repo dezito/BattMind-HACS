@@ -10,6 +10,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from .efficiency import EfficiencyCurve, efficiency_at_power
+
 ACTIONS = ("discharge_allowed", "force_solar_only_charging", "grid_charging", "force_discharge", "blocked_solar_charge")
 # charge_if_needed() replans every cron interval from the new battery level, so a charge hour
 # stops when its planned kWh are in the battery, and force discharge runs per sell period
@@ -38,6 +40,9 @@ class OptimizerConfig:
     max_discharge: float  # kWh per hour (AC)
     efficiency: float  # one way, round trip = efficiency²
     wear: float  # currency per kWh out of the battery
+    charge_efficiency_curve: EfficiencyCurve = ()
+    discharge_efficiency_curve: EfficiencyCurve = ()
+    curve_fallback_efficiency: float | None = None
     min_profit_per_kwh: float = 0.0  # steers the choice only: a kWh out of the battery has to earn this much
     min_sell_kwh: float = 0.0
     min_total_profit: float = 0.0  # steers the choice only: a charge hour / sale hour has to earn this much
@@ -67,40 +72,50 @@ def step_hour(
     to_kwh = cfg.battery_size / 100.0
     room = max(cfg.level_max - level, 0.0) * to_kwh  # kWh battery side
     available = max(level - cfg.level_min, 0.0) * to_kwh
-    eff = cfg.efficiency
+    curve_fallback = cfg.curve_fallback_efficiency or cfg.efficiency
     max_charge = cfg.max_charge * hour.fraction
     max_discharge = cfg.max_discharge * hour.fraction
     bought = hour.consumption
     exported = hour.solar
     stored = 0.0  # kWh into the battery (battery side)
     delivered = 0.0  # kWh out of the battery (AC side)
+    battery_used = 0.0  # kWh removed from the battery (battery side)
 
     solar_in = house = 0.0
     if action in ("discharge_allowed", "force_solar_only_charging", "grid_charging") and hour.solar > 0.0:
-        solar_in = min(hour.solar, max_charge, room / eff)
-        stored += solar_in * eff
+        wanted = min(hour.solar, max_charge)
+        charge_efficiency = efficiency_at_power(cfg.charge_efficiency_curve, wanted * 1000.0, curve_fallback)
+        solar_in = min(wanted, room / charge_efficiency)
+        stored += solar_in * charge_efficiency
         exported -= solar_in
     if action == "grid_charging":
-        grid_in = min(max_charge - (stored / eff), (room - stored) / eff)
-        grid_in = max(min(grid_in, max_charge if limit is None else limit), 0.0)
-        stored += grid_in * eff
+        wanted = max(min(max_charge - solar_in, max_charge if limit is None else limit), 0.0)
+        charge_efficiency = efficiency_at_power(cfg.charge_efficiency_curve, wanted * 1000.0, curve_fallback)
+        grid_in = min(wanted, max((room - stored) / charge_efficiency, 0.0))
+        stored += grid_in * charge_efficiency
         bought += grid_in
     elif action == "discharge_allowed" and hour.solar <= 0.0:
-        delivered = house = min(hour.consumption, max_discharge, available * eff)
+        wanted = min(hour.consumption, max_discharge)
+        discharge_efficiency = efficiency_at_power(cfg.discharge_efficiency_curve, wanted * 1000.0, curve_fallback)
+        delivered = house = min(wanted, available * discharge_efficiency)
+        battery_used = delivered / discharge_efficiency
         bought -= delivered
     elif action == "force_discharge":
         # the house first, then the planned kWh to the grid
-        house = min(hour.consumption, max_discharge, available * eff)
+        wanted = min(max_discharge, max_discharge if limit is None else hour.consumption + limit)
+        discharge_efficiency = efficiency_at_power(cfg.discharge_efficiency_curve, wanted * 1000.0, curve_fallback)
+        house = min(hour.consumption, max_discharge, available * discharge_efficiency)
         usage_floor = max(cfg.level_min, cfg.usage_reserve)
-        export_available = max(level - usage_floor, 0.0) * to_kwh * eff - house
+        export_available = max(level - usage_floor, 0.0) * to_kwh * discharge_efficiency - house
         export_wanted = max_discharge if limit is None else limit
         exported_from_battery = min(max(export_available, 0.0), export_wanted, max_discharge - house)
         delivered = house + exported_from_battery
+        battery_used = delivered / discharge_efficiency
         bought -= house
         exported += exported_from_battery
 
     cost = bought * hour.buy - exported * hour.sell + delivered * cfg.wear
-    new_level = level + (stored - delivered / eff) / to_kwh
+    new_level = level + (stored - battery_used) / to_kwh
     grid_kwh = bought - hour.consumption if action == "grid_charging" else 0.0
     if details is not None:
         details.update(solar_in=solar_in, house=house, sold=delivered - house, grid=grid_kwh, delivered=delivered)

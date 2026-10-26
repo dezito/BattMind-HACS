@@ -24,6 +24,7 @@ from .const import (
     SERVICE_EXPORT_DATA,
     SERVICE_IMPORT_DATA,
     SERVICE_RECALC_HISTORY_TODAY,
+    SERVICE_WHAT_IF,
 )
 from .backup import BACKUP_DIR, async_export, async_import
 from .blueprint_install import async_install_blueprints
@@ -43,6 +44,21 @@ IMPORT_SCHEMA = vol.Schema(
         vol.Required("config_entry_id"): cv.string,
         vol.Required("file"): cv.string,
         vol.Optional("restore_configuration", default=False): cv.boolean,
+    }
+)
+WHAT_IF_SCHEMA = vol.Schema(
+    {
+        vol.Optional("config_entry_id"): cv.string,
+        vol.Optional("history_days", default=365): vol.All(vol.Coerce(int), vol.Range(min=1, max=365)),
+        vol.Optional("battery_size"): vol.All(vol.Coerce(float), vol.Range(min=0.1, max=1000)),
+        vol.Optional("minimum_level"): vol.All(vol.Coerce(float), vol.Range(min=0, max=100)),
+        vol.Optional("maximum_level"): vol.All(vol.Coerce(float), vol.Range(min=0, max=100)),
+        vol.Optional("starting_level"): vol.All(vol.Coerce(float), vol.Range(min=0, max=100)),
+        vol.Optional("max_charging_power"): vol.All(vol.Coerce(float), vol.Range(min=100, max=100000)),
+        vol.Optional("max_discharging_power"): vol.All(vol.Coerce(float), vol.Range(min=100, max=100000)),
+        vol.Optional("round_trip_loss"): vol.All(vol.Coerce(float), vol.Range(min=0, max=90)),
+        vol.Optional("wear_cost_per_kwh"): vol.All(vol.Coerce(float), vol.Range(min=0, max=10)),
+        vol.Optional("usage_reserve"): vol.All(vol.Coerce(float), vol.Range(min=0, max=100)),
     }
 )
 
@@ -82,6 +98,20 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         for coordinator in _coordinators(hass, call):
             coordinator.async_request_charge(force=True)
 
+    async def _what_if(call: ServiceCall) -> ServiceResponse:
+        history_days = call.data["history_days"]
+        overrides = {key: value for key, value in call.data.items() if key not in ("config_entry_id", "history_days")}
+        output = {}
+        for coordinator in _coordinators(hass, call):
+            try:
+                result = await coordinator.async_what_if(overrides, history_days)
+            except HomeAssistantError as err:
+                raise ServiceValidationError(str(err)) from err
+            if result.error:
+                raise ServiceValidationError(str(result.error))
+            output[coordinator.prefix] = result.value
+        return {"simulations": output}
+
     async def _export_data(call: ServiceCall) -> ServiceResponse:
         files = {}
         for coordinator in _coordinators(hass, call):
@@ -112,6 +142,13 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         hass.http.register_view(DebugDownloadView())
     hass.services.async_register(DOMAIN, SERVICE_RECALC_HISTORY_TODAY, _recalc_history, schema=SERVICE_SCHEMA)
     hass.services.async_register(DOMAIN, SERVICE_ENFORCE_PLANNING, _enforce_planning, schema=SERVICE_SCHEMA)
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_WHAT_IF,
+        _what_if,
+        schema=WHAT_IF_SCHEMA,
+        supports_response=SupportsResponse.ONLY,
+    )
     await async_install_blueprints(hass)
     return True
 

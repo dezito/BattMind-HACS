@@ -140,6 +140,9 @@
     "enforce_planning": {
       "service": "mdi:calendar-refresh"
     },
+    "what_if": {
+      "service": "mdi:flask-outline"
+    },
     "export_data": {
       "service": "mdi:database-export"
     },

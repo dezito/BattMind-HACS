@@ -594,7 +594,7 @@ class HistoryMixin:
             "cost_wear": 0.0,
             "cost_with_loss_and_wear": 0.0,
             "unit_with_loss_and_wear": None,
-            "loss_percentage": self.get_charging_loss(),
+            "loss_percentage": self.effective_round_trip_loss(),
         }
         try:
             current_battery_level = self.get_battery_level()
