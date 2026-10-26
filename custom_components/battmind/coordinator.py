@@ -257,6 +257,9 @@ class BattMindCoordinator:
     # ------------------------------------------------------------------ #
 
     async def _async_startup(self) -> None:
+        # Let every integration's homeassistant_started listener get its turn
+        # before the first calculation reads their entity states.
+        await asyncio.sleep(0)
         t = self.t
         log_lines: list[str] = []
         _LOGGER.info("BattMind %s starting, calculations run in thread battmind_%s_worker_0", self.prefix, self.prefix)
