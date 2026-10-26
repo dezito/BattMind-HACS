@@ -41,6 +41,7 @@ class OptimizerConfig:
     min_profit_per_kwh: float = 0.0  # steers the choice only: a kWh out of the battery has to earn this much
     min_sell_kwh: float = 0.0
     min_total_profit: float = 0.0  # steers the choice only: a charge hour / sale hour has to earn this much
+    usage_reserve: float = 0.0  # % kept for the house; force discharge may not export below it
     step: float = 0.5  # % resolution of the battery level
 
 
@@ -89,11 +90,14 @@ def step_hour(
         bought -= delivered
     elif action == "force_discharge":
         # the house first, then the planned kWh to the grid
-        wanted = max_discharge if limit is None else hour.consumption + limit
-        delivered = min(max_discharge, wanted, available * eff)
-        house = min(delivered, hour.consumption)
+        house = min(hour.consumption, max_discharge, available * eff)
+        usage_floor = max(cfg.level_min, cfg.usage_reserve)
+        export_available = max(level - usage_floor, 0.0) * to_kwh * eff - house
+        export_wanted = max_discharge if limit is None else limit
+        exported_from_battery = min(max(export_available, 0.0), export_wanted, max_discharge - house)
+        delivered = house + exported_from_battery
         bought -= house
-        exported += delivered - house
+        exported += exported_from_battery
 
     cost = bought * hour.buy - exported * hour.sell + delivered * cfg.wear
     new_level = level + (stored - delivered / eff) / to_kwh

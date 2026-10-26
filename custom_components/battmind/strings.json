@@ -626,6 +626,9 @@
       "min_sell_kwh": {
         "name": "Minimum excess kWh for export"
       },
+      "usage_reserve": {
+        "name": "Reserve for house use (not sold)"
+      },
       "powerwall_max_hours_old": {
         "name": "Max. age of kWh in home battery"
       }

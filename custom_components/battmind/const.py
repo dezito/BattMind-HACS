@@ -519,6 +519,14 @@ NUMBER_SETTINGS: dict[str, dict[str, Any]] = {
         "unit": "kWh",
         "default": 0.2,
     },
+    "usage_reserve": {
+        "min": 0.0,
+        "max": 100.0,
+        "step": 1.0,
+        "mode": "slider",
+        "unit": "%",
+        "default": 0.0,
+    },
     "powerwall_max_hours_old": {
         "min": 1,
         "max": CHARGING_HISTORY_COMBINE_AFTER,

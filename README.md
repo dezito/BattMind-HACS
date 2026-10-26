@@ -100,7 +100,7 @@ every rule explained with examples, [inverter setups](docs/inverters/huawei.md) 
   - **Maximise profit:** sell in the most expensive periods when that pays more than using the energy yourself
   - **Sell excess kWh:** sell the energy that isn't used before the battery is empty or full again (forced discharge)
   - **Use midnight battery level:** only look until midnight instead of the whole forecast period
-  - min. profit per kWh and in total, min. kWh per sale, and exclude specific selling hours
+  - min. profit per kWh and in total, min. kWh per sale, reserve for the house, and exclude specific selling hours
 - **[Solar](docs/rules/solar.md) (optional)**
   - **Solar surplus charging:** include the solar surplus in the plan
   - **Optimise solar charging:** sell the solar surplus in the expensive hours and fill the battery in the cheap solar hours instead

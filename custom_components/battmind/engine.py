@@ -708,11 +708,17 @@ class BattMindEngine(PlannerMixin, HistoryMixin, EnergyMixin, AnalysisMixin):
                 current_rules.update(active_charging_rules(self.charge_hours[charge_hour]))
                 rule = t("ui.charge_if_needed.planned_charging", emoji=emoji_parse(self.charge_hours[charge_hour]))
             elif (sale_period := self.current_period_in_force_discharge()) is not None:
-                action = "force_discharge"
-                current_rules["force_discharge"] = True
-                # the rule that sells (most profit, old energy, ...) for the analysis per rule
-                current_rules.update(emoji_rules(self._plan_today()["force_discharge_timestamps"][sale_period].get("emoji", "")))
-                rule = t("ui.charge_if_needed.force_discharge")
+                usage_floor = max(self.config["solar"]["powerwall_battery_level_min"], self.number("usage_reserve"))
+                if self.get_battery_level() > usage_floor:
+                    action = "force_discharge"
+                    current_rules["force_discharge"] = True
+                    # the rule that sells (most profit, old energy, ...) for the analysis per rule
+                    current_rules.update(emoji_rules(self._plan_today()["force_discharge_timestamps"][sale_period].get("emoji", "")))
+                    rule = t("ui.charge_if_needed.force_discharge")
+                else:
+                    # The export reserve is still available to normal house consumption.
+                    action = "discharge_allowed"
+                    rule = t("ui.charge_if_needed.discharge_allowed")
             elif self._current_hour_in("discharge_timestamps") is not None:
                 action = "discharge_allowed"
                 rule = t("ui.charge_if_needed.discharge_allowed")
