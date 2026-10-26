@@ -122,7 +122,10 @@ reloaded. If the file is deleted, the latest version is put back on the next res
     [Meteorologisk institutt](https://www.home-assistant.io/integrations/met/),
     [AccuWeather](https://www.home-assistant.io/integrations/accuweather/) or
     [OpenWeather](https://www.home-assistant.io/integrations/openweathermap/)
-- For the dashboard (HACS frontend): `apexcharts-card`, `mushroom`, `config-template-card` and `card-mod`
+- For the dashboard (install these HACS frontend cards): [ApexCharts Card](https://github.com/RomRider/apexcharts-card),
+  [Mushroom](https://github.com/piitaya/lovelace-mushroom),
+  [Config Template Card](https://github.com/iantrich/config-template-card) and
+  [card-mod](https://github.com/thomasloven/lovelace-card-mod)
 
 ---
 

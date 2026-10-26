@@ -699,25 +699,26 @@ class BattMindEngine(PlannerMixin, HistoryMixin, EnergyMixin, AnalysisMixin):
     def charge_if_needed(self, force_recalculate: bool = False) -> str:
         """Update the plan and decide what the battery should do right now."""
         t = self.t
+        current_rules: dict = {}
         try:
             self.cheap_grid_charge_hours(force_recalculate=force_recalculate)
 
             if (charge_hour := self.current_hour_in_charge_hours()) is not None:
                 action = "grid_charging"
-                self.session_rules.update(active_charging_rules(self.charge_hours[charge_hour]))
+                current_rules.update(active_charging_rules(self.charge_hours[charge_hour]))
                 rule = t("ui.charge_if_needed.planned_charging", emoji=emoji_parse(self.charge_hours[charge_hour]))
             elif (sale_period := self.current_period_in_force_discharge()) is not None:
                 action = "force_discharge"
-                self.session_rules["force_discharge"] = True
+                current_rules["force_discharge"] = True
                 # the rule that sells (most profit, old energy, ...) for the analysis per rule
-                self.session_rules.update(emoji_rules(self._plan_today()["force_discharge_timestamps"][sale_period].get("emoji", "")))
+                current_rules.update(emoji_rules(self._plan_today()["force_discharge_timestamps"][sale_period].get("emoji", "")))
                 rule = t("ui.charge_if_needed.force_discharge")
             elif self._current_hour_in("discharge_timestamps") is not None:
                 action = "discharge_allowed"
                 rule = t("ui.charge_if_needed.discharge_allowed")
             elif self._current_hour_in("force_powerwall_max_hours_old_discharge_timestamps") is not None:
                 action = "discharge_allowed"
-                self.session_rules["force_powerwall_max_hours_old_discharge"] = True
+                current_rules["force_powerwall_max_hours_old_discharge"] = True
                 rule = t("ui.charge_if_needed.force_powerwall_max_hours_old_discharge")
             elif self._current_hour_in("blocked_solar_charge_timestamps") is not None:
                 action = "blocked_solar_charge"
@@ -727,7 +728,7 @@ class BattMindEngine(PlannerMixin, HistoryMixin, EnergyMixin, AnalysisMixin):
                 rule = t("ui.charge_if_needed.not_charging")
 
             if (float_or_none(self.entity_state(self.config["solar"]["entity_ids"]["production_entity_id"])) or 0.0) > 0:
-                self.session_rules["solar"] = True
+                current_rules["solar"] = True
 
             to_timestamp = self.now()
             from_timestamp = to_timestamp - datetime.timedelta(minutes=self.config["cron_interval"])
@@ -736,8 +737,8 @@ class BattMindEngine(PlannerMixin, HistoryMixin, EnergyMixin, AnalysisMixin):
                 # normalised: + = charging, - = discharging
                 charging = (watt_flow if self.config["home"]["invert_powerwall_watt_flow_entity_id"] else -watt_flow) > 0
                 key = "charging_watt" if charging else "discharging_watt"
-                rule += f"\n{emoji_parse(self.session_rules)}{t(f'ui.charge_if_needed.{key}', watt=watt_flow)}{emoji_parse({'average': True})}"
-
+                rule += f"\n{emoji_parse(current_rules)}{t(f'ui.charge_if_needed.{key}', watt=watt_flow)}{emoji_parse({'average': True})}"
+            self.session_rules.update(current_rules)
             self.set_charging_rule(rule)
             self.set_state("powerwall_action", action)
             if action != self.last_powerwall_action:
