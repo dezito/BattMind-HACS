@@ -1981,6 +1981,9 @@ views:
                 legend_value: false
                 in_header: false
             apex_config:
+              tooltip:
+                shared: true
+                intersect: false
               chart:
                 height: 260px
               dataLabels:
@@ -2022,6 +2025,9 @@ views:
                 legend_value: false
                 in_header: false
             apex_config:
+              tooltip:
+                shared: true
+                intersect: false
               chart:
                 height: 260px
               markers:
@@ -2144,6 +2150,9 @@ views:
                 legend_value: false
                 in_header: false
             apex_config:
+              tooltip:
+                shared: true
+                intersect: false
               chart:
                 height: 240px
               dataLabels:
@@ -2226,6 +2235,9 @@ views:
                 legend_value: false
                 in_header: false
             apex_config:
+              tooltip:
+                shared: true
+                intersect: false
               chart:
                 height: 240px
               markers:
@@ -2304,6 +2316,9 @@ views:
                 legend_value: false
                 in_header: false
             apex_config:
+              tooltip:
+                shared: true
+                intersect: false
               chart:
                 height: 260px
               dataLabels:
@@ -2396,6 +2411,9 @@ views:
                 legend_value: false
                 in_header: false
             apex_config:
+              tooltip:
+                shared: true
+                intersect: false
               chart:
                 height: 240px
               markers:
@@ -2493,6 +2511,9 @@ views:
                 legend_value: false
                 in_header: false
             apex_config:
+              tooltip:
+                shared: true
+                intersect: false
               chart:
                 height: 260px
               dataLabels:
@@ -2606,6 +2627,9 @@ views:
                 legend_value: false
                 in_header: false
             apex_config:
+              tooltip:
+                shared: true
+                intersect: false
               chart:
                 height: 240px
               dataLabels:
@@ -2694,6 +2718,9 @@ views:
                 legend_value: false
                 in_header: false
             apex_config:
+              tooltip:
+                shared: true
+                intersect: false
               chart:
                 height: 260px
             series:
@@ -2768,6 +2795,9 @@ views:
                 legend_value: false
                 in_header: false
             apex_config:
+              tooltip:
+                shared: true
+                intersect: false
               chart:
                 height: 240px
               markers:
@@ -2864,6 +2894,8 @@ views:
               label: '@@now@@'
             apex_config:
               tooltip:
+                shared: true
+                intersect: false
                 fixed:
                   enabled: true
                   position: topLeft

@@ -113,6 +113,16 @@ def test_one_price_chart_stromligning_preferred() -> None:
     assert _price_charts(stromligning_buy_current_price="sensor.sl_price") == ["sensor.sl_price"]
 
 
+def test_every_chart_has_a_shared_non_intersecting_tooltip() -> None:
+    content = yaml.safe_load(rendered("en"))
+    charts = [node for node in walk(content) if node.get("type") == "custom:apexcharts-card"]
+    assert charts
+    for chart in charts:
+        tooltip = chart["apex_config"]["tooltip"]
+        assert tooltip["shared"] is True
+        assert tooltip["intersect"] is False
+
+
 async def test_sidebar_dashboard_can_be_edited_and_reset(hass: HomeAssistant, hass_ws_client, mock_entry: MockConfigEntry, tmp_path) -> None:
     hass.config.config_dir = str(tmp_path)
     set_source_states(hass)
