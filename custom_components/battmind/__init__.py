@@ -8,6 +8,7 @@ from typing import Any
 
 import voluptuous as vol
 
+from homeassistant.components import persistent_notification
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EVENT_HOMEASSISTANT_STARTED
 from homeassistant.core import CoreState, Event, HomeAssistant, ServiceCall, ServiceResponse, SupportsResponse, callback
@@ -37,6 +38,122 @@ _LOGGER = logging.getLogger(__name__)
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 BattMindConfigEntry = ConfigEntry[BattMindCoordinator]
+
+_WHAT_IF_SETTINGS = (
+    ("battery_size", "battery_size", "kWh"),
+    ("minimum_level", "minimum_level", "%"),
+    ("maximum_level", "maximum_level", "%"),
+    ("starting_level", "starting_level", "%"),
+    ("max_charging_power", "max_charging_power", "W"),
+    ("max_discharging_power", "max_discharging_power", "W"),
+    ("round_trip_loss", "round_trip_loss", "%"),
+    ("wear_cost_per_kwh", "wear_cost_per_kwh", "{valuta}/kWh"),
+    ("usage_reserve", "usage_reserve", "%"),
+)
+
+
+def _format_what_if_number(value: float, decimals: int | None = None) -> str:
+    formatted = f"{value:.{decimals}f}" if decimals is not None else f"{value:g}"
+    return formatted.replace(".", ",")
+
+
+_WHAT_IF_METRICS = (
+    ("house_kwh", "house_kwh", "kWh", False),
+    ("house_cost", "house_cost", "{valuta}", False),
+    ("battery_kwh", "battery_kwh", "kWh", False),
+    ("battery_cost", "battery_cost", "{valuta}", False),
+    ("solar_kwh", "solar_kwh", "kWh", False),
+    ("solar_income", "solar_income", "{valuta}", True),
+    ("charged_solar_kwh", "charged_solar_kwh", "kWh", False),
+    ("sold_kwh", "sold_kwh", "kWh", False),
+    ("sold_income", "sold_income", "{valuta}", True),
+    ("wear", "wear", "{valuta}", False),
+    ("paid", "paid", "{valuta}", False),
+    ("earned", "earned", "{valuta}", True),
+    ("bill", "bill", "{valuta}", False),
+)
+
+
+def _what_if_notification(coordinator: BattMindCoordinator, simulation: dict, overrides: dict) -> str:
+    current = simulation["current_assumptions"]
+    scenario = simulation["assumptions"]
+    setting_rows = []
+    for key, label_key, unit in _WHAT_IF_SETTINGS:
+        if key not in overrides:
+            continue
+        translated_unit = f"{coordinator.t('ui.common.valuta')}/kWh" if unit == "{valuta}/kWh" else unit
+        decimals = 1 if unit == "kWh" else 2 if unit == "{valuta}/kWh" else None
+        setting_rows.append(
+            "| **{label}** | {current} {unit} | {scenario} {unit} |".format(
+                label=coordinator.t(f"ui.what_if.{label_key}"),
+                current=_format_what_if_number(current[key], decimals),
+                scenario=_format_what_if_number(scenario[key], decimals),
+                unit=translated_unit,
+            )
+        )
+
+    currency = coordinator.t("ui.common.valuta")
+    current_summary = simulation["current"]["with"]
+    scenario_summary = simulation["scenario"]["with"]
+    metric_rows = []
+    for key, label_key, unit, income in _WHAT_IF_METRICS:
+        current_value = current_summary[key] if key in current_summary else simulation["current"][key]
+        scenario_value = scenario_summary[key] if key in scenario_summary else simulation["scenario"][key]
+        if income:
+            current_value = -current_value
+            scenario_value = -scenario_value
+        translated_unit = currency if unit == "{valuta}" else unit
+        metric_rows.append(
+            "| **{label}** | {current} | {scenario} | {unit} |".format(
+                label=coordinator.t(f"ui.what_if.{label_key}"),
+                current=_format_what_if_number(current_value, 1 if unit == "kWh" else 2),
+                scenario=_format_what_if_number(scenario_value, 1 if unit == "kWh" else 2),
+                unit=translated_unit,
+            )
+        )
+
+    period = coordinator.t(
+        "ui.what_if.period",
+        days=simulation["period"]["days"],
+        hours=simulation["period"]["hours"],
+    )
+    heading = (
+        f"| | **{coordinator.t('ui.what_if.current')}** "
+        f"| **{coordinator.t('ui.what_if.scenario')}** |"
+    )
+    result_heading = (
+        f"| | **{coordinator.t('ui.what_if.current')}** "
+        f"| **{coordinator.t('ui.what_if.scenario')}** "
+        "| |"
+    )
+    lines = [period, ""]
+    if setting_rows:
+        lines.extend((f"**{coordinator.t('ui.what_if.changed_settings')}**", heading, "|---|---|---|", *setting_rows, ""))
+    lines.extend(
+        (
+            f"**{coordinator.t('ui.what_if.results')}**",
+            result_heading,
+            "|---|---|---|---|",
+            *metric_rows,
+        )
+    )
+    lines.extend(
+        (
+            "",
+            "**{label}:** {profit} {currency}".format(
+                label=coordinator.t("ui.what_if.profit_difference"),
+                profit=_format_what_if_number(simulation["difference"]["profit"], 2),
+                currency=currency,
+            ),
+            "**{label}:** {bill} {currency}".format(
+                label=coordinator.t("ui.what_if.bill_difference"),
+                bill=_format_what_if_number(-simulation["difference"]["bill"], 2),
+                currency=currency,
+            ),
+        )
+    )
+    return "\n".join(lines)
+
 
 SERVICE_SCHEMA = vol.Schema({vol.Optional("config_entry_id"): cv.string})
 IMPORT_SCHEMA = vol.Schema(
@@ -110,6 +227,12 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             if result.error:
                 raise ServiceValidationError(str(result.error))
             output[coordinator.prefix] = result.value
+            persistent_notification.async_create(
+                hass,
+                _what_if_notification(coordinator, result.value, overrides),
+                title=coordinator.t("ui.what_if.title", prefix=coordinator.prefix),
+                notification_id=f"{coordinator.prefix}_what_if",
+            )
         return {"simulations": output}
 
     async def _export_data(call: ServiceCall) -> ServiceResponse:

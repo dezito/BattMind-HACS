@@ -13,7 +13,9 @@ uses up to 365 days. Nothing is saved, the active plan is not changed, and no in
 ## Run a simulation
 
 Open **Developer tools ? Actions**, select **BattMind: What-if simulator**, choose the BattMind config
-entry and fill only the values you want to replace. Run the action and Home Assistant shows the response.
+entry and fill only the values you want to replace. Run the action to receive a persistent notification
+with a two-column comparison of the configured values and the what-if scenario. The action also keeps
+returning the full simulation response for automations and scripts.
 
 Example action:
 
@@ -36,7 +38,8 @@ are percentages. Setting **round_trip_loss** temporarily replaces the configured
 | Part | Meaning |
 |---|---|
 | **period** | first/last hour and the amount of historical data actually used |
-| **assumptions** | the complete temporary battery values used for the comparison |
+| **current_assumptions** | configured battery values used as the current comparison |
+| **assumptions** | the complete temporary battery values used for the scenario |
 | **current** | historical economy with the configured battery |
 | **scenario** | economy with the temporary values |
 | **difference.profit** | scenario profit minus current profit; positive is better |

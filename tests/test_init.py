@@ -87,28 +87,113 @@ async def test_what_if_service_returns_simulation_without_changing_options(
     hass: HomeAssistant, loaded_entry
 ) -> None:
     options = dict(loaded_entry.options)
-    loaded_entry.runtime_data.async_what_if = AsyncMock(
-        return_value=JobResult(
-            value={
-                "period": {"days": 365},
-                "assumptions": {"battery_size": 20, "round_trip_loss": 5},
-                "current": {"profit": 100},
-                "scenario": {"profit": 125},
-                "difference": {"profit": 25, "bill": -25},
-            }
+    with patch.object(persistent_notification, "async_create", wraps=persistent_notification.async_create) as create:
+        loaded_entry.runtime_data.async_what_if = AsyncMock(
+            return_value=JobResult(
+                value={
+                    "period": {"days": 365, "hours": 8760},
+                    "current_assumptions": {
+                        "battery_size": 13.5,
+                        "minimum_level": 10,
+                        "maximum_level": 90,
+                        "starting_level": 10,
+                        "max_charging_power": 5000,
+                        "max_discharging_power": 5000,
+                        "round_trip_loss": 10,
+                        "wear_cost_per_kwh": 0.1,
+                        "usage_reserve": 20,
+                    },
+                    "assumptions": {
+                        "battery_size": 20,
+                        "minimum_level": 10,
+                        "maximum_level": 90,
+                        "starting_level": 10,
+                        "max_charging_power": 8000,
+                        "max_discharging_power": 8000,
+                        "round_trip_loss": 5,
+                        "wear_cost_per_kwh": 0.1,
+                        "usage_reserve": 20,
+                    },
+                    "current": {
+                        "profit": 100,
+                        "charged_solar_kwh": 12,
+                        "with": {
+                            "house_kwh": 800,
+                            "house_cost": 400,
+                            "battery_kwh": 50,
+                            "battery_cost": 25,
+                            "solar_kwh": 100,
+                            "solar_income": -20,
+                            "sold_kwh": 10,
+                            "sold_income": -5,
+                            "wear": 2,
+                            "paid": 425,
+                            "earned": -25,
+                            "bill": 500,
+                        },
+                    },
+                    "scenario": {
+                        "profit": 125,
+                        "charged_solar_kwh": 15,
+                        "with": {
+                            "house_kwh": 750,
+                            "house_cost": 375,
+                            "battery_kwh": 60,
+                            "battery_cost": 30,
+                            "solar_kwh": 90,
+                            "solar_income": -18,
+                            "sold_kwh": 15,
+                            "sold_income": -8,
+                            "wear": 3,
+                            "paid": 405,
+                            "earned": -26,
+                            "bill": 475,
+                        },
+                    },
+                    "difference": {"profit": 25, "bill": -25},
+                }
+            )
         )
+        response = await hass.services.async_call(
+            DOMAIN,
+            "what_if",
+            {
+                "config_entry_id": loaded_entry.entry_id,
+                "battery_size": 20,
+                "round_trip_loss": 5,
+            },
+            blocking=True,
+            return_response=True,
+        )
+
+    create.assert_called_once()
+    notification = create.call_args.args[1]
+    coordinator = loaded_entry.runtime_data
+    assert (
+        f"| | **{coordinator.t('ui.what_if.current')}** "
+        f"| **{coordinator.t('ui.what_if.scenario')}** |"
+        in notification
     )
-    response = await hass.services.async_call(
-        DOMAIN,
-        "what_if",
-        {
-            "config_entry_id": loaded_entry.entry_id,
-            "battery_size": 20,
-            "round_trip_loss": 5,
-        },
-        blocking=True,
-        return_response=True,
+    assert "|---|---|---|" in notification
+    assert f"| **{coordinator.t('ui.what_if.battery_size')}** | 13,5 kWh | 20,0 kWh |" in notification
+    assert (
+        f"| | **{coordinator.t('ui.what_if.current')}** "
+        f"| **{coordinator.t('ui.what_if.scenario')}** | |"
+        in notification
     )
+    assert f"**{coordinator.t('ui.what_if.round_trip_loss')}**" in notification
+    assert f"**{coordinator.t('ui.what_if.minimum_level')}**" not in notification
+    assert f"| **{coordinator.t('ui.what_if.house_kwh')}** | 800,0 | 750,0 | kWh |" in notification
+    assert f"| **{coordinator.t('ui.what_if.paid')}** | 425,00 | 405,00 | kr |" in notification
+    assert f"| **{coordinator.t('ui.what_if.earned')}** | 25,00 | 26,00 | kr |" in notification
+    assert f"| **{coordinator.t('ui.what_if.bill')}** | 500,00 | 475,00 | kr |" in notification
+    result_table_end = notification.index(
+        f"| **{coordinator.t('ui.what_if.bill')}** | 500,00 | 475,00 | kr |"
+    )
+    profit_difference = f"**{coordinator.t('ui.what_if.profit_difference')}:** 25,00 kr"
+    bill_difference = f"**{coordinator.t('ui.what_if.bill_difference')}:** 25,00 kr"
+    assert notification.index(profit_difference) > result_table_end
+    assert notification.index(bill_difference) > result_table_end
 
     simulation = response["simulations"][PREFIX]
     assert simulation["assumptions"]["battery_size"] == 20
