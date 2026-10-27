@@ -38,7 +38,7 @@ from .engine_analysis import AnalysisMixin
 from .engine_energy import EnergyMixin
 from .engine_history import HistoryMixin
 from .engine_planner import PlannerMixin
-from .efficiency import efficiency_at_power, parse_efficiency_curve
+from .efficiency import EfficiencyCurve, efficiency_at_power, parse_efficiency_curve
 from .formatting import active_charging_rules, emoji_parse, emoji_rules, format_charging_rule, get_list_values, translate
 from .helpers import (
     average,
@@ -386,17 +386,27 @@ class BattMindEngine(PlannerMixin, HistoryMixin, EnergyMixin, AnalysisMixin):
     def _fallback_efficiency(self) -> float:
         return math.sqrt(1.0 - min(abs(self.get_charging_loss()), 0.9))
 
+    def charging_efficiency_curve(self) -> EfficiencyCurve:
+        """Configured charging curve, or none while enhanced efficiency is disabled."""
+        if not self.enabled("enhance_battery_efficiency"):
+            return ()
+        return parse_efficiency_curve(self.config["solar"].get("battery_charging_efficiency_curve"))
+
+    def discharging_efficiency_curve(self) -> EfficiencyCurve:
+        """Configured discharging curve, or none while enhanced efficiency is disabled."""
+        if not self.enabled("enhance_battery_efficiency"):
+            return ()
+        return parse_efficiency_curve(self.config["solar"].get("battery_discharging_efficiency_curve"))
+
     def charging_efficiency(self, power_kw: float | None = None) -> float:
         """Charging efficiency at AC power, falling back to half the round-trip loss."""
-        curve = parse_efficiency_curve(self.config["solar"].get("battery_charging_efficiency_curve"))
         power_kw = self.max_kwh_charging if power_kw is None else power_kw
-        return efficiency_at_power(curve, power_kw * 1000.0, self._fallback_efficiency())
+        return efficiency_at_power(self.charging_efficiency_curve(), power_kw * 1000.0, self._fallback_efficiency())
 
     def discharging_efficiency(self, power_kw: float | None = None) -> float:
         """Discharging efficiency at AC power, falling back to half the round-trip loss."""
-        curve = parse_efficiency_curve(self.config["solar"].get("battery_discharging_efficiency_curve"))
         power_kw = abs(self.max_kwh_discharging) if power_kw is None else power_kw
-        return efficiency_at_power(curve, power_kw * 1000.0, self._fallback_efficiency())
+        return efficiency_at_power(self.discharging_efficiency_curve(), power_kw * 1000.0, self._fallback_efficiency())
 
     def battery_efficiency(self) -> float:
         """Equivalent one-way efficiency used by the legacy rule planner."""

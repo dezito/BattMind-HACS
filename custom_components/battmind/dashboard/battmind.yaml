@@ -1635,6 +1635,9 @@ views:
               - entity: switch.battmind_optimizer_control
                 name:
                   type: entity
+              - entity: switch.battmind_enhance_battery_efficiency
+                name:
+                  type: entity
               - entity: switch.battmind_price_forecast_correction
                 name:
                   type: entity
@@ -2154,6 +2157,85 @@ views:
                   return (entity.attributes.months || []).map(m => [new Date(m.month + '-15T12:00:00').getTime(), c * 100]);
             grid_options:
               columns: full
+      # configured charging and discharging efficiency by AC power
+      - type: grid
+        column_span: 2
+        cards:
+          - type: heading
+            heading: '@@section_efficiency_curve@@'
+            icon: mdi:chart-bell-curve
+          - type: markdown
+            content: "<details><summary>@@read_more@@</summary>\n\n@@efficiency_curve_explain@@\n\n</details>"
+            grid_options:
+              columns: full
+          - type: markdown
+            visibility:
+              - condition: state
+                entity: switch.battmind_enhance_battery_efficiency
+                state: 'off'
+            content: '<ha-alert alert-type="warning">@@efficiency_curve_off@@</ha-alert>'
+            grid_options:
+              columns: full
+          - type: custom:apexcharts-card
+            header:
+              show: true
+              title: '@@efficiency_curve_title@@'
+              show_states: false
+            graph_span: 24h
+            span:
+              end: minute
+            now:
+              show: false
+            yaxis:
+              - min: 0
+                max: 100
+                decimals: 0
+            all_series_config:
+              type: line
+              curve: straight
+              unit: ' %'
+              float_precision: 1
+              stroke_width: 3
+              show:
+                legend_value: false
+                in_header: false
+            apex_config:
+              chart:
+                height: 240px
+              markers:
+                size: 5
+              tooltip:
+                shared: true
+                intersect: false
+                x:
+                  formatter: |
+                    EVAL:function(value) {
+                      const timestamp = typeof value === 'number' ? value : new Date(value).getTime();
+                      return `${(10 + (timestamp - Date.now()) / 8640000).toFixed(1)} kW`;
+                    }
+              xaxis:
+                labels:
+                  formatter: |
+                    EVAL:function(value, timestamp) {
+                      return `${(10 + (timestamp - Date.now()) / 8640000).toFixed(1)} kW`;
+                    }
+            series:
+              - entity: sensor.battmind_analysis
+                name: '@@efficiency_charging@@'
+                color: '#2a78d6'
+                data_generator: |
+                  const range = end.getTime() - start.getTime();
+                  return ((entity.attributes.efficiency_curves || {}).charging || [])
+                    .map(p => [start.getTime() + (p.power / 10000) * range, p.efficiency]);
+              - entity: sensor.battmind_analysis
+                name: '@@efficiency_discharging@@'
+                color: '#eb6834'
+                data_generator: |
+                  const range = end.getTime() - start.getTime();
+                  return ((entity.attributes.efficiency_curves || {}).discharging || [])
+                    .map(p => [start.getTime() + (p.power / 10000) * range, p.efficiency]);
+            grid_options:
+              columns: full
       # where the house got its energy from
       - type: grid
         column_span: 2
@@ -2617,7 +2699,7 @@ views:
               show_states: false
             graph_span: 6d
             span:
-              start: day
+              end: minute
               offset: -2d
             now:
               show: true

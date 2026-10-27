@@ -532,6 +532,9 @@
       "optimizer_control": {
         "name": "Керувати батареєю оптимізацією всього періоду"
       },
+      "enhance_battery_efficiency": {
+        "name": "Підвищити ефективність акумулятора"
+      },
       "price_forecast_correction": {
         "name": "Коригувати прогноз цін"
       }

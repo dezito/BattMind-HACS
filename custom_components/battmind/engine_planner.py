@@ -10,7 +10,7 @@ from copy import deepcopy
 from dataclasses import replace
 
 from .engine_optimizer import OptimizerConfig, OptimizerHour, breakdown, optimize_per_day, optimize_with_rules, simulate
-from .efficiency import efficiency_at_power, parse_efficiency_curve
+from .efficiency import efficiency_at_power
 from .engine_energy import derive_power_values
 from .power import unit_factor_to_w
 from .formatting import emoji_parse, emoji_text_format, get_list_values
@@ -175,8 +175,8 @@ class PlannerMixin:
             max_discharge=max_discharge,
             efficiency=fallback,
             wear=abs(solar_cfg["powerwall_wear_cost_per_kwh"]),
-            charge_efficiency_curve=parse_efficiency_curve(solar_cfg.get("battery_charging_efficiency_curve")),
-            discharge_efficiency_curve=parse_efficiency_curve(solar_cfg.get("battery_discharging_efficiency_curve")),
+            charge_efficiency_curve=self.charging_efficiency_curve(),
+            discharge_efficiency_curve=self.discharging_efficiency_curve(),
             curve_fallback_efficiency=fallback,
             min_profit_per_kwh=self.get_min_profit_per_kwh(),
             min_sell_kwh=self.number("min_sell_kwh"),
@@ -1972,12 +1972,8 @@ class PlannerMixin:
                     max_discharge=abs(max_kwh_discharging),
                     efficiency=efficiency,
                     wear=wear,
-                    charge_efficiency_curve=parse_efficiency_curve(
-                        config["solar"].get("battery_charging_efficiency_curve")
-                    ),
-                    discharge_efficiency_curve=parse_efficiency_curve(
-                        config["solar"].get("battery_discharging_efficiency_curve")
-                    ),
+                    charge_efficiency_curve=self.charging_efficiency_curve(),
+                    discharge_efficiency_curve=self.discharging_efficiency_curve(),
                     curve_fallback_efficiency=self._fallback_efficiency(),
                     min_profit_per_kwh=get_min_profit_per_kwh(),
                     min_sell_kwh=self.number("min_sell_kwh"),

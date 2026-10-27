@@ -532,6 +532,9 @@
       "optimizer_control": {
         "name": "Batterie mit Optimierung des ganzen Zeitraums steuern"
       },
+      "enhance_battery_efficiency": {
+        "name": "Batterieeffizienz verbessern"
+      },
       "price_forecast_correction": {
         "name": "Preisprognose korrigieren"
       }

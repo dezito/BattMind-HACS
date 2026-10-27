@@ -642,6 +642,9 @@
       "optimizer_control": {
         "name": "Styr batteriet med optimering af hele perioden"
       },
+      "enhance_battery_efficiency": {
+        "name": "Forbedr batteriets virkningsgrad"
+      },
       "price_forecast_correction": {
         "name": "Ret prisprognosen"
       }

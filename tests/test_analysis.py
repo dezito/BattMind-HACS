@@ -126,6 +126,24 @@ def test_a_day_is_recorded_and_published() -> None:
     assert {rule["rule"] for rule in attributes["rules"]} >= {"discharging"}
 
 
+def test_efficiency_curves_are_published_for_the_analysis_chart() -> None:
+    engine = started_engine(datetime.datetime.combine(DAY, datetime.time(0, 5)), 50.0)
+    engine.config["solar"].update(
+        battery_charging_efficiency_curve={"5000": 96, "1000": 80},
+        battery_discharging_efficiency_curve={"500": 82, "3000": 94},
+    )
+
+    result = engine.run_job(snapshot(datetime.datetime.combine(DAY, datetime.time(0, 5)), 50.0), engine.publish_analysis)
+
+    assert result.attributes["analysis"]["efficiency_curves"] == {
+        "enabled": True,
+        "charging": [{"power": 1000, "efficiency": 80.0}, {"power": 5000, "efficiency": 96.0}],
+        "discharging": [{"power": 500, "efficiency": 82.0}, {"power": 3000, "efficiency": 94.0}],
+    }
+
+
+
+
 def test_backfill_from_the_statistics() -> None:
     now = datetime.datetime.combine(DAY, datetime.time(12, 5))
     engine = started_engine(now, 50.0)

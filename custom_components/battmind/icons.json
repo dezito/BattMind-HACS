@@ -74,6 +74,9 @@
       },
       "optimizer_control": {
         "default": "mdi:robot-outline"
+      },
+      "enhance_battery_efficiency": {
+        "default": "mdi:battery-sync-outline"
       }
     },
     "number": {

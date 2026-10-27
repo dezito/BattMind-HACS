@@ -209,7 +209,7 @@ Setup is done in the UI, split into small pages with help texts:
 
 1. **Prefix and language:** the prefix becomes the start of all entity ids (default `battmind`)
 2. **Home battery:** battery level, power (optionally inverted sign), size, min./max. level,
-   charge/discharge power, charge/discharge loss, optional efficiency curves and wear per kWh
+   charge/discharge power, charge/discharge loss, optional efficiency curves and wear per kWh. The curves can be enabled or disabled from **Settings** without deleting them
 3. **Consumption:** the house consumption, and whether it includes the battery's charging/discharging. You can also
    ignore consumers, e.g. the EV charger.
 4. **Price providers:** Energi Data Service and/or Strømligning (buy, sell and tariffs), refund and selling fee

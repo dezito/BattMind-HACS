@@ -482,6 +482,8 @@ SWITCH_SETTINGS: dict[str, dict[str, Any]] = {
     "grid_charge_to_sell": {"default": True},
     "discharge_before_solar": {"default": True},
     "optimizer_control": {"default": True},
+    # use the configured power-dependent charging/discharging efficiency curves
+    "enhance_battery_efficiency": {"default": True},
     # correct the price forecast with its measured bias (engine_analysis.py)
     "price_forecast_correction": {"default": True},
 }

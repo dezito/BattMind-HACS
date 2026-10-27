@@ -99,8 +99,8 @@ def test_own_entity_rows_show_the_entity_name() -> None:
         entity = node.get("entity")
         if not isinstance(entity, str) or not entity.split(".")[-1].startswith("house_"):
             continue
-        if "data_generator" in node or str(node.get("type", "")).startswith("custom:"):
-            continue  # apexcharts series / mushroom cards have their own name / primary_info
+        if "data_generator" in node or str(node.get("type", "")).startswith("custom:") or node.get("condition"):
+            continue  # apexcharts series / custom cards / visibility conditions are not entity rows
         if entity == "button.house_enforce_planning":
             assert node.get("name") == "Force planning"  # badges: the entity name as text
             continue
@@ -191,6 +191,23 @@ def test_price_forecast_chart_series_share_the_same_hours() -> None:
         assert "return hours.map(h =>" in generator
         assert ".filter(" not in generator
 
+
+def test_efficiency_curve_chart_keeps_points_inside_its_time_window() -> None:
+    content = yaml.safe_load(rendered("en"))
+    chart = next(
+        node for node in walk(content)
+        if node.get("type") == "custom:apexcharts-card"
+        and node.get("header", {}).get("title") == "Efficiency by AC power"
+    )
+    assert chart["graph_span"] == "24h"
+    assert chart["span"] == {"end": "minute"}
+    assert len(chart["series"]) == 2
+    assert "function(value, timestamp)" in chart["apex_config"]["xaxis"]["labels"]["formatter"]
+    for series in chart["series"]:
+        generator = series["data_generator"]
+        assert "const range = end.getTime() - start.getTime();" in generator
+        assert "start.getTime() + (p.power / 10000) * range" in generator
+        assert "entity.attributes.efficiency_curves" in generator
 
 def test_solar_forecast_chart_series_share_the_same_days() -> None:
     content = yaml.safe_load(rendered("en"))
