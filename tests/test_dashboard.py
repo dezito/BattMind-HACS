@@ -92,6 +92,18 @@ def test_every_setting_is_on_the_settings_view() -> None:
             assert f"{platform}.battmind_{key}" in entities, key
 
 
+def test_settings_read_more_covers_the_displayed_rules() -> None:
+    settings_view = yaml.safe_load(rendered("da"))["views"][1]
+    help_texts = [node["content"] for node in walk(settings_view) if node.get("type") == "markdown"]
+    profit_help = next(text for text in help_texts if "Min. profit per kWh" in text)
+    charging_help = next(text for text in help_texts if "Billigste timer" in text)
+
+    assert "Reserve til huset" in profit_help
+    assert "Billige prisperioder" in charging_help
+    assert "Stigning for billige prisperioder" in charging_help
+    assert "Stigning for billigste pris" in charging_help
+
+
 def test_own_entity_rows_show_the_entity_name() -> None:
     """name: {type: entity} - the entity name without "BattMind" in front."""
     content = yaml.safe_load(rendered("en", prefix="house"))
