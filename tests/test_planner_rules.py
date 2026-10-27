@@ -330,6 +330,21 @@ def test_hour_rules_group_consecutive_hours_with_the_same_rule() -> None:
     assert "Prioriteret (17:00-19:00)</summary>" in differ
 
 
+def test_single_sell_period_shows_its_end_time() -> None:
+    from custom_components.battmind.engine_planner import _join_timestamps_by_hour
+
+    timestamp = datetime.datetime.combine(DAY, datetime.time(20))
+    reason = "<details><summary>Sælger</summary>body</details>"
+    joined = _join_timestamps_by_hour(
+        {timestamp: {"title": "Sælger", "emoji": "", "kwh": 0.9, "profit": 2.0, "reason": reason}},
+        "kr",
+        "I alt",
+        lambda _timestamp: 4,
+    )
+
+    assert joined[timestamp]["period_end"] == timestamp + datetime.timedelta(minutes=15)
+
+
 @pytest.mark.parametrize("optimizer_control", [True, False])
 def test_overview_has_the_plan_and_its_totals(optimizer_control: bool) -> None:
     engine, _ = planned(0, 30, {"optimizer_control": optimizer_control}, solar=True, negative=True)

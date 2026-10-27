@@ -2471,7 +2471,14 @@ class PlannerMixin:
                 joined.update(data["force_powerwall_max_hours_old_discharge_timestamps"])
                 joined.update(data["blocked_discharge_timestamps"])
                 joined.update(data["blocked_solar_charge_timestamps"])
-                joined.update(_join_timestamps_by_hour(data["force_discharge_timestamps"], valuta, t("ui.common.total")))
+                joined.update(
+                    _join_timestamps_by_hour(
+                        data["force_discharge_timestamps"],
+                        valuta,
+                        t("ui.common.total"),
+                        lambda timestamp: self.price_provider.sell_periods_in_hour(timestamp) if self.price_provider else 1,
+                    )
+                )
                 joined.update(data["charging_sessions"])
                 if not joined:
                     continue
@@ -2487,7 +2494,9 @@ class PlannerMixin:
                 for group in _group_hour_rules(rows):
                     first, last = group[0][0], group[-1][0]
                     if len(group) == 1:
-                        overview.append(f"| **{first.strftime('%H:%M')}** | {group[0][1]} |")
+                        end = joined.get(first, {}).get("period_end") if isinstance(joined.get(first), dict) else None
+                        time_text = f"{first.strftime('%H:%M')}-{end.strftime('%H:%M')}" if end else first.strftime("%H:%M")
+                        overview.append(f"| **{time_text}** | {group[0][1]} |")
                     else:
                         until = reset_time_to_hour(last).replace(minute=59).strftime("%H:%M")  # the last hour included
                         overview.append(f"| **{first.strftime('%H:%M')}-{until}** | {_joined_reason(group)} |")
@@ -2855,7 +2864,7 @@ def _joined_reason(group: list[tuple[datetime.datetime, str]]) -> str:
     return f"<details><summary>{emoji_parse({'bundle': True})}{title}{values}{other_day}</summary>{hours}</details>"
 
 
-def _join_timestamps_by_hour(timestamps: dict, valuta: str, total_label: str) -> dict:
+def _join_timestamps_by_hour(timestamps: dict, valuta: str, total_label: str, periods_in_hour=None) -> dict:
     """Sell periods of the same hour and title in one reason (📦)."""
     grouped: dict = {}
     for timestamp, data in timestamps.items():
@@ -2874,8 +2883,13 @@ def _join_timestamps_by_hour(timestamps: dict, valuta: str, total_label: str) ->
     for periods in grouped.values():
         periods = sorted(periods, key=lambda p: p["timestamp"])
         first = periods[0]
+        period_count = max(int(periods_in_hour(first["timestamp"])) if periods_in_hour else 1, 1)
+        period_end = periods[-1]["timestamp"] + datetime.timedelta(minutes=60 / period_count)
         if len(periods) == 1:
-            joined[first["timestamp"]] = {k: first[k] for k in ("title", "emoji", "kwh", "profit", "reason")}
+            joined[first["timestamp"]] = {
+                **{k: first[k] for k in ("title", "emoji", "kwh", "profit", "reason")},
+                "period_end": period_end,
+            }
             continue
         total_kwh = 0.0
         total_profit = 0.0
@@ -2897,6 +2911,7 @@ def _join_timestamps_by_hour(timestamps: dict, valuta: str, total_label: str) ->
             "title": first["title"],
             "kwh": total_kwh,
             "profit": total_profit,
+            "period_end": period_end,
             "reason": (
                 f"<details><summary>{emoji_parse({'bundle': True})}{first['emoji']}{first['title']}<br>"
                 f"({total_kwh:.1f} kWh / {total_profit:.2f} {valuta})</summary>{''.join(period_details)}"
