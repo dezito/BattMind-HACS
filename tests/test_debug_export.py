@@ -46,6 +46,8 @@ async def test_export_is_anonymised(hass: HomeAssistant, config_dir: Path, loade
     data, text = _read(config_dir.parent / file)
 
     assert data["integration"] == DOMAIN and data["prefix"] == PREFIX
+    assert data["config"]["solar"]["battery_temperature_min"] == 0.0
+    assert data["config"]["solar"]["battery_temperature_max"] == 50.0
     assert data["jobs"] and data["snapshots"] and data["engine"]["plan"] is not None
     assert set(data["databases"]) >= {"charging_history", "power_values"}
     # other integrations' entities are named after their config key, own entities are kept
@@ -101,6 +103,18 @@ async def test_replay_reproduces_the_plan(hass: HomeAssistant, config_dir: Path,
     assert result.error is None
     assert result.value == coordinator.engine.last_powerwall_action
     assert result.states["current_charging_rule"] == recorded
+
+
+async def test_replay_adds_temperature_defaults_to_old_export(hass: HomeAssistant, config_dir: Path, loaded_entry) -> None:
+    response = await hass.services.async_call(DOMAIN, "export_debug", {}, blocking=True, return_response=True)
+    export = debug_replay.load_export(str(config_dir.parent / response["files"][PREFIX]))
+    export["config"]["solar"].pop("battery_temperature_min")
+    export["config"]["solar"].pop("battery_temperature_max")
+
+    engine = debug_replay.build_engine(export)
+
+    assert engine.config["solar"]["battery_temperature_min"] == 0.0
+    assert engine.config["solar"]["battery_temperature_max"] == 50.0
 
 
 def test_redactor_aliases() -> None:

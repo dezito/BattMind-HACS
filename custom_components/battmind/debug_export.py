@@ -25,6 +25,7 @@ import platform
 import re
 import traceback
 from collections import deque
+from copy import deepcopy
 from http import HTTPStatus
 from typing import TYPE_CHECKING, Any
 from urllib.parse import urlencode
@@ -40,7 +41,7 @@ from homeassistant.loader import async_get_integration
 from homeassistant.util import dt as dt_util
 
 from .codec import encode
-from .const import DOMAIN
+from .const import DEFAULT_CONFIG, DOMAIN
 
 if TYPE_CHECKING:
     from .coordinator import BattMindCoordinator
@@ -343,6 +344,10 @@ async def async_export_debug(hass: HomeAssistant, coordinator: BattMindCoordinat
         }
     snapshots = [{**item, "snapshot": snapshot_dict(item["snapshot"])} for item in recorder.snapshots]
     failed, planning = recorder.failed, recorder.planning
+    config = deepcopy(coordinator.config)
+    solar = config.setdefault("solar", {})
+    solar.setdefault("battery_temperature_min", DEFAULT_CONFIG["solar"]["battery_temperature_min"])
+    solar.setdefault("battery_temperature_max", DEFAULT_CONFIG["solar"]["battery_temperature_max"])
     data = {
         "integration": DOMAIN,
         "format": DEBUG_FORMAT,
@@ -354,7 +359,7 @@ async def async_export_debug(hass: HomeAssistant, coordinator: BattMindCoordinat
         "prefix": prefix,
         "status": {"started": coordinator.started, "testing": coordinator.testing, "last_job": dict(coordinator.last_job)},
         "options": dict(coordinator.entry.options),
-        "config": coordinator.config,
+        "config": config,
         "entities": entities,
         "settings": dict(coordinator.settings),
         "states": dict(coordinator.data),
