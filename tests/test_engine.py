@@ -259,6 +259,11 @@ def test_configured_efficiency_curves_override_the_round_trip_loss() -> None:
     assert engine.discharging_efficiency(1.0) == pytest.approx(0.75)
     assert engine.battery_efficiency() == pytest.approx((0.96 * 0.95) ** 0.5)
     assert engine.calc_battery_loss_cost(1.0) == pytest.approx((1.0 - 0.96 * 0.95) / (0.96 * 0.95))
+    snap = snapshot(datetime.datetime.combine(DAY, datetime.time(3, 30)), 50)
+    snap.settings["enhance_battery_efficiency"] = False
+    assert engine.run_job(snap, engine.charging_efficiency, 1.0).value == pytest.approx(0.9**0.5)
+    assert engine.run_job(snap, engine.discharging_efficiency, 1.0).value == pytest.approx(0.9**0.5)
+    assert engine.run_job(snap, engine.effective_round_trip_loss).value == pytest.approx(0.1)
 
 
 ALL_RULES = {

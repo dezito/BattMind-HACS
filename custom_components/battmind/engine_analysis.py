@@ -29,6 +29,7 @@ import datetime
 import logging
 
 from .const import CHARGING_TYPES, PRICE_ADDER_DAY_BETWEEN_DIVIDER
+from .efficiency import parse_efficiency_curve
 from .engine_energy import derive_power_values
 from .helpers import days_between, reset_time_to_hour
 from .power import unit_factor_to_w
@@ -886,6 +887,17 @@ class AnalysisMixin:
             },
             "self_sufficiency": {"last_7": sufficiency(last_7), "last_30": sufficiency(last_30), "all": sufficiency(all_days)},
             "forecast": forecast,
+            "efficiency_curves": {
+                "enabled": self.enabled("enhance_battery_efficiency"),
+                "charging": [
+                    {"power": round(power), "efficiency": round(efficiency * 100, 2)}
+                    for power, efficiency in parse_efficiency_curve(solar_cfg.get("battery_charging_efficiency_curve"))
+                ],
+                "discharging": [
+                    {"power": round(power), "efficiency": round(efficiency * 100, 2)}
+                    for power, efficiency in parse_efficiency_curve(solar_cfg.get("battery_discharging_efficiency_curve"))
+                ],
+            },
             "plans": plans,
             "price_forecast": price_forecast,
             "solar_forecast": {key: solar_errors(source) for key, source in (("plan", "plan_solar"), ("database", "solar_database"), ("forecast", "solar_forecast"))},

@@ -642,6 +642,9 @@
       "optimizer_control": {
         "name": "Control the battery with the whole period optimisation"
       },
+      "enhance_battery_efficiency": {
+        "name": "Enhance battery efficiency"
+      },
       "price_forecast_correction": {
         "name": "Correct the price forecast"
       }

@@ -79,6 +79,12 @@ configured, **Used now** is their combined loss at the configured maximum charge
 If the measured loss is far from the configured one, check the battery power sensor (and its sign) before
 changing the loss.
 
+### Battery efficiency
+
+When charging and discharging efficiency curves are configured, the chart plots both curves against AC
+power. BattMind interpolates linearly between their points and uses the nearest endpoint outside the
+entered range, just as the whole-period optimiser does. **Enhance battery efficiency** under **Settings → Control** decides whether the curves are used in calculations. Turning it off keeps the graph and the saved curves, but planning uses the round-trip loss.
+
 ### Self-sufficiency
 
 Where the house's consumption came from per hour: first solar, then the battery, the rest from the grid.
