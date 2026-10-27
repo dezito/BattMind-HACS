@@ -9,7 +9,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.battmind.const import LANGUAGES, NUMBER_SETTINGS, SELECT_SETTINGS, SWITCH_SETTINGS, TEXT_SETTINGS, build_config
 from custom_components.battmind.dashboard import render_dashboard
-from custom_components.battmind.formatting import load_texts
+from custom_components.battmind.formatting import format_analysis_help_text, format_help_text, load_texts
 
 from .conftest import MOCK_OPTIONS, PREFIX, async_unload_and_join, set_source_states
 from .test_engine import OPTIONS
@@ -99,9 +99,55 @@ def test_settings_read_more_covers_the_displayed_rules() -> None:
     charging_help = next(text for text in help_texts if "Billigste timer" in text)
 
     assert "Reserve til huset" in profit_help
+    assert "***Reserve til huset***\n" in profit_help
     assert "Billige prisperioder" in charging_help
+    assert "***Billigste timer***\n" in charging_help
+    assert "***Billige prisperioder***\n" in charging_help
     assert "Stigning for billige prisperioder" in charging_help
     assert "Stigning for billigste pris" in charging_help
+
+
+def test_read_more_text_uses_spaced_bold_italic_labels() -> None:
+    assert format_help_text(
+        "Group overview.\n* **First entity**: First explanation.\n  * **Nested entity**: Nested explanation.\n* **Second entity**: Second explanation."
+    ) == (
+        "Group overview.\n\n"
+        "***First entity***\nFirst explanation.\n\n"
+        "***Nested entity***\nNested explanation.\n\n"
+        "***Second entity***\nSecond explanation."
+    )
+    assert format_help_text("Overview. **First metric**: one. **Second metric**: two.") == (
+        "Overview.\n\n***First metric***\none.\n\n***Second metric***\ntwo."
+    )
+    assert format_analysis_help_text(
+        "Summary. **First metric**: first detail. Second detail. Use e.g. Carnot."
+    ) == (
+        "Summary.\n***First metric***\nfirst detail.\nSecond detail.\nUse e.g. Carnot."
+    )
+    assert format_analysis_help_text("Minimum target level: next line. Following sentence.") == (
+        "Minimum target level:\nNext line.\nFollowing sentence."
+    )
+    assert load_texts("da")["dashboard.rules_explain"].startswith("Ladning pr. regel:")
+    assert "***Ladet (☀️)***\n" in load_texts("da")["dashboard.economy_explain"]
+
+
+def test_analysis_sections_include_controls_for_their_graphs() -> None:
+    dashboard = yaml.safe_load(rendered("da"))
+    sections = dashboard["views"][2]["sections"]
+    texts = load_texts("da")
+
+    def section_entities(title: str) -> set[str]:
+        section = next(
+            section
+            for section in sections
+            if any(card.get("heading") == title for card in walk(section))
+        )
+        return {node["entity"] for node in walk(section) if isinstance(node.get("entity"), str)}
+
+    assert section_entities(texts["dashboard.section_rules"]) == set()
+    assert "switch.battmind_enhance_battery_efficiency" in section_entities(texts["dashboard.section_efficiency_curve"])
+    assert "select.battmind_forecast_type" in section_entities(texts["dashboard.section_forecast"])
+    assert "switch.battmind_price_forecast_correction" in section_entities(texts["dashboard.section_price_forecast"])
 
 
 def test_own_entity_rows_show_the_entity_name() -> None:

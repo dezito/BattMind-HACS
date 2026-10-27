@@ -2,9 +2,65 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 from .const import CHARGING_TYPES, currency_symbol
+
+_HELP_ITEM = re.compile(r"^(?P<indent>\s*)[*•-]\s+(?P<label>.+?):\s*(?P<description>.*)$")
+_ANALYSIS_HELP_KEYS = {"cycles_explain", "forecast_explain", "loss_explain", "rules_explain", "score_explain"}
+_ABBREVIATIONS = re.compile(
+    r"\b(?:[a-zæøåäöü]\.)+[a-zæøåäöü]\.|\b(?:avg|bl|ca|dvs|gns|inkl|kl|max|min|nr|pr)\.",
+    re.IGNORECASE,
+)
+
+
+def format_help_text(text: str) -> str:
+    """Render labelled help items as spaced bold-italic labels and descriptions."""
+    formatted = []
+    for line in text.splitlines():
+        match = _HELP_ITEM.match(line)
+        if match is None:
+            formatted.append(line)
+            continue
+
+        if formatted and formatted[-1].strip():
+            formatted.append("")
+        label = match.group("label").strip()
+        if label.startswith("**") and label.endswith("**"):
+            label = label[2:-2].strip()
+        formatted.extend((f"***{label}***", match.group("description")))
+
+    text = "\n".join(formatted).strip()
+    text = re.sub(r"(?<=\S) (?=\*\*[^*\n]+\*\*:)", "\n\n", text)
+    return re.sub(r"\*\*([^*\n]+)\*\*:\s*", r"***\1***\n", text)
+
+
+def format_analysis_help_text(text: str) -> str:
+    """Put analysis sentences and colon-separated explanations on separate lines."""
+    text = format_help_text(text)
+    if len(text) > 1 and text.startswith("*") and text.endswith("*"):
+        text = text[1:-1]
+
+    protected = re.sub(r"(?<=\d):(?=\d)", "\u0001", text.strip())
+    protected = _ABBREVIATIONS.sub(lambda match: match.group().replace(".", "\u0000"), protected)
+    points = []
+    for sentence in re.split(r"(?<=[.!?])\s+", protected):
+        sentence = sentence.replace("\u0000", ".").strip()
+        if not sentence:
+            continue
+        colon = re.match(r"^(?P<label>[^\s:]{1,16}):\s*(?P<description>.+)$", sentence)
+        if colon:
+            label = colon.group("label").strip().strip("*")
+            points.append(f"**{label}**: {colon.group('description').strip()}")
+            continue
+        if ":" in sentence or ";" in sentence:
+            separator = ":" if ":" in sentence else ";"
+            label, description = sentence.split(separator, 1)
+            points.extend((f"{label.strip()}{separator}", description.strip().capitalize()))
+        else:
+            points.append(sentence.replace("\u0001", ":"))
+    return "\n".join(points)
 
 
 def emoji_sorting(text: str) -> str:
@@ -95,6 +151,12 @@ def load_texts(language: str, currency: str | None = None) -> dict[str, str]:
         path = folder / f"{name}.json"
         if path.is_file():
             flatten(json.loads(path.read_text(encoding="utf-8")))
+
+    for key, value in texts.items():
+        if key.startswith("dashboard.help_") or key.startswith("dashboard.") and key.endswith("_explain"):
+            texts[key] = format_help_text(value)
+            if key.rsplit(".", 1)[-1] in _ANALYSIS_HELP_KEYS:
+                texts[key] = format_analysis_help_text(texts[key])
 
     if symbol := currency_symbol(currency):
         for key in [key for key in texts if key.startswith("ui.common.valuta")]:

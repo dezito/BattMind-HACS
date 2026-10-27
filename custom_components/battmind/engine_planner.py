@@ -267,6 +267,17 @@ class PlannerMixin:
                 "wear_cost_per_kwh": cfg.wear,
                 "usage_reserve": cfg.usage_reserve,
             },
+            "current_assumptions": {
+                "battery_size": base_cfg.battery_size,
+                "minimum_level": base_cfg.level_min,
+                "maximum_level": base_cfg.level_max,
+                "starting_level": current_start_level,
+                "max_charging_power": base_cfg.max_charge * 1000.0,
+                "max_discharging_power": base_cfg.max_discharge * 1000.0,
+                "round_trip_loss": round((1.0 - base_cfg.efficiency**2) * 100.0, 2),
+                "wear_cost_per_kwh": base_cfg.wear,
+                "usage_reserve": base_cfg.usage_reserve,
+            },
             "current": current,
             "scenario": summary,
             "difference": {
