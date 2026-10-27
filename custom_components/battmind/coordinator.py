@@ -784,10 +784,17 @@ class BattMindCoordinator:
         from homeassistant.components.recorder.statistics import statistics_during_period
 
         price_ids = self.config["prices"]["entity_ids"]
-        buy_id = price_ids["energidataservice_buy_entity_id"] or price_ids["stromligning_buy_current_price"]
+        buy_id = price_ids["stromligning_buy_current_price"] or price_ids["energidataservice_buy_entity_id"]
         if not buy_id:
             raise HomeAssistantError("A buy-price entity is required for the historical what-if comparison")
-        sell_id = price_ids["energidataservice_sell_entity_id"] or price_ids["stromligning_sell_current_price"] or buy_id
+        sell_price_history_available = bool(
+            price_ids["stromligning_sell_current_price"] or price_ids["energidataservice_sell_entity_id"]
+        )
+        sell_id = (
+            price_ids["stromligning_sell_current_price"]
+            or price_ids["energidataservice_sell_entity_id"]
+            or buy_id
+        )
         entities = {entity_id for entity_id in (*self.statistics_entities, buy_id, sell_id) if entity_id}
         end = dt_util.utcnow().replace(minute=0, second=0, microsecond=0)
         try:
@@ -806,6 +813,7 @@ class BattMindCoordinator:
         data = {
             "buy_entity_id": buy_id,
             "sell_entity_id": sell_id,
+            "sell_price_history_available": sell_price_history_available,
             "stats": {
                 entity_id: [
                     (

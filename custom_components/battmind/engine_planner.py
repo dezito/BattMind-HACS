@@ -126,19 +126,65 @@ class PlannerMixin:
             return {
                 float(ts): float(value) * factor
                 for ts, value in stats.get(entity_id) or []
-                if isinstance(value, (int, float))
+                if isinstance(value, (int, float)) and math.isfinite(value)
             }
 
-        consumption = series(ids["power_consumption_entity_id"])
-        flow = series(ids["powerwall_watt_flow_entity_id"])
-        solar = series(self.config["solar"]["entity_ids"]["production_entity_id"])
-        ignored = [series(entity_id) for entity_id in ids["ignore_consumption_from_entity_ids"] or [] if entity_id]
-        buy = series(data["buy_entity_id"], power=False)
-        sell = series(data["sell_entity_id"], power=False)
+        consumption_id = ids["power_consumption_entity_id"]
+        flow_id = ids["powerwall_watt_flow_entity_id"]
+        solar_id = self.config["solar"]["entity_ids"]["production_entity_id"]
+        ignored_ids = [entity_id for entity_id in ids["ignore_consumption_from_entity_ids"] or [] if entity_id]
+        buy_id = data["buy_entity_id"]
+        sell_id = data["sell_entity_id"]
+        sell_price_history_available = data.get("sell_price_history_available", True)
+        consumption = series(consumption_id)
+        flow = series(flow_id)
+        solar = series(solar_id)
+        ignored = [series(entity_id) for entity_id in ignored_ids]
+        buy = series(buy_id, power=False)
+        sell = series(sell_id, power=False)
+        required_ids = list(dict.fromkeys(
+            entity_id
+            for entity_id in (
+                consumption_id,
+                flow_id,
+                solar_id,
+                *ignored_ids,
+                buy_id,
+                sell_id if sell_price_history_available else "",
+            )
+            if entity_id
+        ))
+        required = {
+            entity_id: series(entity_id, power=entity_id not in (buy_id, sell_id))
+            for entity_id in required_ids
+        }
+        missing_series = [entity_id for entity_id, values in required.items() if not values]
+        if missing_series:
+            raise ValueError("No hourly long-term statistics for required entities: " + ", ".join(missing_series))
+        first = max(min(values) for values in required.values())
+        last = min(max(values) for values in required.values())
+        if first > last:
+            raise ValueError("No overlapping hourly long-term statistics were found for the required entities")
+        span_hours = (last - first) / 3600.0
+        hour_count = round(span_hours) + 1
+        if abs(span_hours - round(span_hours)) > 1e-6:
+            raise ValueError("Required long-term statistics are not aligned to the same hourly intervals")
+        timestamps = [first + hour * 3600.0 for hour in range(hour_count)]
+        missing_hours = {
+            entity_id: sum(timestamp not in values for timestamp in timestamps)
+            for entity_id, values in required.items()
+        }
+        missing_hours = {entity_id: count for entity_id, count in missing_hours.items() if count}
+        if missing_hours:
+            detail = ", ".join(f"{entity_id} ({count} missing)" for entity_id, count in missing_hours.items())
+            raise ValueError(
+                "Incomplete hourly long-term statistics in the comparison period: "
+                f"{detail}. Choose a shorter history period or restore the missing statistics."
+            )
         positive_is_charging = home["invert_powerwall_watt_flow_entity_id"]
         tz = self._snap.tz if self._snap else None
         hours = []
-        for ts in sorted(set(consumption) & set(buy)):
+        for ts in timestamps:
             battery = flow.get(ts, 0.0)
             charging = max(battery if positive_is_charging else -battery, 0.0)
             discharging = max(-battery if positive_is_charging else battery, 0.0)
@@ -156,9 +202,13 @@ class PlannerMixin:
             hours.append(OptimizerHour(
                 datetime.datetime.fromtimestamp(ts, tz).replace(tzinfo=None),
                 buy[ts],
-                self.sell_value(sell.get(ts, buy[ts])),
+                self.sell_value(sell.get(ts, buy[ts])) if sell_price_history_available else self.sell_value(0.0),
                 max(net_use - produced, 0.0),
                 max(produced - net_use, 0.0),
+                can_sell=(
+                    sell_price_history_available
+                    or self.config["solar"]["production_price"] != -1.0
+                ),
             ))
         if not hours:
             raise ValueError("No matching hourly consumption and price statistics were found")
@@ -266,6 +316,7 @@ class PlannerMixin:
                 "round_trip_loss": round((1.0 - cfg.efficiency**2) * 100.0, 2),
                 "wear_cost_per_kwh": cfg.wear,
                 "usage_reserve": cfg.usage_reserve,
+                "sell_price_history_available": sell_price_history_available,
             },
             "current_assumptions": {
                 "battery_size": base_cfg.battery_size,

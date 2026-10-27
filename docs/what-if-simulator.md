@@ -48,6 +48,12 @@ are percentages. Setting **round_trip_loss** temporarily replaces the configured
 Both **current** and **scenario** contain the bill with and without the battery, expected profit, charged
 grid/solar energy, energy delivered to the house, sales, wear and the final battery level.
 
-This is a hindsight calculation, not a forecast or guarantee. It needs hourly long-term statistics for
-the configured house-consumption and buy-price entities; solar and sell-price statistics improve its
-accuracy. Home Assistant may provide fewer days than requested if older statistics are unavailable.
+This is a hindsight calculation, not a forecast or guarantee: the simulation uses each day's actual
+prices and solar production as if they were known ahead of time, so treat the result as an optimistic
+historical benchmark rather than expected savings or battery payback. It requires continuous hourly
+long-term statistics for the configured consumption, battery-power, solar, ignored-load and price
+entities used in the comparison. The simulator uses the period shared by those entities; if there are
+gaps inside that period, the action fails instead of silently skipping hours or assuming that the buy
+price was earned when selling. Without a configured historical sell-price entity, variable export
+revenue is treated as zero (a fixed configured solar sell price is still used). Home Assistant may
+provide fewer days than requested if older statistics are unavailable.

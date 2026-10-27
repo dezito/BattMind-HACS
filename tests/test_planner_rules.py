@@ -163,6 +163,26 @@ def test_what_if_simulator_does_not_change_the_active_plan() -> None:
     assert unchanged.error is None, unchanged.error
     assert unchanged.value["difference"] == {"profit": 0.0, "bill": 0.0}
 
+    no_sell_history = engine.run_job(
+        snap,
+        engine.what_if,
+        {**data, "sell_price_history_available": False},
+        {},
+    )
+    assert no_sell_history.error is None, no_sell_history.error
+    assert no_sell_history.value["assumptions"]["sell_price_history_available"] is False
+    assert no_sell_history.value["current"]["without"]["solar_income"] == 0.0
+
+    for entity_id in (buy_id, sell_id, ids["power_consumption_entity_id"]):
+        incomplete_stats = dict(data["stats"])
+        incomplete_series = list(incomplete_stats[entity_id])
+        del incomplete_series[len(incomplete_series) // 2]
+        incomplete_stats[entity_id] = incomplete_series
+        incomplete_data = {**data, "stats": incomplete_stats}
+        incomplete = engine.run_job(snap, engine.what_if, incomplete_data, {})
+        assert incomplete.error is not None
+        assert "Incomplete hourly long-term statistics" in str(incomplete.error)
+
 
 CFG = OptimizerConfig(battery_size=10.0, level_min=5.0, level_max=100.0, max_charge=5.0, max_discharge=5.0, efficiency=0.95, wear=0.1)
 
