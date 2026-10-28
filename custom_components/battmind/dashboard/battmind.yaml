@@ -2814,6 +2814,7 @@ views:
             graph_span: 31d
             span:
               end: day
+              offset: +1d
             now:
               show: false
             yaxis:
