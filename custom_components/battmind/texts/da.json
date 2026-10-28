@@ -72,6 +72,9 @@
     "force_powerwall_max_hours_old_discharge": {
       "description": "Gammel strøm bruges/sælges"
     },
+    "optimize_solar_charging": {
+      "description": "Optimer solcelleopladning"
+    },
     "blocked_solar_charge": {
       "description": "Blokeret solcelle opladning"
     }
@@ -253,6 +256,8 @@
     },
     "what_if": {
       "title": "BattMind ({prefix}) · What-if-resultat",
+      "started": "What-if-beregningen er startet og kan tage lidt tid ved længere historik. Indlæser op til {days} dages data; timer med manglende data springes over.",
+      "failed": "What-if-beregningen mislykkedes: {error}",
       "current": "Nuværende",
       "scenario": "What-if",
       "changed_settings": "Valgte ændringer og regler",
