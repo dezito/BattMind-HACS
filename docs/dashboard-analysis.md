@@ -173,6 +173,12 @@ start, "3 days ahead" after 3 days.
 The required battery level until the next charge (48 hours), kWh charged by solar (7 days) and the
 consumption forecast per hour with the three forecast types.
 
+### What-if simulator
+
+A short description and a link to **Settings → Developer tools → Actions** with the
+**battmind.what_if** action preselected (requires an administrator). See
+[What-if simulator](what-if-simulator.md).
+
 ## Editing the dashboard
 
 You can edit the dashboard like any other (**Edit**, or **⋮ → Raw configuration editor** to copy it). Once

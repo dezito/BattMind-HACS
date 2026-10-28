@@ -3124,3 +3124,14 @@ views:
               columns: full
               rows: auto
         column_span: 4
+      # link to the what-if action (battmind.what_if) in the developer tools
+      - type: grid
+        column_span: 4
+        cards:
+          - type: heading
+            heading: '@@section_what_if@@'
+            icon: mdi:flask-outline
+          - type: markdown
+            content: "@@what_if_explain@@\n\n[@@what_if_open@@](/config/tools/action?service=battmind.what_if)"
+            grid_options:
+              columns: full
