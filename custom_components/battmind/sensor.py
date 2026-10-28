@@ -37,6 +37,16 @@ class BattMindSensor(BattMindUpdatingEntity, SensorEntity):
         elif key == "powerwall_action":
             self._attr_device_class = SensorDeviceClass.ENUM
             self._attr_options = list(POWERWALL_ACTION_STATES)
+        elif key == "analysis":
+            # state: savings this month
+            self._attr_device_class = SensorDeviceClass.MONETARY
+            self._attr_suggested_display_precision = 2
+
+    @property
+    def native_unit_of_measurement(self):
+        if self._key == "analysis":
+            return self.hass.config.currency if self.hass else None
+        return super().native_unit_of_measurement
 
     @property
     def native_value(self):

@@ -737,7 +737,7 @@
         "name": "kWh charged by solar"
       },
       "analysis": {
-        "name": "Analysis"
+        "name": "Savings this month"
       }
     }
   },

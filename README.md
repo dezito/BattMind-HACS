@@ -247,7 +247,7 @@ The plan is recalculated 5 seconds after a setting is changed. The values are ke
 | `sensor.battmind_current_charging_rule` | Current rule as text |
 | `sensor.battmind_battery_level_needed` | Required battery level until the next charge (%) |
 | `sensor.battmind_kwh_charged_by_solar` | kWh charged by solar (only with solar panels) |
-| `sensor.battmind_analysis` | Savings this month; the analysis per month and day as attributes (used by the dashboard) |
+| `sensor.battmind_analysis` | Savings this month (in Home Assistant's currency); the analysis per month and day as attributes (used by the dashboard) |
 | `sensor.battmind_overview` | Overview and plan (markdown in the `overview` attribute) |
 | `sensor.battmind_charging_history` | Charging history (markdown in the `history` attribute) |
 | `sensor.battmind_emoji_description` | Emoji explanation (markdown in the `description` attribute) |
@@ -262,7 +262,7 @@ With **Dashboard in the sidebar** enabled (default), each instance gets its own 
 e.g. `/battmind-dashboard`, with three views:
 
 - **Overview:** the battery level forecast with the planned charging and discharging, the electricity
-  prices with sell price and solar forecast, the current rule and action, the charging history and the overview
+  prices with sell price and solar forecast, the current rule and action, a status with battery, consumption, solar, price and savings, the charging history and the overview
 - **Settings:** the planners and their limits, grouped (control, profit, charging, discharging, selling,
   solar), each with a "Read more"
 - **Analysis:** what the battery earns and how well BattMind plans

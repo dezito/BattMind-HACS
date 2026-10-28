@@ -347,3 +347,34 @@ async def test_sidebar_dashboard_can_be_edited_and_reset(hass: HomeAssistant, ha
     await hass.services.async_call("button", "press", {"entity_id": f"button.{PREFIX}_reset_dashboard"}, blocking=True)
     assert await command({"type": "lovelace/config"}) == generated
     await async_unload_and_join(hass, entry)
+
+
+def _status_entities(**options) -> list[str]:
+    content = yaml.safe_load(render_dashboard(build_config({**OPTIONS, **options}), "battmind"))
+    cards = next(node["cards"] for node in walk(content) if any(card.get("heading") == "Status" for card in node.get("cards", [])))
+    index = next(i for i, card in enumerate(cards) if card.get("heading") == "Status")
+    return [row["entity"] for row in cards[index + 1]["entities"]]
+
+
+def test_status_section_shows_the_configured_entities() -> None:
+    config = build_config(OPTIONS)
+    home = config["home"]["entity_ids"]
+    expected = [
+        home["powerwall_battery_level_entity_id"],
+        home["powerwall_watt_flow_entity_id"],
+        home["power_consumption_entity_id"],
+    ]
+    if config["solar"]["entity_ids"]["production_entity_id"]:
+        expected += [config["solar"]["entity_ids"]["production_entity_id"], "sensor.battmind_kwh_charged_by_solar"]
+    expected += [config["prices"]["entity_ids"]["energidataservice_buy_entity_id"], "sensor.battmind_analysis"]
+    assert _status_entities() == expected
+
+
+def test_status_section_drops_missing_entities() -> None:
+    entities = _status_entities(
+        powerwall_watt_flow_entity_id="", production_entity_id="", stromligning_buy_current_price="sensor.sl_price"
+    )
+    assert "sensor.powerwall_battery_now" not in entities
+    assert "sensor.solar_power_production" not in entities
+    assert "sensor.battmind_kwh_charged_by_solar" not in entities
+    assert entities[-2:] == ["sensor.sl_price", "sensor.battmind_analysis"]

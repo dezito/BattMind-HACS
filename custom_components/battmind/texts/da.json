@@ -422,6 +422,7 @@
     "solar_forecast": "Solcelle prognose",
     "forecast": "Prognose",
     "debug_info": "Debug info",
+    "section_status": "Status",
     "section_problem": "Problem eller fejl?",
     "help_problem": "**Et crash eller en fejl** (en fejlnotifikation, *Fejl* som laderegel, entiteter der bliver ved med at være utilgængelige) **eller en forkert beslutning** (den ladede, afladede eller solgte, når den ikke burde (eller lod være, når den burde), eller lade-/afladereglen ser forkert ud):\n\n1. Tryk på **Eksportér debug-info** herunder **så hurtigt som muligt** - filen indeholder de seneste beregninger og logbeskeder, de ældre bliver erstattet efterhånden.\n2. Der kommer en notifikation. Download filen og opret GitHub-issuet fra linket i den (version og tidspunkt er udfyldt).\n3. Beskriv hvad der skete og **hvornår** (tidspunktet), hvilken regel og batterihandlingen der blev vist, og hvad du havde forventet i stedet. Et skærmbillede af planen hjælper.\n4. Træk filen ind i feltet *Debug file*.\n\nFilen er anonymiseret: ingen navne, adgangskoder, API-nøgler, koordinater eller adresser, entitetsnavne er erstattet. Intet bliver sendt af sig selv - du bestemmer, hvad du uploader.",
     "recalc_history": "Genberegn dagens ladehistorik",

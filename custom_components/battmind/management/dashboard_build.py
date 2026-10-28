@@ -115,7 +115,16 @@ def external_entities(config: dict[str, Any]) -> dict[str, str]:
     prices = config["prices"]["entity_ids"]
     sl_buy = prices["stromligning_buy_current_price"]
     sl_sell = prices["stromligning_sell_current_price"]
+    home = config["home"]["entity_ids"]
+    production = config["solar"]["entity_ids"]["production_entity_id"]
     mapping = {
+        # status section on the overview
+        "sensor.powerwall_charge": home["powerwall_battery_level_entity_id"],
+        "sensor.powerwall_battery_now": home["powerwall_watt_flow_entity_id"],
+        "sensor.house_power_consumption": home["power_consumption_entity_id"],
+        "sensor.solar_power_production": production,
+        # only created with solar production (sensor.py); the prefix is replaced afterwards
+        "sensor.battmind_kwh_charged_by_solar": "sensor.battmind_kwh_charged_by_solar" if production else "",
         "sensor.energi_data_service": prices["energidataservice_buy_entity_id"],
         "sensor.energi_data_service_salg": prices["energidataservice_sell_entity_id"],
         "sensor.stromligning_current_price_vat": sl_buy,

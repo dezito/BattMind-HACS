@@ -737,7 +737,7 @@
         "name": "kWh ladet af solcellerne"
       },
       "analysis": {
-        "name": "Analyse"
+        "name": "Besparelse denne måned"
       }
     }
   },
