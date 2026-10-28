@@ -156,6 +156,7 @@ def test_what_if_simulator_does_not_change_the_active_plan() -> None:
     assert simulation["assumptions"]["round_trip_loss"] == pytest.approx(5)
     assert simulation["scenario"]["start"] == simulation["current"]["start"]
     assert simulation["period"]["hours"] == 48
+    assert simulation["period"]["days"] == 2.0
     assert "plan" not in simulation
     assert engine.optimizer_shadow is active_plan
 
@@ -173,15 +174,20 @@ def test_what_if_simulator_does_not_change_the_active_plan() -> None:
     assert no_sell_history.value["assumptions"]["sell_price_history_available"] is False
     assert no_sell_history.value["current"]["without"]["solar_income"] == 0.0
 
+    gap_index = len(timestamps) // 2
+    expected_start = datetime.datetime.fromtimestamp(
+        timestamps[gap_index + 1], snap.tz
+    ).replace(tzinfo=None).isoformat()
     for entity_id in (buy_id, sell_id, ids["power_consumption_entity_id"]):
         incomplete_stats = dict(data["stats"])
         incomplete_series = list(incomplete_stats[entity_id])
-        del incomplete_series[len(incomplete_series) // 2]
+        del incomplete_series[gap_index]
         incomplete_stats[entity_id] = incomplete_series
         incomplete_data = {**data, "stats": incomplete_stats}
         incomplete = engine.run_job(snap, engine.what_if, incomplete_data, {})
-        assert incomplete.error is not None
-        assert "Incomplete hourly long-term statistics" in str(incomplete.error)
+        assert incomplete.error is None, incomplete.error
+        assert incomplete.value["period"]["hours"] == len(timestamps) - gap_index - 1
+        assert incomplete.value["period"]["start"] == expected_start
 
 
 CFG = OptimizerConfig(battery_size=10.0, level_min=5.0, level_max=100.0, max_charge=5.0, max_discharge=5.0, efficiency=0.95, wear=0.1)
