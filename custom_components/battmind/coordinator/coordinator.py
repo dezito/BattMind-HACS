@@ -211,7 +211,7 @@ class BattMindCoordinator(CoordinatorLifecycle, CoordinatorEvents, CoordinatorDa
         """Load hourly recorder statistics and run an economic historical comparison."""
         if "recorder" not in self.hass.config.components:
             raise HomeAssistantError("Recorder is required for the historical what-if comparison")
-        from homeassistant.components.recorder import get_instance
+        from homeassistant.components.recorder import get_instance, history
         from homeassistant.components.recorder.statistics import statistics_during_period
 
         price_ids = self.config["prices"]["entity_ids"]
@@ -228,34 +228,43 @@ class BattMindCoordinator(CoordinatorLifecycle, CoordinatorEvents, CoordinatorDa
         )
         entities = {entity_id for entity_id in (*self.statistics_entities, buy_id, sell_id) if entity_id}
         end = dt_util.utcnow().replace(minute=0, second=0, microsecond=0)
+        start = end - datetime.timedelta(days=history_days)
         try:
-            stats = await get_instance(self.hass).async_add_executor_job(
+            recorder = get_instance(self.hass)
+            stats = await recorder.async_add_executor_job(
                 statistics_during_period,
                 self.hass,
-                end - datetime.timedelta(days=history_days),
+                start,
                 end,
                 entities,
                 "hour",
                 None,
                 {"mean", "state"},
             )
+            states = await recorder.async_add_executor_job(
+                partial(
+                    history.get_significant_states,
+                    self.hass,
+                    start,
+                    end,
+                    entities,
+                    None,
+                    include_start_time_state=True,
+                    significant_changes_only=False,
+                    minimal_response=False,
+                    no_attributes=True,
+                )
+            )
         except Exception as err:  # noqa: BLE001
-            raise HomeAssistantError(f"Could not read long-term statistics: {err}") from err
+            raise HomeAssistantError(f"Could not read Recorder history and long-term statistics: {err}") from err
+        recorder_hourly = self._recorder_hourly_means(states, start, end)
+        combined_stats, statistical_timestamps = self._combine_what_if_statistics(entities, stats, recorder_hourly)
         data = {
             "buy_entity_id": buy_id,
             "sell_entity_id": sell_id,
             "sell_price_history_available": sell_price_history_available,
-            "stats": {
-                entity_id: [
-                    (
-                        row["start"].timestamp() if isinstance(row["start"], datetime.datetime) else float(row["start"]),
-                        row["mean"] if row.get("mean") is not None else row["state"],
-                    )
-                    for row in rows
-                    if row.get("mean") is not None or row.get("state") is not None
-                ]
-                for entity_id, rows in stats.items()
-            },
+            "stats": combined_stats,
+            "long_term_statistics_timestamps": statistical_timestamps,
         }
         return await self.async_run_job("what_if", data, overrides)
 

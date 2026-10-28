@@ -29,15 +29,22 @@ Example action:
       round_trip_loss: 5
       wear_cost_per_kwh: 0.1
       usage_reserve: 30
+      most_profit: false
+      min_profit_per_kwh: 0.25
 
 All fields are optional. Power is in W, battery capacity in kWh, and battery levels and round-trip loss
 are percentages. Setting **round_trip_loss** temporarily replaces the configured efficiency curves.
+You can also override the rule switches used by the optimizer as constraints (for example
+**most_profit**, **grid_charge_to_sell**, or **optimize_solar_charging**) and the thresholds
+**min_profit_per_kwh**, **min_total_profit**, and **min_sell_kwh**. The notification shows the current
+switch states beside the scenario states.
 
 ## Reading the response
 
 | Part | Meaning |
 |---|---|
 | **period** | first/last hour and the amount of historical data actually used |
+| **data_sources** | counts of used entity-hour samples from long-term statistics and raw Recorder fallback |
 | **current_assumptions** | configured battery values used as the current comparison |
 | **assumptions** | the complete temporary battery values used for the scenario |
 | **current** | historical economy with the configured battery |
@@ -52,13 +59,19 @@ energy remaining in the battery, but excludes the battery purchase price and any
 
 This is a hindsight calculation, not a forecast or guarantee: the simulation uses each day's actual
 prices and solar production as if they were known ahead of time, so treat the result as an optimistic
-historical benchmark rather than expected savings or battery payback. It requires continuous hourly
-long-term statistics for the configured consumption, battery-power, solar, ignored-load and price
-entities used in the comparison. Statistics are read from Home Assistant's Recorder for those
-configured entities; the simulator does not fall back to BattMind's offline price database. The
-simulator uses only the latest continuous period shared by the required entities, starting after the
-most recent gap. It never skips missing hours within the simulated period or assumes that the buy price
-was earned when selling. The displayed day count is based on the number of hourly samples, not calendar
-dates. Without a configured historical sell-price entity, variable export revenue is treated as zero
-(a fixed configured solar sell price is still used). Home Assistant may provide fewer days than
-requested if older statistics are unavailable.
+historical benchmark rather than expected savings or battery payback. It uses Home Assistant Recorder's
+long-term statistics first and fills missing hourly values only from fully covered, time-weighted raw
+Recorder state history for the same configured entities. Unknown/unavailable state periods are never
+filled or assumed. The simulator does not use BattMind's offline price database. It uses only the latest
+continuous period shared by the required entities, starting after the most recent remaining gap; it
+never skips missing hours or assumes that the buy price was earned when selling.
+
+The current controller mode is included under **current_assumptions.control_mode**. The current rule
+switches and the scenario's overridden switches constrain which actions the historical
+optimizer may choose. This is not a replay of the exact live rule planner: the optimizer still has
+hindsight of actual prices and solar, and uses the configured rule switches as action constraints.
+For tractable year-long comparisons, it optimizes one day at a time regardless of the live
+**use_midnight_battery_level** setting.
+The displayed day count is based on hourly samples, not calendar dates. Without a configured historical
+sell-price entity, variable export revenue is treated as zero (a fixed configured solar sell price is
+still used). Home Assistant may provide fewer days than requested if older statistics are unavailable.

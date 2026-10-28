@@ -83,15 +83,57 @@ async def test_enforce_planning_service(hass: HomeAssistant, loaded_entry) -> No
     assert loaded_entry.runtime_data.last_job["error"] is None
 
 
+async def test_what_if_reads_statistics_and_raw_recorder_history(
+    hass: HomeAssistant, loaded_entry
+) -> None:
+    hass.config.components.add("recorder")
+    coordinator = loaded_entry.runtime_data
+    recorder = AsyncMock()
+    recorder.async_add_executor_job.side_effect = [{}, {}]
+    coordinator.async_run_job = AsyncMock(return_value=JobResult(value={}))
+
+    with patch("homeassistant.components.recorder.get_instance", return_value=recorder):
+        await coordinator.async_what_if({}, 1)
+
+    assert recorder.async_add_executor_job.await_count == 2
+    job_name, data, overrides = coordinator.async_run_job.await_args.args
+    assert job_name == "what_if"
+    assert "stats" in data
+    assert "long_term_statistics_timestamps" in data
+    assert overrides == {}
+
+
 async def test_what_if_service_returns_simulation_without_changing_options(
     hass: HomeAssistant, loaded_entry
 ) -> None:
     options = dict(loaded_entry.options)
+    rules = {
+        key: True
+        for key in (
+            "cheapest_hour_fill_planner",
+            "most_expensive_planner",
+            "needed_before_max_level_planner",
+            "negative_price_planner",
+            "grid_charge_to_sell",
+            "most_profit",
+            "sell_excess_kwh_available",
+            "force_powerwall_max_hours_old_discharge",
+            "discharge_before_solar",
+            "only_discharge_on_profit",
+            "prioritize_discharge_hours_by_energy_cost",
+            "optimize_solar_charging",
+        )
+    }
+    scenario_rules = {**rules, "most_profit": False}
     with patch.object(persistent_notification, "async_create", wraps=persistent_notification.async_create) as create:
         loaded_entry.runtime_data.async_what_if = AsyncMock(
             return_value=JobResult(
                 value={
                     "period": {"days": 365, "hours": 8760},
+                    "data_sources": {
+                        "long_term_statistics_samples": 100,
+                        "recorder_history_fallback_samples": 5,
+                    },
                     "current_assumptions": {
                         "battery_size": 13.5,
                         "minimum_level": 10,
@@ -102,6 +144,11 @@ async def test_what_if_service_returns_simulation_without_changing_options(
                         "round_trip_loss": 10,
                         "wear_cost_per_kwh": 0.1,
                         "usage_reserve": 20,
+                        "min_profit_per_kwh": 0.0,
+                        "min_total_profit": 0.0,
+                        "min_sell_kwh": 0.2,
+                        "rules": rules,
+                        "control_mode": "optimizer",
                     },
                     "assumptions": {
                         "battery_size": 20,
@@ -113,6 +160,10 @@ async def test_what_if_service_returns_simulation_without_changing_options(
                         "round_trip_loss": 5,
                         "wear_cost_per_kwh": 0.1,
                         "usage_reserve": 20,
+                        "min_profit_per_kwh": 0.0,
+                        "min_total_profit": 0.0,
+                        "min_sell_kwh": 0.2,
+                        "rules": scenario_rules,
                     },
                     "current": {
                         "profit": 100,
@@ -161,6 +212,7 @@ async def test_what_if_service_returns_simulation_without_changing_options(
                 "config_entry_id": loaded_entry.entry_id,
                 "battery_size": 20,
                 "round_trip_loss": 5,
+                "most_profit": False,
             },
             blocking=True,
             return_response=True,
@@ -175,7 +227,16 @@ async def test_what_if_service_returns_simulation_without_changing_options(
         in notification
     )
     assert "|---|---|---|" in notification
+    assert coordinator.t("ui.what_if.data_sources", statistics=100, recorder=5) in notification
+    assert coordinator.t(
+        "ui.what_if.control_mode", mode=coordinator.t("ui.what_if.optimizer_mode")
+    ) in notification
     assert f"| **{coordinator.t('ui.what_if.battery_size')}** | 13,5 kWh | 20,0 kWh |" in notification
+    assert (
+        f"| **{coordinator.t('charging_type.most_profit.description')}** | "
+        f"{coordinator.t('ui.what_if.enabled')} | {coordinator.t('ui.what_if.disabled')} |"
+        in notification
+    )
     assert (
         f"| | **{coordinator.t('ui.what_if.current')}** "
         f"| **{coordinator.t('ui.what_if.scenario')}** | |"

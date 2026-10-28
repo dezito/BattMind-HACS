@@ -157,6 +157,8 @@ def test_what_if_simulator_does_not_change_the_active_plan() -> None:
     assert simulation["scenario"]["start"] == simulation["current"]["start"]
     assert simulation["period"]["hours"] == 48
     assert simulation["period"]["days"] == 2.0
+    assert simulation["data_sources"]["long_term_statistics_samples"] > 0
+    assert simulation["data_sources"]["recorder_history_fallback_samples"] == 0
     assert "plan" not in simulation
     assert engine.optimizer_shadow is active_plan
 
@@ -173,6 +175,45 @@ def test_what_if_simulator_does_not_change_the_active_plan() -> None:
     assert no_sell_history.error is None, no_sell_history.error
     assert no_sell_history.value["assumptions"]["sell_price_history_available"] is False
     assert no_sell_history.value["current"]["without"]["solar_income"] == 0.0
+
+    changed_rules = engine.run_job(
+        snap,
+        engine.what_if,
+        data,
+        {"most_profit": False, "min_profit_per_kwh": 0.25},
+    )
+    assert changed_rules.error is None, changed_rules.error
+    assert (
+        changed_rules.value["current_assumptions"]["rules"]["most_profit"]
+        == engine.enabled("most_profit")
+    )
+    assert changed_rules.value["assumptions"]["rules"]["most_profit"] is False
+    assert changed_rules.value["assumptions"]["min_profit_per_kwh"] == pytest.approx(0.25)
+
+    profitable_sell_data = {
+        **data,
+        "stats": {
+            **data["stats"],
+            sell_id: [
+                (ts, 3.0 if datetime.datetime.fromtimestamp(ts).hour >= 6 else 0.4)
+                for ts in timestamps
+            ],
+        },
+    }
+    no_sales = engine.run_job(
+        snap,
+        engine.what_if,
+        profitable_sell_data,
+        {
+            "most_profit": False,
+            "sell_excess_kwh_available": False,
+            "force_powerwall_max_hours_old_discharge": False,
+            "discharge_before_solar": False,
+            "grid_charge_to_sell": False,
+        },
+    )
+    assert no_sales.error is None, no_sales.error
+    assert no_sales.value["scenario"]["profit"] < no_sales.value["current"]["profit"]
 
     gap_index = len(timestamps) // 2
     expected_start = datetime.datetime.fromtimestamp(
