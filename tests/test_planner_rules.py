@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import datetime
+from copy import deepcopy
 
 import pytest
 
@@ -15,10 +16,12 @@ from custom_components.battmind.engine.optimizer import (
     simulate,
     step_hour,
 )
+from custom_components.battmind.engine.planner.replay import _known_until, _next_planning
+from custom_components.battmind.engine.planner import what_if as what_if_module
 from custom_components.battmind.engine.planner.what_if import _nearest_eds_tariffs
 from custom_components.battmind.prices.base import calculate_sell_price
 
-from .test_engine import DAY, OPTIONS, SOLAR_SURPLUS, TEXTS, _power_values_db, charge_hours, snapshot
+from .test_engine import DAY, OPTIONS, SOLAR_SURPLUS, TEXTS, TZ, _power_values_db, charge_hours, snapshot
 
 NEGATIVE_HOURS = (1, 2, 3, 12, 13)
 OFF = {
@@ -651,3 +654,97 @@ def test_midnight_battery_level_optimises_every_day_on_its_own() -> None:
     assert merged.actions == first.actions + second.actions
     assert merged.levels == first.levels + second.levels
     assert len(explanations) == 4
+
+
+def _what_if_data(engine: BattMindEngine, days: int = 2) -> dict:
+    """Hourly history: cheap nights, expensive days with a profitable sell price and midday sun."""
+    ids = engine.config["home"]["entity_ids"]
+    solar_id = engine.config["solar"]["entity_ids"]["production_entity_id"]
+    start = datetime.datetime.combine(DAY - datetime.timedelta(days=days), datetime.time(), tzinfo=TZ)
+    hours = [start + datetime.timedelta(hours=hour) for hour in range(24 * days)]
+    return {
+        "buy_entity_id": "sensor.historical_buy",
+        "sell_entity_id": "sensor.historical_sell",
+        "stats": {
+            ids["power_consumption_entity_id"]: [(hour.timestamp(), 1000.0) for hour in hours],
+            ids["powerwall_watt_flow_entity_id"]: [(hour.timestamp(), 0.0) for hour in hours],
+            solar_id: [(hour.timestamp(), 2500.0 if 10 <= hour.hour <= 14 else 0.0) for hour in hours],
+            "sensor.historical_buy": [(hour.timestamp(), 0.5 if hour.hour < 6 else 2.5) for hour in hours],
+            "sensor.historical_sell": [(hour.timestamp(), 0.3 if hour.hour < 6 else 3.0) for hour in hours],
+        },
+    }
+
+
+@pytest.mark.parametrize("optimizer_control", [True, False])
+def test_what_if_replays_the_planner_without_touching_the_live_engine(optimizer_control: bool) -> None:
+    now = datetime.datetime.combine(DAY, datetime.time(3, 30))
+    settings = {"optimizer_control": optimizer_control}
+    engine, _ = planned(3, 40, settings, solar=True)
+    live = deepcopy((engine.plan, engine.charge_hours, engine.optimizer_shadow, engine.shadow_plan_actions))
+    history = deepcopy(engine.charging_history_db)
+    result = engine.run_job(
+        realistic_snapshot(now, 40, settings), engine.what_if, _what_if_data(engine), {"optimizer_control": not optimizer_control}
+    )
+
+    assert result.error is None, result.error
+    simulation = result.value
+    current_mode, scenario_mode = ("optimizer", "rules") if optimizer_control else ("rules", "optimizer")
+    assert simulation["current_assumptions"]["control_mode"] == current_mode
+    assert simulation["assumptions"]["control_mode"] == scenario_mode
+    assert simulation["assumptions"]["rules"]["optimizer_control"] is not optimizer_control
+    for column in ("current", "scenario"):
+        # the cheap nights are used for the expensive days
+        assert simulation[column]["charged_grid_kwh"] > 0.0
+        assert simulation[column]["profit"] > 0.0
+    assert (engine.plan, engine.charge_hours, engine.optimizer_shadow, engine.shadow_plan_actions) == live
+    assert engine.charging_history_db == history
+
+
+@pytest.mark.parametrize("optimizer_control", [True, False])
+def test_what_if_excluded_sell_hours_stop_the_sales(optimizer_control: bool) -> None:
+    now = datetime.datetime.combine(DAY, datetime.time(3, 30))
+    settings = {"optimizer_control": optimizer_control}
+    engine, _ = planned(3, 40, settings, solar=True)
+    result = engine.run_job(
+        realistic_snapshot(now, 40, settings),
+        engine.what_if,
+        _what_if_data(engine),
+        {"exclude_sell_hours": ",".join(str(hour) for hour in range(24))},
+    )
+
+    assert result.error is None, result.error
+    simulation = result.value
+    assert simulation["current"]["with"]["sold_kwh"] > 0.0
+    assert simulation["scenario"]["with"]["sold_kwh"] == 0.0
+    assert simulation["assumptions"]["exclude_sell_hours"] == ",".join(str(hour) for hour in range(24))
+
+
+
+def test_what_if_reports_the_progress_at_most_every_interval(monkeypatch: pytest.MonkeyPatch) -> None:
+    now = datetime.datetime.combine(DAY, datetime.time(3, 30))
+    settings = {"optimizer_control": False}
+    engine, _ = planned(3, 40, settings, solar=True)
+    data = _what_if_data(engine)
+
+    reports: list[dict] = []
+    monkeypatch.setattr(what_if_module, "PROGRESS_INTERVAL", 0.0)
+    result = engine.run_job(realistic_snapshot(now, 40, settings), engine.what_if, data, {"most_profit": False}, progress=reports.append)
+    assert result.error is None, result.error
+    assert reports and {report["steps"] for report in reports} == {2}
+    assert [report["percent"] for report in reports] == sorted(report["percent"] for report in reports)
+    assert reports[-1] == {"percent": 100, "step": 2, "steps": 2, "hours": 48, "total_hours": 48}
+
+    reports.clear()
+    monkeypatch.setattr(what_if_module, "PROGRESS_INTERVAL", 3600.0)
+    result = engine.run_job(realistic_snapshot(now, 40, settings), engine.what_if, data, {}, progress=reports.append)
+    assert result.error is None, result.error
+    assert reports == []
+
+
+def test_replay_plans_when_the_prices_of_the_next_day_are_published() -> None:
+    morning = datetime.datetime(2026, 10, 22, 5)
+    assert _known_until(morning) == datetime.datetime(2026, 10, 23)
+    assert _next_planning(morning) == datetime.datetime(2026, 10, 22, 13)
+    afternoon = datetime.datetime(2026, 10, 22, 13)
+    assert _known_until(afternoon) == datetime.datetime(2026, 10, 24)
+    assert _next_planning(afternoon) == datetime.datetime(2026, 10, 23, 13)

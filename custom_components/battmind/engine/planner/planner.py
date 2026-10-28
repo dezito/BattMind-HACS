@@ -31,6 +31,12 @@ FUNC_NAME = "cheap_grid_charge_hours"
 class Planner(WhatIf, Overview, ChargingHours, ChargingFlow, FutureCharging):
     """The charging / discharging planner."""
 
+    def consumption_forecast_values(self, timestamp: datetime.datetime) -> list[float]:
+        """W of the hour of the day (oldest first) the consumption forecast is made from."""
+        return reverse_list(get_list_values(
+            self.power_values_db.get(timestamp.hour, {}).get("power_consumption_without_all_exclusion", [0.0])
+        ))
+
     def cheap_grid_charge_hours(self, force_recalculate: bool = False):  # noqa: C901
         config = self.config
         t = self.t
@@ -144,9 +150,7 @@ class Planner(WhatIf, Overview, ChargingHours, ChargingFlow, FutureCharging):
 
             for hour in range(from_hour, 24):
                 dt = start_of_day_datetime + datetime.timedelta(hours=hour)
-                values = reverse_list(get_list_values(
-                    self.power_values_db.get(hour, {}).get("power_consumption_without_all_exclusion", [0.0])
-                ))
+                values = self.consumption_forecast_values(dt)
                 ema = calculate_ema(values) / 1000 * correction_factor
                 trend = calculate_trend(values) / 1000 * correction_factor if values else 0.0
                 avg = average(values) / 1000 * correction_factor

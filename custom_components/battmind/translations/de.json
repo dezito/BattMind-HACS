@@ -559,10 +559,10 @@
         "name": "Min. überschüssige kWh zum Verkauf"
       },
       "usage_reserve": {
-        "name": "Reserve f?r das Haus (nicht verkaufen)"
+        "name": "Reserve für das Haus (nicht verkaufen)"
       },
       "powerwall_max_hours_old": {
-        "name": "Max. Alter der kWh im Hausbatterie"
+        "name": "Max. Alter der kWh in der Hausbatterie"
       }
     },
     "select": {
@@ -654,20 +654,45 @@
   },
   "services": {
     "what_if": {
-      "name": "What-if simulator",
-      "description": "Compares the economy of the configured battery with temporary assumptions using up to one year of hourly long-term statistics. Nothing is saved and the active plan is not changed.",
+      "name": "What-if-Simulator",
+      "description": "Spielt die BattMind-Planung (Regeln oder Optimierer) mit bis zu einem Jahr stündlicher Historie mit den aktuellen Einstellungen und mit vorübergehenden Werten nach und vergleicht die Wirtschaftlichkeit. Es wird nichts gespeichert und der aktive Plan wird nicht geändert.",
       "fields": {
-        "config_entry_id": {"name": "Config entry", "description": "Only simulate this BattMind entry (default: all)."},
-        "history_days": {"name": "History", "description": "Number of days of hourly long-term statistics to compare (default: 365)."},
-        "battery_size": {"name": "Usable battery capacity", "description": "Temporary usable capacity in kWh. Empty uses the configured value."},
-        "minimum_level": {"name": "Minimum battery level", "description": "Temporary minimum state of charge in percent."},
-        "maximum_level": {"name": "Maximum battery level", "description": "Temporary maximum state of charge in percent."},
-        "starting_level": {"name": "Starting battery level", "description": "Temporary state of charge at the start of the simulation. Empty uses the current level."},
-        "max_charging_power": {"name": "Maximum charging power", "description": "Temporary maximum AC charging power in W."},
-        "max_discharging_power": {"name": "Maximum discharging power", "description": "Temporary maximum AC discharging power in W."},
-        "round_trip_loss": {"name": "Round-trip loss", "description": "Temporary round-trip loss in percent. When set, it replaces the configured efficiency curves for this simulation."},
-        "wear_cost_per_kwh": {"name": "Wear cost", "description": "Temporary wear cost per discharged kWh."},
-        "usage_reserve": {"name": "Reserve for house use", "description": "Temporary percentage reserved for the house and not exported."}
+        "config_entry_id": {"name": "Konfigurationseintrag", "description": "Nur diesen BattMind-Eintrag simulieren (Standard: alle)."},
+        "history_days": {"name": "Historie", "description": "Anzahl der Tage stündlicher Historie für den Vergleich (Standard: 365)."},
+        "battery_size": {"name": "Nutzbare Batteriekapazität", "description": "Vorübergehende nutzbare Kapazität in kWh. Weglassen, um die aktuelle Einstellung zu verwenden."},
+        "minimum_level": {"name": "Minimaler Batteriestand", "description": "Vorübergehender minimaler Ladestand der Batterie in Prozent. Weglassen, um die aktuelle Einstellung zu verwenden."},
+        "maximum_level": {"name": "Maximaler Batteriestand", "description": "Vorübergehender maximaler Ladestand der Batterie in Prozent. Weglassen, um die aktuelle Einstellung zu verwenden."},
+        "starting_level": {"name": "Startfüllstand", "description": "Ladestand zu Beginn beider Vergleiche. Weglassen, um das konfigurierte Minimum zu verwenden."},
+        "max_charging_power": {"name": "Maximale Ladeleistung", "description": "Vorübergehende maximale AC-Ladeleistung in W. Weglassen, um die aktuelle Einstellung zu verwenden."},
+        "max_discharging_power": {"name": "Maximale Entladeleistung", "description": "Vorübergehende maximale AC-Entladeleistung in W. Weglassen, um die aktuelle Einstellung zu verwenden."},
+        "round_trip_loss": {"name": "Gesamter Ladeverlust", "description": "Vorübergehender Gesamtladeverlust in Prozent. Wenn angegeben, ersetzt er in dieser Simulation die konfigurierten Wirkungsgradkurven. Weglassen, um die aktuelle Einstellung zu verwenden."},
+        "wear_cost_per_kwh": {"name": "Verschleiß pro kWh", "description": "Vorübergehende Verschleißkosten pro entladener kWh. Weglassen, um die aktuelle Einstellung zu verwenden."},
+        "usage_reserve": {"name": "Hausreserve", "description": "Vorübergehender Prozentsatz, der für das Haus reserviert und nicht verkauft wird. Weglassen, um die aktuelle Einstellung zu verwenden."},
+        "min_profit_per_kwh": {"name": "Mindestgewinn pro kWh", "description": "Ein geplantes Laden, Entladen oder Verkaufen muss diesen Gewinn pro kWh erreichen. Weglassen, um die aktuelle Einstellung zu verwenden."},
+        "min_total_profit": {"name": "Mindestgesamtgewinn", "description": "Eine Ladestunde oder ein Verkauf muss diesen Gesamtgewinn erreichen. Weglassen, um die aktuelle Einstellung zu verwenden."},
+        "min_sell_kwh": {"name": "Mindestverkaufsmenge", "description": "Kleinste Menge, die auf einmal verkauft wird. Weglassen, um die aktuelle Einstellung zu verwenden."},
+        "cheap_price_periods": {"name": "Günstige Preiszeiträume", "description": "Vorübergehender Wert im Szenario. Weglassen, um die aktuelle Einstellung zu verwenden."},
+        "cheapest_price_rise_threshold": {"name": "Anstieg für niedrigsten Preis", "description": "Vorübergehender Wert im Szenario. Weglassen, um die aktuelle Einstellung zu verwenden."},
+        "cheap_price_period_rise_threshold": {"name": "Anstieg für günstige Zeiträume", "description": "Vorübergehender Wert im Szenario. Weglassen, um die aktuelle Einstellung zu verwenden."},
+        "powerwall_max_hours_old": {"name": "Max. Alter der kWh in der Hausbatterie", "description": "Vorübergehender Wert im Szenario. Weglassen, um die aktuelle Einstellung zu verwenden."},
+        "exclude_sell_hours": {"name": "Verkaufsstunden ausschließen", "description": "Stunden (z. B. 17,18,19) ohne Verkauf im Szenario. Weglassen, um die aktuelle Einstellung zu verwenden."},
+        "optimizer_control": {"name": "Batterie mit Optimierung des ganzen Zeitraums steuern", "description": "Ein: die Optimierung des ganzen Zeitraums steuert die Batterie. Aus: die Regeln steuern sie. Weglassen, um die aktuelle Einstellung zu verwenden."},
+        "use_midnight_battery_level": {"name": "Mitternachts-Batteriestand verwenden", "description": "Nur bis Mitternacht planen statt bis zum Ende der bekannten Preise. Weglassen, um die aktuelle Einstellung zu verwenden."},
+        "solar_charging": {"name": "Solarüberschuss-Laden", "description": "Den Solarüberschuss in die Planung einbeziehen. Weglassen, um die aktuelle Einstellung zu verwenden."},
+        "enhance_battery_efficiency": {"name": "Batterieeffizienz verbessern", "description": "Die konfigurierten leistungsabhängigen Wirkungsgradkurven verwenden. Wird ignoriert, wenn ein Gesamtladeverlust angegeben ist. Weglassen, um die aktuelle Einstellung zu verwenden."},
+        "cheapest_hour_fill_planner": {"name": "Laden: Günstigste Zeiträume", "description": "Vorübergehender Zustand dieser Einstellung im Szenario. Weglassen, um die aktuelle Einstellung zu verwenden."},
+        "cheapest_hour_fill_up": {"name": "Laden: In der günstigsten Zeit vollständig laden", "description": "Vorübergehender Zustand dieser Einstellung im Szenario. Weglassen, um die aktuelle Einstellung zu verwenden."},
+        "most_expensive_planner": {"name": "Laden: Teuerste Zeiträume", "description": "Vorübergehender Zustand dieser Einstellung im Szenario. Weglassen, um die aktuelle Einstellung zu verwenden."},
+        "needed_before_max_level_planner": {"name": "Laden: Planer vor maximalem Niveau", "description": "Vorübergehender Zustand dieser Einstellung im Szenario. Weglassen, um die aktuelle Einstellung zu verwenden."},
+        "negative_price_planner": {"name": "Laden: Negative Preise", "description": "Vorübergehender Zustand dieser Einstellung im Szenario. Weglassen, um die aktuelle Einstellung zu verwenden."},
+        "grid_charge_to_sell": {"name": "Laden: Kaufen um zu verkaufen", "description": "Vorübergehender Zustand dieser Einstellung im Szenario. Weglassen, um die aktuelle Einstellung zu verwenden."},
+        "most_profit": {"name": "Entladen: Gewinn maximieren", "description": "Vorübergehender Zustand dieser Einstellung im Szenario. Weglassen, um die aktuelle Einstellung zu verwenden."},
+        "sell_excess_kwh_available": {"name": "Entladen: Überschüssige kWh verkaufen", "description": "Vorübergehender Zustand dieser Einstellung im Szenario. Weglassen, um die aktuelle Einstellung zu verwenden."},
+        "force_powerwall_max_hours_old_discharge": {"name": "Erzwungene Entladung: Max. Alter der kWh in Stunden", "description": "Vorübergehender Zustand dieser Einstellung im Szenario. Weglassen, um die aktuelle Einstellung zu verwenden."},
+        "discharge_before_solar": {"name": "Entladen: Vor der Sonne", "description": "Vorübergehender Zustand dieser Einstellung im Szenario. Weglassen, um die aktuelle Einstellung zu verwenden."},
+        "only_discharge_on_profit": {"name": "Entladen: Nur bei Gewinn", "description": "Vorübergehender Zustand dieser Einstellung im Szenario. Weglassen, um die aktuelle Einstellung zu verwenden."},
+        "prioritize_discharge_hours_by_energy_cost": {"name": "Entladen: Nach Energiekosten priorisieren", "description": "Vorübergehender Zustand dieser Einstellung im Szenario. Weglassen, um die aktuelle Einstellung zu verwenden."},
+        "optimize_solar_charging": {"name": "Solarladung optimieren", "description": "Vorübergehender Zustand dieser Einstellung im Szenario. Weglassen, um die aktuelle Einstellung zu verwenden."}
       }
     },
     "export_data": {

@@ -141,7 +141,7 @@ yours. The easiest way is the blueprint that comes with the integration:
 
 ## 6. Next steps
 
-- [What-if simulator](what-if-simulator.md) - compare temporary battery assumptions with the current plan
+- [What-if simulator](what-if-simulator.md) - replay your history with another battery, controller (rules or optimisation) or planning settings
 
 - [How BattMind plans](how-it-works.md) – the model behind the decisions
 - [Recipes](cookbook.md) – settings for typical setups

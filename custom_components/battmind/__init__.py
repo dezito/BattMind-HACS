@@ -26,6 +26,9 @@ from .const import (
     SERVICE_IMPORT_DATA,
     SERVICE_RECALC_HISTORY_TODAY,
     SERVICE_WHAT_IF,
+    NUMBER_SETTINGS,
+    TEXT_SETTINGS,
+    WHAT_IF_SWITCHES,
 )
 from .management.backup import BACKUP_DIR, async_export, async_import
 from .management.blueprint_install import async_install_blueprints
@@ -52,21 +55,18 @@ _WHAT_IF_SETTINGS = (
     ("min_profit_per_kwh", "min_profit_per_kwh", "{valuta}/kWh"),
     ("min_total_profit", "min_total_profit", "{valuta}"),
     ("min_sell_kwh", "min_sell_kwh", "kWh"),
+    ("cheap_price_periods", "cheap_price_periods", ""),
+    ("cheapest_price_rise_threshold", "cheapest_price_rise_threshold", "{valuta}/kWh"),
+    ("cheap_price_period_rise_threshold", "cheap_price_period_rise_threshold", "{valuta}/kWh"),
+    ("powerwall_max_hours_old", "powerwall_max_hours_old", "h"),
 )
-
-_WHAT_IF_RULES = (
-    "cheapest_hour_fill_planner",
-    "most_expensive_planner",
-    "needed_before_max_level_planner",
-    "negative_price_planner",
-    "grid_charge_to_sell",
-    "most_profit",
-    "sell_excess_kwh_available",
-    "force_powerwall_max_hours_old_discharge",
-    "discharge_before_solar",
-    "only_discharge_on_profit",
-    "prioritize_discharge_hours_by_energy_cost",
-    "optimize_solar_charging",
+# switches without a charging_type description (labelled with ui.what_if.<key>)
+_WHAT_IF_SETTING_SWITCHES = (
+    "optimizer_control",
+    "use_midnight_battery_level",
+    "solar_charging",
+    "enhance_battery_efficiency",
+    "cheapest_hour_fill_up",
 )
 
 
@@ -99,17 +99,24 @@ def _what_if_notification(coordinator: BattMindCoordinator, simulation: dict, ov
     for key, label_key, unit in _WHAT_IF_SETTINGS:
         if key not in overrides or current[key] == scenario[key]:
             continue
-        translated_unit = f"{coordinator.t('ui.common.valuta')}/kWh" if unit == "{valuta}/kWh" else unit
-        decimals = 1 if unit == "kWh" else 2 if unit == "{valuta}/kWh" else None
+        translated_unit = unit.replace("{valuta}", coordinator.t("ui.common.valuta"))
+        decimals = 1 if unit == "kWh" else 2 if unit.startswith("{valuta}") else None
         setting_rows.append(
-            "| **{label}** | {current} {unit} | {scenario} {unit} |".format(
+            "| **{label}** | {current} | {scenario} |".format(
                 label=coordinator.t(f"ui.what_if.{label_key}"),
-                current=_format_what_if_number(current[key], decimals),
-                scenario=_format_what_if_number(scenario[key], decimals),
-                unit=translated_unit,
+                current=f"{_format_what_if_number(current[key], decimals)} {translated_unit}".rstrip(),
+                scenario=f"{_format_what_if_number(scenario[key], decimals)} {translated_unit}".rstrip(),
             )
         )
-    for key in _WHAT_IF_RULES:
+    if "exclude_sell_hours" in overrides and current["exclude_sell_hours"] != scenario["exclude_sell_hours"]:
+        setting_rows.append(
+            "| **{label}** | {current} | {scenario} |".format(
+                label=coordinator.t("ui.what_if.exclude_sell_hours"),
+                current=current["exclude_sell_hours"] or "-",
+                scenario=scenario["exclude_sell_hours"] or "-",
+            )
+        )
+    for key in WHAT_IF_SWITCHES:
         current_enabled = simulation["current_assumptions"]["rules"][key]
         scenario_enabled = simulation["assumptions"]["rules"][key]
         if current_enabled == scenario_enabled:
@@ -117,9 +124,7 @@ def _what_if_notification(coordinator: BattMindCoordinator, simulation: dict, ov
         setting_rows.append(
             "| **{label}** | {current} | {scenario} |".format(
                 label=coordinator.t(
-                    "ui.what_if.use_midnight_battery_level"
-                    if key == "use_midnight_battery_level"
-                    else f"charging_type.{key}.description"
+                    f"ui.what_if.{key}" if key in _WHAT_IF_SETTING_SWITCHES else f"charging_type.{key}.description"
                 ),
                 current=coordinator.t("ui.what_if.enabled" if current_enabled else "ui.what_if.disabled"),
                 scenario=coordinator.t("ui.what_if.enabled" if scenario_enabled else "ui.what_if.disabled"),
@@ -134,8 +139,9 @@ def _what_if_notification(coordinator: BattMindCoordinator, simulation: dict, ov
         current_value = current_summary[key] if key in current_summary else simulation["current"][key]
         scenario_value = scenario_summary[key] if key in scenario_summary else simulation["scenario"][key]
         if income:
-            current_value = -current_value
-            scenario_value = -scenario_value
+            # 0.0 - value: no income is shown as 0,00 and not -0,00
+            current_value = 0.0 - current_value
+            scenario_value = 0.0 - scenario_value
         translated_unit = currency if unit == "{valuta}" else unit
         metric_rows.append(
             "| **{label}** | {current} | {scenario} | {unit} |".format(
@@ -248,7 +254,21 @@ WHAT_IF_SCHEMA = vol.Schema(
         vol.Optional("min_profit_per_kwh"): vol.All(vol.Coerce(float), vol.Range(min=0, max=10)),
         vol.Optional("min_total_profit"): vol.All(vol.Coerce(float), vol.Range(min=0, max=100)),
         vol.Optional("min_sell_kwh"): vol.All(vol.Coerce(float), vol.Range(min=0.2, max=1.0)),
-        **{vol.Optional(key): cv.boolean for key in _WHAT_IF_RULES if key != "use_midnight_battery_level"},
+        **{
+            vol.Optional(key): vol.All(
+                vol.Coerce(float), vol.Range(min=NUMBER_SETTINGS[key]["min"], max=NUMBER_SETTINGS[key]["max"])
+            )
+            for key in (
+                "cheap_price_periods",
+                "cheapest_price_rise_threshold",
+                "cheap_price_period_rise_threshold",
+                "powerwall_max_hours_old",
+            )
+        },
+        vol.Optional("exclude_sell_hours"): vol.All(
+            cv.string, vol.Match(TEXT_SETTINGS["exclude_sell_hours"]["pattern"])
+        ),
+        **{vol.Optional(key): cv.boolean for key in WHAT_IF_SWITCHES},
     }
 )
 
@@ -301,8 +321,26 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
                 title=title,
                 notification_id=notification_id,
             )
+
+            @callback
+            def _progress(info: dict, coordinator: BattMindCoordinator = coordinator, title: str = title) -> None:
+                # the same notification is updated, at most every PROGRESS_INTERVAL seconds
+                persistent_notification.async_create(
+                    hass,
+                    coordinator.t(
+                        "ui.what_if.progress",
+                        percent=info["percent"],
+                        step=info["step"],
+                        steps=info["steps"],
+                        days=round(info["hours"] / 24.0),
+                        total=round(info["total_hours"] / 24.0),
+                    ),
+                    title=title,
+                    notification_id=f"{coordinator.prefix}_what_if",
+                )
+
             try:
-                result = await coordinator.async_what_if(overrides, history_days)
+                result = await coordinator.async_what_if(overrides, history_days, _progress)
             except HomeAssistantError as err:
                 persistent_notification.async_create(
                     hass,

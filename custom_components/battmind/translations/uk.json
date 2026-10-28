@@ -559,7 +559,7 @@
         "name": "Мін. надлишок кВт·год для продажу"
       },
       "usage_reserve": {
-        "name": "?????? ??? ???? (?? ?????????)"
+        "name": "Резерв для дому (не продавати)"
       },
       "powerwall_max_hours_old": {
         "name": "Макс. вік кВт·год у домашній батареї"
@@ -654,20 +654,45 @@
   },
   "services": {
     "what_if": {
-      "name": "What-if simulator",
-      "description": "Compares the economy of the configured battery with temporary assumptions using up to one year of hourly long-term statistics. Nothing is saved and the active plan is not changed.",
+      "name": "Симулятор what-if",
+      "description": "Відтворює планування BattMind (правила або оптимізатор) на погодинній історії до одного року з поточними налаштуваннями та з тимчасовими значеннями й порівнює економіку. Нічого не зберігається, а активний план не змінюється.",
       "fields": {
-        "config_entry_id": {"name": "Config entry", "description": "Only simulate this BattMind entry (default: all)."},
-        "history_days": {"name": "History", "description": "Number of days of hourly long-term statistics to compare (default: 365)."},
-        "battery_size": {"name": "Usable battery capacity", "description": "Temporary usable capacity in kWh. Empty uses the configured value."},
-        "minimum_level": {"name": "Minimum battery level", "description": "Temporary minimum state of charge in percent."},
-        "maximum_level": {"name": "Maximum battery level", "description": "Temporary maximum state of charge in percent."},
-        "starting_level": {"name": "Starting battery level", "description": "Temporary state of charge at the start of the simulation. Empty uses the current level."},
-        "max_charging_power": {"name": "Maximum charging power", "description": "Temporary maximum AC charging power in W."},
-        "max_discharging_power": {"name": "Maximum discharging power", "description": "Temporary maximum AC discharging power in W."},
-        "round_trip_loss": {"name": "Round-trip loss", "description": "Temporary round-trip loss in percent. When set, it replaces the configured efficiency curves for this simulation."},
-        "wear_cost_per_kwh": {"name": "Wear cost", "description": "Temporary wear cost per discharged kWh."},
-        "usage_reserve": {"name": "Reserve for house use", "description": "Temporary percentage reserved for the house and not exported."}
+        "config_entry_id": {"name": "Запис конфігурації", "description": "Симулювати лише цей запис BattMind (типово: усі)."},
+        "history_days": {"name": "Історія", "description": "Кількість днів погодинної історії для порівняння (типово: 365)."},
+        "battery_size": {"name": "Корисна ємність батареї", "description": "Тимчасова корисна ємність у кВт·год. Пропустіть, щоб використати поточне налаштування."},
+        "minimum_level": {"name": "Мінімальний рівень батареї", "description": "Тимчасовий мінімальний рівень заряду батареї у відсотках. Пропустіть, щоб використати поточне налаштування."},
+        "maximum_level": {"name": "Максимальний рівень батареї", "description": "Тимчасовий максимальний рівень заряду батареї у відсотках. Пропустіть, щоб використати поточне налаштування."},
+        "starting_level": {"name": "Початковий рівень", "description": "Рівень заряду на початку обох порівнянь. Пропустіть, щоб використати налаштований мінімум."},
+        "max_charging_power": {"name": "Максимальна потужність заряджання", "description": "Тимчасова максимальна потужність заряджання AC у Вт. Пропустіть, щоб використати поточне налаштування."},
+        "max_discharging_power": {"name": "Максимальна потужність розряджання", "description": "Тимчасова максимальна потужність розряджання AC у Вт. Пропустіть, щоб використати поточне налаштування."},
+        "round_trip_loss": {"name": "Загальні втрати заряджання", "description": "Тимчасові загальні втрати заряджання у відсотках. Якщо задано, вони замінюють налаштовані криві ККД у цій симуляції. Пропустіть, щоб використати поточне налаштування."},
+        "wear_cost_per_kwh": {"name": "Знос на кВт·год", "description": "Тимчасова вартість зносу за розряджену кВт·год. Пропустіть, щоб використати поточне налаштування."},
+        "usage_reserve": {"name": "Резерв для будинку", "description": "Тимчасовий відсоток, зарезервований для будинку й не проданий. Пропустіть, щоб використати поточне налаштування."},
+        "min_profit_per_kwh": {"name": "Мінімальний прибуток за кВт·год", "description": "Заплановане заряджання, розряджання чи продаж має досягти цього прибутку за кВт·год. Пропустіть, щоб використати поточне налаштування."},
+        "min_total_profit": {"name": "Мінімальний загальний прибуток", "description": "Година заряджання або продаж має досягти цього загального прибутку. Пропустіть, щоб використати поточне налаштування."},
+        "min_sell_kwh": {"name": "Мінімальний обсяг продажу", "description": "Найменший обсяг, що продається за раз. Пропустіть, щоб використати поточне налаштування."},
+        "cheap_price_periods": {"name": "Дешеві цінові періоди", "description": "Тимчасове значення у сценарії. Пропустіть, щоб використати поточне налаштування."},
+        "cheapest_price_rise_threshold": {"name": "Зростання для найнижчої ціни", "description": "Тимчасове значення у сценарії. Пропустіть, щоб використати поточне налаштування."},
+        "cheap_price_period_rise_threshold": {"name": "Зростання для дешевих періодів", "description": "Тимчасове значення у сценарії. Пропустіть, щоб використати поточне налаштування."},
+        "powerwall_max_hours_old": {"name": "Макс. вік кВт·год у домашній батареї", "description": "Тимчасове значення у сценарії. Пропустіть, щоб використати поточне налаштування."},
+        "exclude_sell_hours": {"name": "Виключити години продажу", "description": "Години (напр. 17,18,19) без продажу у сценарії. Пропустіть, щоб використати поточне налаштування."},
+        "optimizer_control": {"name": "Керувати батареєю оптимізацією всього періоду", "description": "Увімкнено: батареєю керує оптимізація всього періоду. Вимкнено: нею керують правила. Пропустіть, щоб використати поточне налаштування."},
+        "use_midnight_battery_level": {"name": "Використовувати рівень батареї опівночі", "description": "Планувати лише до опівночі замість до кінця відомих цін. Пропустіть, щоб використати поточне налаштування."},
+        "solar_charging": {"name": "Заряджання надлишком сонця", "description": "Враховувати надлишок сонячної енергії в плані. Пропустіть, щоб використати поточне налаштування."},
+        "enhance_battery_efficiency": {"name": "Підвищити ефективність акумулятора", "description": "Використовувати налаштовані криві ККД залежно від потужності. Ігнорується, якщо задано загальні втрати заряджання. Пропустіть, щоб використати поточне налаштування."},
+        "cheapest_hour_fill_planner": {"name": "Заряджання: Найдешевші періоди", "description": "Тимчасовий стан цього налаштування у сценарії. Пропустіть, щоб використати поточне налаштування."},
+        "cheapest_hour_fill_up": {"name": "Заряджання: Повністю зарядити у найдешевший період", "description": "Тимчасовий стан цього налаштування у сценарії. Пропустіть, щоб використати поточне налаштування."},
+        "most_expensive_planner": {"name": "Заряджання: Найдорожчі періоди", "description": "Тимчасовий стан цього налаштування у сценарії. Пропустіть, щоб використати поточне налаштування."},
+        "needed_before_max_level_planner": {"name": "Заряджання: Планування перед досягненням максимального рівня", "description": "Тимчасовий стан цього налаштування у сценарії. Пропустіть, щоб використати поточне налаштування."},
+        "negative_price_planner": {"name": "Заряджання: Від'ємні ціни", "description": "Тимчасовий стан цього налаштування у сценарії. Пропустіть, щоб використати поточне налаштування."},
+        "grid_charge_to_sell": {"name": "Заряджання: Купити, щоб продати", "description": "Тимчасовий стан цього налаштування у сценарії. Пропустіть, щоб використати поточне налаштування."},
+        "most_profit": {"name": "Розряджання: Максимізувати прибуток", "description": "Тимчасовий стан цього налаштування у сценарії. Пропустіть, щоб використати поточне налаштування."},
+        "sell_excess_kwh_available": {"name": "Розряджання: Продати надлишкові кВт·год", "description": "Тимчасовий стан цього налаштування у сценарії. Пропустіть, щоб використати поточне налаштування."},
+        "force_powerwall_max_hours_old_discharge": {"name": "Примусове розряджання: Макс. вік кВт·год у годинах", "description": "Тимчасовий стан цього налаштування у сценарії. Пропустіть, щоб використати поточне налаштування."},
+        "discharge_before_solar": {"name": "Розряджання: Перед сонцем", "description": "Тимчасовий стан цього налаштування у сценарії. Пропустіть, щоб використати поточне налаштування."},
+        "only_discharge_on_profit": {"name": "Розряджання: Лише при прибутку", "description": "Тимчасовий стан цього налаштування у сценарії. Пропустіть, щоб використати поточне налаштування."},
+        "prioritize_discharge_hours_by_energy_cost": {"name": "Розряджання: Пріоритет за вартістю енергії", "description": "Тимчасовий стан цього налаштування у сценарії. Пропустіть, щоб використати поточне налаштування."},
+        "optimize_solar_charging": {"name": "Оптимізувати заряджання від сонячної енергії", "description": "Тимчасовий стан цього налаштування у сценарії. Пропустіть, щоб використати поточне налаштування."}
       }
     },
     "export_data": {

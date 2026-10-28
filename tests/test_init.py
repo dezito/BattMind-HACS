@@ -15,7 +15,17 @@ from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers import entity_registry as er
 
 from custom_components.battmind import _async_run_after_home_assistant_started, _what_if_notification
-from custom_components.battmind.const import DOMAIN, NUMBER_SETTINGS, SELECT_SETTINGS, SENSOR_KEYS, SWITCH_SETTINGS, TEXT_SETTINGS
+from custom_components.battmind.const import (
+    DOMAIN,
+    NUMBER_SETTINGS,
+    SELECT_SETTINGS,
+    SENSOR_KEYS,
+    SWITCH_SETTINGS,
+    TEXT_SETTINGS,
+    WHAT_IF_NUMBERS,
+    WHAT_IF_SWITCHES,
+    WHAT_IF_TEXTS,
+)
 from custom_components.battmind.engine import JobResult
 
 from .conftest import CONSUMPTION, PREFIX, async_advance, async_unload_and_join, set_source_states
@@ -61,6 +71,27 @@ def test_what_if_new_service_fields_have_entity_names_and_descriptions() -> None
                 service_fields[key]["name"]
                 == translations["entity"]["switch"][key]["name"]
             )
+
+
+def test_what_if_fields_are_translated_with_the_setting_names_in_every_language() -> None:
+    component = Path(__file__).parents[1] / "custom_components" / "battmind"
+    fields = yaml.safe_load((component / "services.yaml").read_text(encoding="utf-8"))["what_if"]["fields"]
+    settings = {
+        **{key: "switch" for key in WHAT_IF_SWITCHES},
+        **{key: "number" for key in WHAT_IF_NUMBERS if key not in ("usage_reserve", "min_profit_per_kwh", "min_total_profit", "min_sell_kwh")},
+        **{key: "text" for key in WHAT_IF_TEXTS},
+    }
+    assert set(settings) <= set(fields)
+    sources = [component / "strings.json", *(component / "translations").glob("*.json")]
+    assert len(sources) == 6
+    for path in sources:
+        translations = json.loads(path.read_text(encoding="utf-8"))
+        service_fields = translations["services"]["what_if"]["fields"]
+        assert set(service_fields) == set(fields), path.name
+        for key, field in service_fields.items():
+            assert field["name"] and field["description"], (path.name, key)
+        for key, platform in settings.items():
+            assert service_fields[key]["name"] == translations["entity"][platform][key]["name"], (path.name, key)
 
 
 def test_optimize_solar_charging_has_a_label_in_every_language() -> None:
@@ -216,24 +247,8 @@ async def test_what_if_service_returns_simulation_without_changing_options(
     hass: HomeAssistant, loaded_entry
 ) -> None:
     options = dict(loaded_entry.options)
-    rules = {
-        key: True
-        for key in (
-            "cheapest_hour_fill_planner",
-            "most_expensive_planner",
-            "needed_before_max_level_planner",
-            "negative_price_planner",
-            "grid_charge_to_sell",
-            "most_profit",
-            "sell_excess_kwh_available",
-            "force_powerwall_max_hours_old_discharge",
-            "discharge_before_solar",
-            "only_discharge_on_profit",
-            "prioritize_discharge_hours_by_energy_cost",
-            "optimize_solar_charging",
-        )
-    }
-    scenario_rules = {**rules, "most_profit": False}
+    rules = {key: True for key in WHAT_IF_SWITCHES}
+    scenario_rules = {**rules, "most_profit": False, "optimizer_control": False}
     with patch.object(persistent_notification, "async_create", wraps=persistent_notification.async_create) as create:
         loaded_entry.runtime_data.async_what_if = AsyncMock(
             return_value=JobResult(
@@ -325,6 +340,7 @@ async def test_what_if_service_returns_simulation_without_changing_options(
                 "battery_size": 20,
                 "round_trip_loss": 5,
                 "most_profit": False,
+                "optimizer_control": False,
             },
             blocking=True,
             return_response=True,
@@ -358,6 +374,11 @@ async def test_what_if_service_returns_simulation_without_changing_options(
     assert f"| **{coordinator.t('ui.what_if.battery_size')}** | 13,5 kWh | 20,0 kWh |" in notification
     assert (
         f"| **{coordinator.t('charging_type.most_profit.description')}** | "
+        f"{coordinator.t('ui.what_if.enabled')} | {coordinator.t('ui.what_if.disabled')} |"
+        in notification
+    )
+    assert (
+        f"| **{coordinator.t('ui.what_if.optimizer_control')}** | "
         f"{coordinator.t('ui.what_if.enabled')} | {coordinator.t('ui.what_if.disabled')} |"
         in notification
     )
@@ -424,6 +445,33 @@ async def test_what_if_replaces_progress_notification_with_error(
     assert create.call_args_list[0].kwargs["notification_id"] == f"{PREFIX}_what_if"
     assert create.call_args_list[1].kwargs["notification_id"] == f"{PREFIX}_what_if"
     assert "Recorder unavailable" in create.call_args_list[1].args[1]
+
+
+
+async def test_what_if_progress_updates_the_same_notification(hass: HomeAssistant, loaded_entry) -> None:
+    coordinator = loaded_entry.runtime_data
+
+    async def what_if(overrides, history_days, progress):
+        progress({"percent": 40, "step": 1, "steps": 2, "hours": 240, "total_hours": 600})
+        raise HomeAssistantError("Recorder unavailable")
+
+    coordinator.async_what_if = what_if
+    with (
+        patch.object(persistent_notification, "async_create") as create,
+        pytest.raises(ServiceValidationError, match="Recorder unavailable"),
+    ):
+        await hass.services.async_call(
+            DOMAIN,
+            "what_if",
+            {"config_entry_id": loaded_entry.entry_id},
+            blocking=True,
+            return_response=True,
+        )
+
+    assert [call.kwargs["notification_id"] for call in create.call_args_list] == [f"{PREFIX}_what_if"] * 3
+    assert create.call_args_list[1].args[1] == coordinator.t(
+        "ui.what_if.progress", percent=40, step=1, steps=2, days=10, total=25
+    )
 
 
 async def test_debug_info_service(hass: HomeAssistant, loaded_entry) -> None:

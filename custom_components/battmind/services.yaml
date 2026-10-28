@@ -142,9 +142,59 @@ what_if:
           step: 0.1
           unit_of_measurement: kWh
           mode: box
+    cheap_price_periods:
+      selector:
+        number:
+          min: 1
+          max: 10
+          step: 1
+          mode: box
+    cheapest_price_rise_threshold:
+      selector:
+        number:
+          min: 0
+          max: 1
+          step: 0.01
+          unit_of_measurement: kr/kWh
+          mode: box
+    cheap_price_period_rise_threshold:
+      selector:
+        number:
+          min: 0
+          max: 1
+          step: 0.01
+          unit_of_measurement: kr/kWh
+          mode: box
+    powerwall_max_hours_old:
+      selector:
+        number:
+          min: 1
+          max: 72
+          step: 1
+          unit_of_measurement: h
+          mode: box
+    exclude_sell_hours:
+      example: "17,18,19"
+      selector:
+        text:
+    optimizer_control:
+      selector:
+        boolean:
+    use_midnight_battery_level:
+      selector:
+        boolean:
+    solar_charging:
+      selector:
+        boolean:
+    enhance_battery_efficiency:
+      selector:
+        boolean:
     cheapest_hour_fill_planner:
       name: Cheapest periods planner
       description: Allow actions associated with charging during the cheapest periods.
+      selector:
+        boolean:
+    cheapest_hour_fill_up:
       selector:
         boolean:
     most_expensive_planner:

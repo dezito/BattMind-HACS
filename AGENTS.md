@@ -29,6 +29,7 @@ custom_components/battmind/             The HA integration (HACS payload)
 │   ├── engine.py / planning.py          Calculation orchestration
 │   ├── optimizer.py / planner/          Optimization and charge/discharge decisions
 │   │   ├── what_if.py                   What-if simulator calculation
+│   │   ├── replay.py                    What-if replay of the planner on the history
 │   │   └── future/                      Future-period planning rules and context
 │   ├── pricing.py                       Price helpers, incl. `sell_value()`
 │   ├── diagnostics.py                   Engine debug information

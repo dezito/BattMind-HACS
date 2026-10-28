@@ -184,13 +184,18 @@ class BattMindCoordinator(CoordinatorLifecycle, CoordinatorEvents, CoordinatorDa
     # Worker jobs
     # ------------------------------------------------------------------ #
 
-    async def async_run_job(self, job_name: str, *args, include_prices: bool = False, include_forecast: bool = False) -> JobResult:
-        """Collect a snapshot on the event loop and run the job in the worker thread."""
+    async def async_run_job(
+        self, job_name: str, *args, include_prices: bool = False, include_forecast: bool = False, **job_kwargs
+    ) -> JobResult:
+        """Collect a snapshot on the event loop and run the job in the worker thread.
+
+        job_kwargs are passed to the job but not kept in the debug export (e.g. callbacks).
+        """
         async with self._job_lock:
             snapshot = await self._async_snapshot(include_prices=include_prices, include_forecast=include_forecast)
             func = getattr(self.engine, job_name)
             result: JobResult = await self.hass.loop.run_in_executor(
-                self._executor, partial(self.engine.run_job, snapshot, func, *args)
+                self._executor, partial(self.engine.run_job, snapshot, func, *args, **job_kwargs)
             )
             await self._async_publish(result, job_name)
             self.debug.record(job_name, args, snapshot, result, self.data.get("current_charging_rule"))
@@ -208,8 +213,13 @@ class BattMindCoordinator(CoordinatorLifecycle, CoordinatorEvents, CoordinatorDa
     # Services
     # ------------------------------------------------------------------ #
 
-    async def async_what_if(self, overrides: dict, history_days: int) -> JobResult:
-        """Load hourly recorder statistics and run an economic historical comparison."""
+    async def async_what_if(
+        self, overrides: dict, history_days: int, progress: Callable[[dict], None] | None = None
+    ) -> JobResult:
+        """Load hourly recorder statistics and run an economic historical comparison.
+
+        progress (optional) is called on the event loop while the simulation runs.
+        """
         if "recorder" not in self.hass.config.components:
             raise HomeAssistantError("Recorder is required for the historical what-if comparison")
         from homeassistant.components.recorder import get_instance, history
@@ -342,7 +352,11 @@ class BattMindCoordinator(CoordinatorLifecycle, CoordinatorEvents, CoordinatorDa
             "stats": combined_stats,
             "long_term_statistics_timestamps": statistical_timestamps,
         }
-        return await self.async_run_job("what_if", data, overrides)
+        def report(info: dict) -> None:
+            # called in the worker thread
+            self.hass.loop.call_soon_threadsafe(progress, info)
+
+        return await self.async_run_job("what_if", data, overrides, progress=report if progress else None)
 
     async def async_debug_info(self) -> str:
         extra = {
