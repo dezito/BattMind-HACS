@@ -155,6 +155,8 @@ def _what_if_notification(coordinator: BattMindCoordinator, simulation: dict, ov
         recorder=simulation["data_sources"]["recorder_history_fallback_samples"],
     )
     price_provider = simulation.get("price_provider")
+    tariff_estimated_hours = simulation.get("tariff_estimated_hours", 0)
+    tariff_unavailable_hours = simulation.get("tariff_unavailable_hours", 0)
     control_mode = coordinator.t(
         "ui.what_if.control_mode",
         mode=coordinator.t(
@@ -175,6 +177,10 @@ def _what_if_notification(coordinator: BattMindCoordinator, simulation: dict, ov
     lines = [period, data_sources]
     if price_provider:
         lines.append(coordinator.t("ui.what_if.price_provider", provider=price_provider))
+    if tariff_estimated_hours:
+        lines.append(coordinator.t("ui.what_if.tariff_estimated", hours=tariff_estimated_hours))
+    if tariff_unavailable_hours:
+        lines.append(coordinator.t("ui.what_if.tariff_unavailable", hours=tariff_unavailable_hours))
     lines.extend((control_mode, ""))
     if setting_rows:
         lines.extend((f"**{coordinator.t('ui.what_if.changed_settings')}**", heading, "|---|---|---|", *setting_rows, ""))

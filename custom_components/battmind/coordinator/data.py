@@ -43,6 +43,21 @@ class CoordinatorData:
     """Collects the snapshot for the worker and keeps the history buffers."""
 
     @staticmethod
+    def _recorder_tariff_history(
+        states: dict[str, list[State]],
+    ) -> dict[str, list[tuple[float, dict]]]:
+        """Keep timestamped tariff attributes so simulations use the tariff in effect then."""
+        result = {}
+        for entity_id, entity_states in states.items():
+            rows = []
+            for state in entity_states:
+                tariffs = (state.attributes or {}).get("tariffs")
+                if isinstance(tariffs, dict):
+                    rows.append((state.last_updated.timestamp(), tariffs))
+            result[entity_id] = sorted(rows, key=lambda row: row[0])
+        return result
+
+    @staticmethod
     def _recorder_hourly_means(
         states: dict[str, list[State]], start: datetime.datetime, end: datetime.datetime
     ) -> dict[str, list[tuple[float, float]]]:

@@ -67,3 +67,28 @@ def test_what_if_prefers_statistics_and_fills_only_missing_hours() -> None:
         ((start + datetime.timedelta(hours=1)).timestamp(), 2000.0),
     ]
     assert statistical_timestamps == {"sensor.power": [start.timestamp()]}
+
+
+def test_recorder_tariff_history_preserves_sorted_timestamped_attributes() -> None:
+    start = datetime.datetime(2026, 1, 1, tzinfo=datetime.timezone.utc)
+    later_tariffs = {"additional_tariffs": {"elafgift": 0.8}, "tariffs": {"0": 0.3}}
+    earlier_tariffs = {"additional_tariffs": {"elafgift": 0.5}, "tariffs": {"0": 0.2}}
+    states = {
+        "sensor.eds_sell": [
+            SimpleNamespace(
+                last_updated=start + datetime.timedelta(hours=2),
+                attributes={"tariffs": later_tariffs},
+            ),
+            SimpleNamespace(
+                last_updated=start,
+                attributes={"tariffs": earlier_tariffs},
+            ),
+        ]
+    }
+
+    result = CoordinatorData._recorder_tariff_history(states)
+
+    assert result["sensor.eds_sell"] == [
+        (start.timestamp(), earlier_tariffs),
+        ((start + datetime.timedelta(hours=2)).timestamp(), later_tariffs),
+    ]

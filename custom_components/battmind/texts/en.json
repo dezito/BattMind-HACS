@@ -265,6 +265,8 @@
       "period": "Simulation based on {days} days / {hours} hours.",
       "data_sources": "Data used: {statistics} statistics samples, {recorder} Recorder samples.",
       "price_provider": "Price provider used: {provider}.",
+      "tariff_estimated": "Tariffs estimated from the nearest Recorder value for {hours} hours.",
+      "tariff_unavailable": "Tariffs were unavailable for {hours} hours; sales are valued at 0 in those hours.",
       "control_mode": "Active controller: {mode}.",
       "optimizer_mode": "optimizer",
       "rules_mode": "rules",

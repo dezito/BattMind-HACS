@@ -265,6 +265,8 @@
       "period": "Symulacja na podstawie {days} dni / {hours} godzin.",
       "data_sources": "Użyte dane: {statistics} wartości statystyk, {recorder} wartości Recorder.",
       "price_provider": "Użyty dostawca cen: {provider}.",
+      "tariff_estimated": "Taryfy oszacowano na podstawie najbliższej wartości Recorder dla {hours} godzin.",
+      "tariff_unavailable": "Brak taryf dla {hours} godzin; sprzedaż w tych godzinach ma wartość 0.",
       "control_mode": "Aktywny tryb sterowania: {mode}.",
       "optimizer_mode": "optymalizator",
       "rules_mode": "reguły",

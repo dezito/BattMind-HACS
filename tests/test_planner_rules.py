@@ -15,6 +15,8 @@ from custom_components.battmind.engine.optimizer import (
     simulate,
     step_hour,
 )
+from custom_components.battmind.engine.planner.what_if import _nearest_eds_tariffs
+from custom_components.battmind.prices.base import calculate_sell_price
 
 from .test_engine import DAY, OPTIONS, SOLAR_SURPLUS, TEXTS, _power_values_db, charge_hours, snapshot
 
@@ -25,6 +27,48 @@ OFF = {
     "needed_before_max_level_planner": False,
     "only_discharge_on_profit": False,
 }
+
+
+def test_what_if_uses_nearest_historical_eds_tariff_and_live_sell_formula() -> None:
+    history = [
+        (
+            100.0,
+            {
+                "additional_tariffs": {
+                    "transmissions_nettarif": 0.1,
+                    "systemtarif": 0.1,
+                    "elafgift": 0.5,
+                },
+                "tariffs": {"12": 0.2},
+            },
+        ),
+        (
+            300.0,
+            {
+                "additional_tariffs": {
+                    "transmissions_nettarif": 0.1,
+                    "systemtarif": 0.1,
+                    "elafgift": 0.8,
+                },
+                "tariffs": {"12": 0.3},
+            },
+        ),
+    ]
+
+    nearest = _nearest_eds_tariffs(history, 200.0, 12)
+
+    assert nearest is not None
+    assert nearest == (
+        {
+            "transmissions_nettarif": 0.1,
+            "systemtarif": 0.1,
+            "elafgift": 0.5,
+            "tariffs": 0.2,
+            "surcharge": 0.0,
+        },
+        False,
+    )
+    assert calculate_sell_price(0.8, nearest[0], 0.03) == pytest.approx(0.13)
 
 
 def realistic_snapshot(now: datetime.datetime, battery_level: float, settings: dict | None = None, negative: bool = False) -> Snapshot:
@@ -223,22 +267,63 @@ def test_what_if_simulator_does_not_change_the_active_plan() -> None:
         eds_buy_id: [(ts, 1.0) for ts in timestamps],
         eds_sell_id: [(ts, 0.8) for ts in timestamps],
     }
-    provider_result = engine.run_job(
+    eds_provider = {
+        "name": "Energi Data Service",
+        "buy_entity_id": eds_buy_id,
+        "sell_entity_id": eds_sell_id,
+        "sell_fee": 0.03,
+        "sell_tariff_history": [
+            (
+                timestamps[0],
+                {
+                    "additional_tariffs": {
+                        "transmissions_nettarif": 0.1,
+                        "systemtarif": 0.1,
+                        "elafgift": 0.5,
+                    },
+                    "tariffs": {str(hour): 0.2 for hour in range(24)},
+                },
+            ),
+            (
+                timestamps[24],
+                {
+                    "additional_tariffs": {
+                        "transmissions_nettarif": 0.1,
+                        "systemtarif": 0.1,
+                        "elafgift": 0.8,
+                    },
+                    "tariffs": {str(hour): 0.3 for hour in range(24)},
+                },
+            ),
+        ],
+    }
+    providers = [
+        {"name": "Strømligning", "buy_entity_id": buy_id, "sell_entity_id": sell_id},
+        eds_provider,
+    ]
+    provider_data = {**data, "stats": provider_stats, "price_providers": providers}
+    provider_result = engine.run_job(snap, engine.what_if, provider_data, {})
+    assert provider_result.error is None, provider_result.error
+    assert provider_result.value["price_provider"] == "Energi Data Service"
+    assert provider_result.value["period"]["hours"] == len(timestamps)
+    assert provider_result.value["tariff_estimated_hours"] == len(timestamps) - 2
+    assert provider_result.value["tariff_unavailable_hours"] == 0
+    missing_tariffs = engine.run_job(
         snap,
         engine.what_if,
         {
-            **data,
-            "stats": provider_stats,
+            **provider_data,
             "price_providers": [
-                {"name": "Strømligning", "buy_entity_id": buy_id, "sell_entity_id": sell_id},
-                {"name": "Energi Data Service", "buy_entity_id": eds_buy_id, "sell_entity_id": eds_sell_id},
+                providers[0],
+                {**eds_provider, "sell_tariff_history": []},
             ],
         },
         {},
     )
-    assert provider_result.error is None, provider_result.error
-    assert provider_result.value["price_provider"] == "Energi Data Service"
-    assert provider_result.value["period"]["hours"] == len(timestamps)
+    assert missing_tariffs.error is None, missing_tariffs.error
+    assert missing_tariffs.value["tariff_unavailable_hours"] == len(timestamps)
+    assert missing_tariffs.value["current"]["without"]["solar_income"] == 0.0
+    assert missing_tariffs.value["current"]["with"]["sold_kwh"] == 0.0
 
     missing_indices = (12, 35)
     incomplete_stats = dict(data["stats"])
