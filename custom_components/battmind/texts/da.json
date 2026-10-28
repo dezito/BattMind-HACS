@@ -267,7 +267,7 @@
       "price_provider": "Prisudbyder brugt: {provider}.",
       "price_provider_hours": "{provider} ({hours} timer)",
       "tariff_estimated": "Tariffer estimeret med nærmeste Recorder-værdi i {hours} timer.",
-      "tariff_unavailable": "Tariffer manglede i {hours} timer; salg er sat til 0 kr. i disse timer.",
+      "tariff_unavailable": "Tariffer manglede i {hours} timer; disse timer er udeladt fra simuleringen.",
       "control_mode": "Aktiv styring: {mode}.",
       "optimizer_mode": "optimering",
       "rules_mode": "regler",

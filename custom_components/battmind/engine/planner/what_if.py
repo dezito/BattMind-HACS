@@ -139,12 +139,50 @@ class WhatIf:
                 ),
                 "hours": 0,
             })
+        tz = self._snap.tz if self._snap else None
+
+        def hour_tariffs(source: dict, ts: float) -> tuple[dict[str, float], bool] | None:
+            """Return the sell tariffs of an hour and whether they are exact, or None if unknown."""
+            if source["tariff_series"]:
+                tariffs = {}
+                exact = True
+                for key, tariff_values in source["tariff_series"].items():
+                    nearest = _nearest_value(tariff_values, ts)
+                    if nearest is None:
+                        return None
+                    tariffs[key], key_exact = nearest
+                    exact = exact and key_exact
+                return tariffs, exact
+            provider = source["provider"]
+            # A raw Energi Data Service price (tariffs disabled) has no tariff schedule.
+            if provider.get("name") == "Energi Data Service" and provider.get("sell_includes_tariffs", True):
+                local_hour = datetime.datetime.fromtimestamp(ts, tz).hour
+                return _nearest_eds_tariffs(source["eds_sell_tariff_history"], ts, local_hour)
+            return {}, True
+
+        tariff_estimated_hours = 0
+        tariff_unavailable_hours = 0
         hour_sources = {}
+        hour_tariff_values = {}
         for ts in sorted(set.intersection(*(set(values) for values in required.values()))):
-            source = next((item for item in price_sources if ts in item["timestamps"]), None)
-            if source is not None:
+            priced = False
+            for source in price_sources:
+                if ts not in source["timestamps"]:
+                    continue
+                priced = True
+                if source["sell_price_history_available"]:
+                    tariffs = hour_tariffs(source, ts)
+                    if tariffs is None:
+                        continue
+                    hour_tariff_values[ts] = tariffs
                 hour_sources[ts] = source
                 source["hours"] += 1
+                break
+            else:
+                # Without tariffs the sell value is unknown: skip the hour like missing data
+                # instead of simulating purchases without the matching sales.
+                if priced:
+                    tariff_unavailable_hours += 1
         timestamps = list(hour_sources)
         if not timestamps:
             raise ValueError(
@@ -154,8 +192,6 @@ class WhatIf:
         sell_price_history_available = all(
             source["sell_price_history_available"] for source in used_sources
         )
-        tariff_estimated_hours = 0
-        tariff_unavailable_hours = 0
         sample_count = sum(len(required) + len(hour_sources[ts]["entity_ids"]) for ts in timestamps)
         if "long_term_statistics_timestamps" not in data:
             statistical_sample_count = sample_count
@@ -176,7 +212,6 @@ class WhatIf:
             "recorder_history_fallback_samples": sample_count - statistical_sample_count,
         }
         positive_is_charging = home["invert_powerwall_watt_flow_entity_id"]
-        tz = self._snap.tz if self._snap else None
         hours = []
         for ts in timestamps:
             battery = flow.get(ts, 0.0)
@@ -198,46 +233,22 @@ class WhatIf:
             buy_price = source["buy"][ts]
             sell_price = source["sell"].get(ts, buy_price)
             hour_sell_history = source["sell_price_history_available"]
-            tariff_available = True
-            tariff_exact = True
-            tariffs: dict[str, float] = {}
             if hour_sell_history:
-                local_timestamp = datetime.datetime.fromtimestamp(ts, tz)
-                if source["tariff_series"]:
-                    for key, tariff_values in source["tariff_series"].items():
-                        nearest = _nearest_value(tariff_values, ts)
-                        if nearest is None:
-                            tariff_available = False
-                            break
-                        tariffs[key], exact = nearest
-                        tariff_exact = tariff_exact and exact
-                elif hour_provider.get("name") == "Energi Data Service":
-                    nearest = _nearest_eds_tariffs(
-                        source["eds_sell_tariff_history"], ts, local_timestamp.hour
-                    )
-                    if nearest is None:
-                        tariff_available = False
-                    else:
-                        tariffs, tariff_exact = nearest
-                if tariff_available:
-                    if not tariff_exact:
-                        tariff_estimated_hours += 1
-                    sell_price = calculate_sell_price(
-                        sell_price,
-                        {
-                            "transmissions_nettarif": tariffs.get("transmissions_nettarif", 0.0),
-                            "systemtarif": tariffs.get("systemtarif", 0.0),
-                            "elafgift": tariffs.get("elafgift", 0.0),
-                            "tariffs": tariffs.get("tariffs", 0.0),
-                            "surcharge": tariffs.get("surcharge", 0.0),
-                        },
-                        float(hour_provider.get("sell_fee", 0.0)),
-                    )
-                else:
-                    tariff_unavailable_hours += 1
-                    sell_price = 0.0
-            if hour_sell_history:
-                sell_value = self.sell_value(sell_price) if tariff_available else 0.0
+                tariffs, tariff_exact = hour_tariff_values[ts]
+                if not tariff_exact:
+                    tariff_estimated_hours += 1
+                sell_price = calculate_sell_price(
+                    sell_price,
+                    {
+                        "transmissions_nettarif": tariffs.get("transmissions_nettarif", 0.0),
+                        "systemtarif": tariffs.get("systemtarif", 0.0),
+                        "elafgift": tariffs.get("elafgift", 0.0),
+                        "tariffs": tariffs.get("tariffs", 0.0),
+                        "surcharge": tariffs.get("surcharge", 0.0),
+                    },
+                    float(hour_provider.get("sell_fee", 0.0)),
+                )
+                sell_value = self.sell_value(sell_price)
             else:
                 sell_value = self.sell_value(0.0)
             hours.append(OptimizerHour(
@@ -247,11 +258,8 @@ class WhatIf:
                 max(net_use - produced, 0.0),
                 max(produced - net_use, 0.0),
                 can_sell=(
-                    (hour_sell_history and tariff_available)
-                    or (
-                        not hour_sell_history
-                        and self.config["solar"]["production_price"] != -1.0
-                    )
+                    hour_sell_history
+                    or self.config["solar"]["production_price"] != -1.0
                 ),
             ))
         if not hours:

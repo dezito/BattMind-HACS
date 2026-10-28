@@ -17,6 +17,7 @@ from typing import Any, Callable
 
 from homeassistant.components import persistent_notification
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import STATE_UNAVAILABLE, STATE_UNKNOWN
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.dispatcher import async_dispatcher_send
@@ -244,6 +245,16 @@ class BattMindCoordinator(CoordinatorLifecycle, CoordinatorEvents, CoordinatorDa
                         )
                         if price_ids[key]
                     }
+                elif sell_id:
+                    # Energi Data Service never records its tariffs attribute; a sensor without
+                    # it is a raw price (tariffs disabled), which the live planner uses as is.
+                    # An unknown state keeps the conservative assumption that tariffs are included.
+                    sell_state = self.hass.states.get(sell_id)
+                    provider["sell_includes_tariffs"] = (
+                        sell_state is None
+                        or sell_state.state in (STATE_UNAVAILABLE, STATE_UNKNOWN)
+                        or bool(sell_state.attributes.get("tariffs"))
+                    )
                 price_providers.append(
                     provider
                 )
@@ -296,7 +307,9 @@ class BattMindCoordinator(CoordinatorLifecycle, CoordinatorEvents, CoordinatorDa
             eds_sell_entities = {
                 provider["sell_entity_id"]
                 for provider in price_providers
-                if provider["name"] == "Energi Data Service" and provider["sell_entity_id"]
+                if provider["name"] == "Energi Data Service"
+                and provider["sell_entity_id"]
+                and provider["sell_includes_tariffs"]
             }
             tariff_states = (
                 await recorder.async_add_executor_job(

@@ -329,19 +329,50 @@ def test_what_if_simulator_does_not_change_the_active_plan() -> None:
     assert provider_result.value["period"]["hours"] == len(timestamps)
     assert provider_result.value["tariff_estimated_hours"] == len(timestamps) - 2
     assert provider_result.value["tariff_unavailable_hours"] == 0
+    # Hours without known tariffs are left out entirely (no purchases without the matching sales).
+    no_eds_tariffs = {**eds_provider, "sell_tariff_history": []}
     missing_tariffs = engine.run_job(
         snap,
         engine.what_if,
-        {
-            **eds_data,
-            "price_providers": [{**eds_provider, "sell_tariff_history": []}],
-        },
+        {**provider_data, "price_providers": [providers[0], no_eds_tariffs]},
         {},
     )
     assert missing_tariffs.error is None, missing_tariffs.error
-    assert missing_tariffs.value["tariff_unavailable_hours"] == len(timestamps)
-    assert missing_tariffs.value["current"]["without"]["solar_income"] == 0.0
-    assert missing_tariffs.value["current"]["with"]["sold_kwh"] == 0.0
+    assert missing_tariffs.value["tariff_unavailable_hours"] == 24
+    assert missing_tariffs.value["period"]["hours"] == len(timestamps) - 24
+    assert missing_tariffs.value["price_provider_hours"] == {"Strømligning": len(timestamps) - 24}
+    only_missing = engine.run_job(
+        snap, engine.what_if, {**eds_data, "price_providers": [no_eds_tariffs]}, {}
+    )
+    assert only_missing.error is not None
+    # A raw Energi Data Service price (tariffs disabled) needs no tariff history.
+    raw_eds = engine.run_job(
+        snap,
+        engine.what_if,
+        {**eds_data, "price_providers": [{**no_eds_tariffs, "sell_includes_tariffs": False}]},
+        {},
+    )
+    assert raw_eds.error is None, raw_eds.error
+    assert raw_eds.value["period"]["hours"] == len(timestamps)
+    assert raw_eds.value["tariff_unavailable_hours"] == 0
+    assert raw_eds.value["tariff_estimated_hours"] == 0
+    assert raw_eds.value["current"]["without"]["solar_income"] != 0.0
+    # A provider whose tariff sensors have no history falls back to the next provider.
+    no_stromligning_tariffs = engine.run_job(
+        snap,
+        engine.what_if,
+        {
+            **provider_data,
+            "price_providers": [
+                {**providers[0], "sell_tariff_entity_ids": {"elafgift": "sensor.no_tax_history"}},
+                eds_provider,
+            ],
+        },
+        {},
+    )
+    assert no_stromligning_tariffs.error is None, no_stromligning_tariffs.error
+    assert no_stromligning_tariffs.value["price_provider_hours"] == {"Energi Data Service": len(timestamps)}
+    assert no_stromligning_tariffs.value["tariff_unavailable_hours"] == 0
 
     missing_indices = (12, 35)
     incomplete_stats = dict(data["stats"])

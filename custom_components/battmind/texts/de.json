@@ -267,7 +267,7 @@
       "price_provider": "Verwendeter Preisanbieter: {provider}.",
       "price_provider_hours": "{provider} ({hours} Stunden)",
       "tariff_estimated": "Tarife wurden für {hours} Stunden anhand des nächstgelegenen Recorder-Werts geschätzt.",
-      "tariff_unavailable": "Für {hours} Stunden waren keine Tarife verfügbar; Verkäufe werden in diesen Stunden mit 0 bewertet.",
+      "tariff_unavailable": "Für {hours} Stunden waren keine Tarife verfügbar; diese Stunden sind nicht in der Simulation enthalten.",
       "control_mode": "Aktive Steuerung: {mode}.",
       "optimizer_mode": "Optimierer",
       "rules_mode": "Regeln",

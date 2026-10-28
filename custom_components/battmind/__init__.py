@@ -97,7 +97,7 @@ def _what_if_notification(coordinator: BattMindCoordinator, simulation: dict, ov
     scenario = simulation["assumptions"]
     setting_rows = []
     for key, label_key, unit in _WHAT_IF_SETTINGS:
-        if key not in overrides:
+        if key not in overrides or current[key] == scenario[key]:
             continue
         translated_unit = f"{coordinator.t('ui.common.valuta')}/kWh" if unit == "{valuta}/kWh" else unit
         decimals = 1 if unit == "kWh" else 2 if unit == "{valuta}/kWh" else None
@@ -112,6 +112,8 @@ def _what_if_notification(coordinator: BattMindCoordinator, simulation: dict, ov
     for key in _WHAT_IF_RULES:
         current_enabled = simulation["current_assumptions"]["rules"][key]
         scenario_enabled = simulation["assumptions"]["rules"][key]
+        if current_enabled == scenario_enabled:
+            continue
         setting_rows.append(
             "| **{label}** | {current} | {scenario} |".format(
                 label=coordinator.t(

@@ -267,7 +267,7 @@
       "price_provider": "Użyty dostawca cen: {provider}.",
       "price_provider_hours": "{provider} ({hours} godz.)",
       "tariff_estimated": "Taryfy oszacowano na podstawie najbliższej wartości Recorder dla {hours} godzin.",
-      "tariff_unavailable": "Brak taryf dla {hours} godzin; sprzedaż w tych godzinach ma wartość 0.",
+      "tariff_unavailable": "Brak taryf dla {hours} godzin; te godziny pominięto w symulacji.",
       "control_mode": "Aktywny tryb sterowania: {mode}.",
       "optimizer_mode": "optymalizator",
       "rules_mode": "reguły",
