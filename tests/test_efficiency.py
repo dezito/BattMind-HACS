@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from custom_components.battmind.efficiency import efficiency_at_power, parse_efficiency_curve
+from custom_components.battmind.utils.efficiency import efficiency_at_power, parse_efficiency_curve
 
 
 def test_parse_and_interpolate_efficiency_curve() -> None:

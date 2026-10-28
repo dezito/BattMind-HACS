@@ -13,7 +13,7 @@ from pathlib import Path
 
 import pytest
 
-from custom_components.battmind.codec import decode, encode
+from custom_components.battmind.utils.codec import decode, encode
 from custom_components.battmind.const import POWERWALL_ACTION_STATES, build_config, default_options
 from custom_components.battmind.engine import BattMindEngine, Snapshot
 
@@ -127,7 +127,7 @@ def test_action_is_always_valid(hour: int, battery_level: float) -> None:
 @pytest.mark.parametrize(
     ("temperature", "unit", "expected_action"),
     [(20, "°C", None), (-1, "°C", "battery_stopped"), (51, "°C", "battery_stopped"),
-     (104, "°F", None), (122, "°F", "battery_stopped"), (273.15, "K", None)],
+     (104, "°F", None), (122, "°F", None), (123, "°F", "battery_stopped"), (273.15, "K", None)],
 )
 def test_battery_temperature_safety(temperature: float, unit: str, expected_action: str | None) -> None:
     now = datetime.datetime.combine(DAY, datetime.time(10, 30))

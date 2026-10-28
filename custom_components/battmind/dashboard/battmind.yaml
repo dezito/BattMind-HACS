@@ -1823,7 +1823,7 @@ views:
           target: {}
         label: ''
     sections:
-      # economy per month (engine_analysis.py: the charging history per month)
+      # economy per month (engine/analysis: the charging history per month)
       - type: grid
         column_span: 2
         cards:

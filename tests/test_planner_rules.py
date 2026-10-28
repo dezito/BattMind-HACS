@@ -7,7 +7,7 @@ import pytest
 
 from custom_components.battmind.const import build_config
 from custom_components.battmind.engine import BattMindEngine, Snapshot
-from custom_components.battmind.engine_optimizer import (
+from custom_components.battmind.engine.optimizer import (
     RULE_SWITCHES,
     OptimizerConfig,
     OptimizerHour,
@@ -163,6 +163,26 @@ def test_what_if_simulator_does_not_change_the_active_plan() -> None:
     assert unchanged.error is None, unchanged.error
     assert unchanged.value["difference"] == {"profit": 0.0, "bill": 0.0}
 
+    no_sell_history = engine.run_job(
+        snap,
+        engine.what_if,
+        {**data, "sell_price_history_available": False},
+        {},
+    )
+    assert no_sell_history.error is None, no_sell_history.error
+    assert no_sell_history.value["assumptions"]["sell_price_history_available"] is False
+    assert no_sell_history.value["current"]["without"]["solar_income"] == 0.0
+
+    for entity_id in (buy_id, sell_id, ids["power_consumption_entity_id"]):
+        incomplete_stats = dict(data["stats"])
+        incomplete_series = list(incomplete_stats[entity_id])
+        del incomplete_series[len(incomplete_series) // 2]
+        incomplete_stats[entity_id] = incomplete_series
+        incomplete_data = {**data, "stats": incomplete_stats}
+        incomplete = engine.run_job(snap, engine.what_if, incomplete_data, {})
+        assert incomplete.error is not None
+        assert "Incomplete hourly long-term statistics" in str(incomplete.error)
+
 
 CFG = OptimizerConfig(battery_size=10.0, level_min=5.0, level_max=100.0, max_charge=5.0, max_discharge=5.0, efficiency=0.95, wear=0.1)
 
@@ -304,7 +324,7 @@ def test_optimizer_actions_are_explained_as_rules() -> None:
 
 
 def test_hour_rules_group_consecutive_hours_with_the_same_rule() -> None:
-    from custom_components.battmind.engine_planner import _group_hour_rules, _joined_reason
+    from custom_components.battmind.engine.planner._helpers import _group_hour_rules, _joined_reason
 
     def hour(h: int) -> datetime.datetime:
         return datetime.datetime.combine(DAY, datetime.time(h))
@@ -331,7 +351,7 @@ def test_hour_rules_group_consecutive_hours_with_the_same_rule() -> None:
 
 
 def test_single_sell_period_shows_its_end_time() -> None:
-    from custom_components.battmind.engine_planner import _join_timestamps_by_hour
+    from custom_components.battmind.engine.planner._helpers import _join_timestamps_by_hour
 
     timestamp = datetime.datetime.combine(DAY, datetime.time(20))
     reason = "<details><summary>Sælger</summary>body</details>"
@@ -366,7 +386,7 @@ def test_overview_has_the_plan_and_its_totals(optimizer_control: bool) -> None:
 
 def test_bill_with_the_battery_is_the_simulated_cost() -> None:
     """breakdown()'s bill with the battery is the same as simulate() of the plan, without = no battery at all."""
-    from custom_components.battmind.engine_optimizer import breakdown
+    from custom_components.battmind.engine.optimizer import breakdown
 
     hours = [OptimizerHour(0, 0.5, 0.2, 1.0, 0.0), OptimizerHour(1, 3.0, 2.0, 2.0, 0.0), OptimizerHour(2, 1.0, 0.5, 0.0, 3.0)]
     actions = ["grid_charging", "force_discharge", "discharge_allowed"]
@@ -379,7 +399,7 @@ def test_bill_with_the_battery_is_the_simulated_cost() -> None:
 
 def test_battery_price_is_a_running_average() -> None:
     """Charged kWh come in at their price, used/sold kWh leave at the average (the price of the rest stays)."""
-    from custom_components.battmind.engine_planner import _running_battery_price
+    from custom_components.battmind.engine.planner._helpers import _running_battery_price
 
     # 5 kWh at 2.00, 5 kWh charged at 1.00 -> 1.50
     assert _running_battery_price(5.0, 2.0, [(5.0, 5.0, 1.0, 0.5)]) == pytest.approx(1.5)
@@ -395,7 +415,7 @@ def test_battery_price_is_a_running_average() -> None:
 
 def test_midnight_battery_level_optimises_every_day_on_its_own() -> None:
     """use_midnight_battery_level: every day of days_to_predict is optimised until midnight (max 24 hours)."""
-    from custom_components.battmind.engine_optimizer import optimize_per_day, optimize_with_rules
+    from custom_components.battmind.engine.optimizer import optimize_per_day, optimize_with_rules
 
     engine, _ = planned(18, 60, {"use_midnight_battery_level": True}, solar=True, days=3)
     shadow = engine.optimizer_shadow

@@ -16,7 +16,7 @@ from homeassistant.util import dt as dt_util
 
 from pytest_homeassistant_custom_component.common import async_fire_time_changed
 
-from custom_components.battmind.blueprint_install import SOURCE
+from custom_components.battmind.management.blueprint_install import SOURCE
 from custom_components.battmind.const import DOMAIN
 
 ACTION_SENSOR = "sensor.battmind_powerwall_action"

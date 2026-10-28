@@ -8,8 +8,8 @@ from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.battmind.const import LANGUAGES, NUMBER_SETTINGS, SELECT_SETTINGS, SWITCH_SETTINGS, TEXT_SETTINGS, build_config
-from custom_components.battmind.dashboard import render_dashboard
-from custom_components.battmind.formatting import format_analysis_help_text, format_help_text, load_texts
+from custom_components.battmind.management.dashboard_build import render_dashboard
+from custom_components.battmind.utils.formatting import format_analysis_help_text, format_help_text, load_texts
 
 from .conftest import MOCK_OPTIONS, PREFIX, async_unload_and_join, set_source_states
 from .test_engine import OPTIONS

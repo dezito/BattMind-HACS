@@ -1,4 +1,4 @@
-"""Export / import of the BattMind data (backup.py)."""
+"""Export / import of the BattMind data (management/backup.py)."""
 from __future__ import annotations
 
 import json
@@ -12,7 +12,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 from homeassistant.exceptions import ServiceValidationError
 
-from custom_components.battmind.backup import BACKUP_DIR
+from custom_components.battmind.management.backup import BACKUP_DIR
 from custom_components.battmind.const import CONF_ENTITY_PREFIX, DOMAIN
 
 from .conftest import PREFIX, async_unload_and_join, form_defaults

@@ -1,4 +1,4 @@
-"""Debug export for GitHub issues (debug_export.py) and its replay (tests/debug_replay.py)."""
+"""Debug export for GitHub issues (management/debug_export.py) and its replay (tests/debug_replay.py)."""
 from __future__ import annotations
 
 import datetime
@@ -14,7 +14,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.setup import async_setup_component
 
 from custom_components.battmind.const import DOMAIN
-from custom_components.battmind.debug_export import DEBUG_DIR, KEEP_FILES, Redactor
+from custom_components.battmind.management.debug_export import DEBUG_DIR, KEEP_FILES, Redactor
 
 from . import debug_replay
 from .conftest import CONSUMPTION, PREFIX, PRICE

@@ -27,11 +27,11 @@ from .const import (
     SERVICE_RECALC_HISTORY_TODAY,
     SERVICE_WHAT_IF,
 )
-from .backup import BACKUP_DIR, async_export, async_import
-from .blueprint_install import async_install_blueprints
+from .management.backup import BACKUP_DIR, async_export, async_import
+from .management.blueprint_install import async_install_blueprints
 from .coordinator import BattMindCoordinator
-from .debug_export import DEBUG_DIR, DebugDownloadView, async_export_debug, async_notify_debug, install_log_buffer
-from .dashboard import async_remove_dashboard_file, async_setup_dashboard
+from .management.debug_export import DEBUG_DIR, DebugDownloadView, async_export_debug, async_notify_debug, install_log_buffer
+from .management.dashboard_build import async_remove_dashboard_file, async_setup_dashboard
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -325,7 +325,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: BattMindConfigEntry) ->
 
 
 async def async_remove_entry(hass: HomeAssistant, entry: BattMindConfigEntry) -> None:
-    from .storage import BattMindStorage
+    from .management.storage import BattMindStorage
 
     # the data can be imported again (config flow of a new entry, or import_data)
     try:

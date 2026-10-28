@@ -1,4 +1,4 @@
-"""Replay a debug export (custom_components/battmind/debug_export.py) in the engine.
+"""Replay a debug export (custom_components/battmind/management/debug_export.py) in the engine.
 
     <venv python> tests/debug_replay.py battmind_debug_20261025_120000.json.gz [failed | planning | <index>]
 
@@ -23,11 +23,11 @@ from zoneinfo import ZoneInfo
 if __package__ in (None, ""):  # started as tests/debug_replay.py: the repo root holds custom_components
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from custom_components.battmind.codec import decode
+from custom_components.battmind.utils.codec import decode
 from custom_components.battmind.const import DEFAULT_CONFIG
-from custom_components.battmind.debug_export import PLANNING_JOBS
+from custom_components.battmind.management.debug_export import PLANNING_JOBS
 from custom_components.battmind.engine import BattMindEngine, JobResult, Snapshot
-from custom_components.battmind.formatting import load_texts
+from custom_components.battmind.utils.formatting import load_texts
 
 # engine attributes that are rebuilt from the configuration instead of the export
 _REBUILT = {"name", "title", "testing", "max_kwh_charging", "max_kwh_discharging", "price_provider"}
