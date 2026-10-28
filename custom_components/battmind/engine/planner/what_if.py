@@ -85,8 +85,8 @@ class WhatIf:
     def what_if(self, data: dict, overrides: dict, progress=None) -> dict:
         """Compare battery assumptions against historical hourly statistics.
 
-        progress (optional) is called from the worker thread at most every PROGRESS_INTERVAL
-        seconds with {"percent", "step", "steps", "hours", "total_hours"}.
+        progress (optional) is called from the worker thread after the first plan and then at most
+        every PROGRESS_INTERVAL seconds with {"percent", "step", "steps", "hours", "total_hours"}.
         """
         stats = data.get("stats") or {}
         units = self._snap.units if self._snap else {}
@@ -306,7 +306,8 @@ class WhatIf:
 
         unchanged = (scenario_config, scenario_settings, start_level) == (current_config, current_settings, current_start_level)
         steps = 1 if unchanged else 2
-        last_report = [time.monotonic()]
+        # the first plan is reported at once: the history is loaded and the simulation runs
+        last_report = [-PROGRESS_INTERVAL]
 
         def reporter(step: int):
             def report(done: int) -> None:

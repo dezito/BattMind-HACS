@@ -43,9 +43,9 @@ entry and fill only the values you want to replace. Run the action to receive a 
 with a two-column comparison of the configured values and the what-if scenario; only values and rule
 switches that differ from the current setup are listed. The action also keeps
 returning the full simulation response for automations and scripts. A progress notification is shown
-while history is loaded and the simulation runs; it is updated at most every 10 seconds with the
-percentage done and the simulated days, and the finished result (or an error) replaces that same
-notification.
+while history is loaded and the simulation runs; it is updated when the simulation starts and then at
+most every 10 seconds with the percentage done and the simulated days, and the finished result (or an
+error) replaces that same notification.
 
 Example action:
 
