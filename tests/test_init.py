@@ -142,18 +142,57 @@ async def test_what_if_reads_statistics_and_raw_recorder_history(
 ) -> None:
     hass.config.components.add("recorder")
     coordinator = loaded_entry.runtime_data
+    coordinator.config["prices"]["entity_ids"].update(
+        {
+            "stromligning_buy_current_price": "sensor.stromligning_buy",
+            "stromligning_sell_current_price": "sensor.stromligning_sell",
+            "stromligning_sell_electricity_tax": "sensor.sell_tax",
+            "stromligning_sell_nettariff": "sensor.sell_net_tariff",
+            "stromligning_sell_surcharge": "sensor.sell_surcharge",
+            "energidataservice_sell_entity_id": "sensor.eds_sell",
+        }
+    )
     recorder = AsyncMock()
-    recorder.async_add_executor_job.side_effect = [{}, {}]
+    recorder.async_add_executor_job.side_effect = [{}, {}, {}]
     coordinator.async_run_job = AsyncMock(return_value=JobResult(value={}))
 
     with patch("homeassistant.components.recorder.get_instance", return_value=recorder):
         await coordinator.async_what_if({}, 1)
 
-    assert recorder.async_add_executor_job.await_count == 2
+    assert recorder.async_add_executor_job.await_count == 3
     job_name, data, overrides = coordinator.async_run_job.await_args.args
     assert job_name == "what_if"
     assert "stats" in data
     assert "long_term_statistics_timestamps" in data
+    assert data["price_providers"] == [
+        {
+            "name": "Strømligning",
+            "buy_entity_id": "sensor.stromligning_buy",
+            "sell_entity_id": "sensor.stromligning_sell",
+            "sell_fee": 0.03,
+            "sell_tariff_entity_ids": {
+                "elafgift": "sensor.sell_tax",
+                "tariffs": "sensor.sell_net_tariff",
+                "surcharge": "sensor.sell_surcharge",
+            },
+        },
+        {
+            "name": "Energi Data Service",
+            "buy_entity_id": "sensor.energi_data_service",
+            "sell_entity_id": "sensor.eds_sell",
+            "sell_fee": 0.03,
+            "sell_tariff_history": [],
+        }
+    ]
+    assert {
+        "sensor.stromligning_buy",
+        "sensor.stromligning_sell",
+        "sensor.sell_tax",
+        "sensor.sell_net_tariff",
+        "sensor.sell_surcharge",
+        "sensor.energi_data_service",
+        "sensor.eds_sell",
+    }.issubset(recorder.async_add_executor_job.call_args_list[0].args[4])
     assert overrides == {}
 
 
@@ -184,6 +223,9 @@ async def test_what_if_service_returns_simulation_without_changing_options(
             return_value=JobResult(
                 value={
                     "period": {"days": 365, "hours": 8760},
+                    "price_provider": "Energi Data Service",
+                    "tariff_estimated_hours": 8760,
+                    "tariff_unavailable_hours": 4,
                     "data_sources": {
                         "long_term_statistics_samples": 100,
                         "recorder_history_fallback_samples": 5,
@@ -289,6 +331,11 @@ async def test_what_if_service_returns_simulation_without_changing_options(
     )
     assert "|---|---|---|" in notification
     assert coordinator.t("ui.what_if.data_sources", statistics=100, recorder=5) in notification
+    assert coordinator.t(
+        "ui.what_if.price_provider", provider="Energi Data Service"
+    ) in notification
+    assert coordinator.t("ui.what_if.tariff_estimated", hours=8760) in notification
+    assert coordinator.t("ui.what_if.tariff_unavailable", hours=4) in notification
     assert coordinator.t(
         "ui.what_if.control_mode", mode=coordinator.t("ui.what_if.optimizer_mode")
     ) in notification

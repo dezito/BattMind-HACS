@@ -3,14 +3,58 @@ from __future__ import annotations
 
 import datetime
 import math
+from bisect import bisect_left
 from copy import deepcopy
 from dataclasses import replace
 
 from ..optimizer import RULE_SWITCHES, OptimizerConfig, OptimizerHour, breakdown, optimize_per_day
 from ...utils.efficiency import efficiency_at_power
 from ..energy.energy import derive_power_values
+from ...prices.base import calculate_sell_price
 from ...utils.power import unit_factor_to_w
 from ...utils.helpers import average
+
+
+def _nearest_value(
+    values: list[tuple[float, float]], timestamp: float
+) -> tuple[float, bool] | None:
+    """Return the closest recorded value, preferring the earlier sample on a tie."""
+    if not values:
+        return None
+    index = bisect_left(values, (timestamp, -math.inf))
+    candidates = values[max(0, index - 1):min(len(values), index + 1)]
+    nearest_timestamp, nearest_value = min(
+        candidates, key=lambda item: (abs(item[0] - timestamp), item[0] > timestamp)
+    )
+    return nearest_value, nearest_timestamp == timestamp
+
+
+def _nearest_eds_tariffs(
+    history: list[tuple[float, dict]], timestamp: float, hour: int
+) -> tuple[dict[str, float], bool] | None:
+    """Read the hourly tariff schedule from the closest recorded EDS state."""
+    if not history:
+        return None
+    index = bisect_left(history, (timestamp,))
+    candidates = history[max(0, index - 1):min(len(history), index + 1)]
+    nearest_timestamp, schedule = min(
+        candidates, key=lambda row: (abs(row[0] - timestamp), row[0] > timestamp)
+    )
+    additional = schedule.get("additional_tariffs") or {}
+    hourly = schedule.get("tariffs") or {}
+    try:
+        tariffs = {
+            "transmissions_nettarif": float(additional["transmissions_nettarif"]),
+            "systemtarif": float(additional["systemtarif"]),
+            "elafgift": float(additional["elafgift"]),
+            "tariffs": float(hourly[str(hour)]),
+            "surcharge": 0.0,
+        }
+    except (KeyError, TypeError, ValueError):
+        return None
+    if not all(math.isfinite(value) for value in tariffs.values()):
+        return None
+    return tariffs, nearest_timestamp == timestamp
 
 
 class WhatIf:
@@ -39,15 +83,10 @@ class WhatIf:
         flow_id = ids["powerwall_watt_flow_entity_id"]
         solar_id = self.config["solar"]["entity_ids"]["production_entity_id"]
         ignored_ids = [entity_id for entity_id in ids["ignore_consumption_from_entity_ids"] or [] if entity_id]
-        buy_id = data["buy_entity_id"]
-        sell_id = data["sell_entity_id"]
-        sell_price_history_available = data.get("sell_price_history_available", True)
         consumption = series(consumption_id)
         flow = series(flow_id)
         solar = series(solar_id)
         ignored = [series(entity_id) for entity_id in ignored_ids]
-        buy = series(buy_id, power=False)
-        sell = series(sell_id, power=False)
         required_ids = list(dict.fromkeys(
             entity_id
             for entity_id in (
@@ -55,33 +94,76 @@ class WhatIf:
                 flow_id,
                 solar_id,
                 *ignored_ids,
-                buy_id,
-                sell_id if sell_price_history_available else "",
             )
             if entity_id
         ))
-        required = {
-            entity_id: series(entity_id, power=entity_id not in (buy_id, sell_id))
-            for entity_id in required_ids
-        }
+        required = {entity_id: series(entity_id) for entity_id in required_ids}
         missing_series = [entity_id for entity_id, values in required.items() if not values]
         if missing_series:
             raise ValueError("No hourly long-term statistics for required entities: " + ", ".join(missing_series))
-        first = max(min(values) for values in required.values())
-        last = min(max(values) for values in required.values())
-        if first > last:
-            raise ValueError("No overlapping hourly long-term statistics were found for the required entities")
-        span_hours = (last - first) / 3600.0
-        hour_count = round(span_hours) + 1
-        if abs(span_hours - round(span_hours)) > 1e-6:
-            raise ValueError("Required long-term statistics are not aligned to the same hourly intervals")
-        timestamps = [
-            first + hour * 3600.0
-            for hour in range(hour_count)
-            if all(first + hour * 3600.0 in values for values in required.values())
+
+        providers = data.get("price_providers") or [
+            {
+                "name": "",
+                "buy_entity_id": data["buy_entity_id"],
+                "sell_entity_id": (
+                    data["sell_entity_id"]
+                    if data.get("sell_price_history_available", True)
+                    else None
+                ),
+                "sell_fee": 0.0,
+            }
         ]
-        if not timestamps:
-            raise ValueError("No complete hourly data is available for all required entities")
+        candidates = []
+        for provider in providers:
+            buy_id = provider["buy_entity_id"]
+            sell_id = provider.get("sell_entity_id")
+            provider_required = dict(required)
+            provider_required[buy_id] = series(buy_id, power=False)
+            if sell_id:
+                provider_required[sell_id] = series(sell_id, power=False)
+            if any(not values for values in provider_required.values()):
+                continue
+            first = max(min(values) for values in provider_required.values())
+            last = min(max(values) for values in provider_required.values())
+            if first > last:
+                continue
+            span_hours = (last - first) / 3600.0
+            hour_count = round(span_hours) + 1
+            if abs(span_hours - round(span_hours)) > 1e-6:
+                continue
+            timestamps = [
+                first + hour * 3600.0
+                for hour in range(hour_count)
+                if all(
+                    first + hour * 3600.0 in values
+                    for values in provider_required.values()
+                )
+            ]
+            if timestamps:
+                candidates.append(
+                    (len(timestamps), provider, provider_required, timestamps)
+                )
+        if not candidates:
+            raise ValueError(
+                "No complete hourly data is available for the required entities and any configured price provider"
+            )
+        _, selected_provider, required, timestamps = max(candidates, key=lambda item: item[0])
+        buy_id = selected_provider["buy_entity_id"]
+        sell_id = selected_provider.get("sell_entity_id") or buy_id
+        buy = series(buy_id, power=False)
+        sell = series(sell_id, power=False)
+        sell_price_history_available = bool(selected_provider.get("sell_entity_id"))
+        selected_tariff_series = {
+            tariff: sorted(series(entity_id, power=False).items())
+            for tariff, entity_id in selected_provider.get("sell_tariff_entity_ids", {}).items()
+        }
+        eds_sell_tariff_history = sorted(
+            selected_provider.get("sell_tariff_history") or [],
+            key=lambda row: row[0],
+        )
+        tariff_estimated_hours = 0
+        tariff_unavailable_hours = 0
         sample_count = len(required) * len(timestamps)
         if "long_term_statistics_timestamps" not in data:
             statistical_sample_count = sample_count
@@ -119,15 +201,61 @@ class WhatIf:
             row = self._analysis_row(values)
             net_use = row["use"]
             produced = row["solar"]
+            sell_price = sell.get(ts, buy[ts])
+            tariff_available = True
+            tariff_exact = True
+            tariffs: dict[str, float] = {}
+            if sell_price_history_available:
+                local_timestamp = datetime.datetime.fromtimestamp(ts, tz)
+                if selected_tariff_series:
+                    for key, tariff_values in selected_tariff_series.items():
+                        nearest = _nearest_value(tariff_values, ts)
+                        if nearest is None:
+                            tariff_available = False
+                            break
+                        tariffs[key], exact = nearest
+                        tariff_exact = tariff_exact and exact
+                elif selected_provider.get("name") == "Energi Data Service":
+                    nearest = _nearest_eds_tariffs(
+                        eds_sell_tariff_history, ts, local_timestamp.hour
+                    )
+                    if nearest is None:
+                        tariff_available = False
+                    else:
+                        tariffs, tariff_exact = nearest
+                if tariff_available:
+                    if not tariff_exact:
+                        tariff_estimated_hours += 1
+                    sell_price = calculate_sell_price(
+                        sell_price,
+                        {
+                            "transmissions_nettarif": tariffs.get("transmissions_nettarif", 0.0),
+                            "systemtarif": tariffs.get("systemtarif", 0.0),
+                            "elafgift": tariffs.get("elafgift", 0.0),
+                            "tariffs": tariffs.get("tariffs", 0.0),
+                            "surcharge": tariffs.get("surcharge", 0.0),
+                        },
+                        float(selected_provider.get("sell_fee", 0.0)),
+                    )
+                else:
+                    tariff_unavailable_hours += 1
+                    sell_price = 0.0
+            if sell_price_history_available:
+                sell_value = self.sell_value(sell_price) if tariff_available else 0.0
+            else:
+                sell_value = self.sell_value(0.0)
             hours.append(OptimizerHour(
                 datetime.datetime.fromtimestamp(ts, tz).replace(tzinfo=None),
                 buy[ts],
-                self.sell_value(sell.get(ts, buy[ts])) if sell_price_history_available else self.sell_value(0.0),
+                sell_value,
                 max(net_use - produced, 0.0),
                 max(produced - net_use, 0.0),
                 can_sell=(
-                    sell_price_history_available
-                    or self.config["solar"]["production_price"] != -1.0
+                    (sell_price_history_available and tariff_available)
+                    or (
+                        not sell_price_history_available
+                        and self.config["solar"]["production_price"] != -1.0
+                    )
                 ),
             ))
         if not hours:
@@ -267,6 +395,9 @@ class WhatIf:
         current = calculate(base_cfg, current_start_level, rule_values)
         summary = calculate(cfg, start_level, scenario_rule_values)
         return {
+            "price_provider": selected_provider.get("name") or None,
+            "tariff_estimated_hours": tariff_estimated_hours,
+            "tariff_unavailable_hours": tariff_unavailable_hours,
             "period": {
                 "start": hours[0].timestamp.isoformat(),
                 "end": hours[-1].timestamp.isoformat(),

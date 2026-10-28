@@ -215,18 +215,51 @@ class BattMindCoordinator(CoordinatorLifecycle, CoordinatorEvents, CoordinatorDa
         from homeassistant.components.recorder.statistics import statistics_during_period
 
         price_ids = self.config["prices"]["entity_ids"]
-        buy_id = price_ids["stromligning_buy_current_price"] or price_ids["energidataservice_buy_entity_id"]
-        if not buy_id:
+        price_providers = []
+        for name, buy_key, sell_key in (
+            ("Strømligning", "stromligning_buy_current_price", "stromligning_sell_current_price"),
+            ("Energi Data Service", "energidataservice_buy_entity_id", "energidataservice_sell_entity_id"),
+        ):
+            buy_id = price_ids[buy_key]
+            if buy_id:
+                sell_id = price_ids[sell_key] or None
+                provider = {
+                    "name": name,
+                    "buy_entity_id": buy_id,
+                    "sell_entity_id": sell_id,
+                    "sell_fee": abs(self.config["prices"].get("sell_fee", 0.0)),
+                }
+                if name == "Strømligning":
+                    provider["sell_tariff_entity_ids"] = {
+                        tariff: price_ids[key]
+                        for tariff, key in (
+                            ("elafgift", "stromligning_sell_electricity_tax"),
+                            ("tariffs", "stromligning_sell_nettariff"),
+                            ("surcharge", "stromligning_sell_surcharge"),
+                        )
+                        if price_ids[key]
+                    }
+                price_providers.append(
+                    provider
+                )
+        if not price_providers:
             raise HomeAssistantError("A buy-price entity is required for the historical what-if comparison")
-        sell_price_history_available = bool(
-            price_ids["stromligning_sell_current_price"] or price_ids["energidataservice_sell_entity_id"]
-        )
-        sell_id = (
-            price_ids["stromligning_sell_current_price"]
-            or price_ids["energidataservice_sell_entity_id"]
-            or buy_id
-        )
-        entities = {entity_id for entity_id in (*self.statistics_entities, buy_id, sell_id) if entity_id}
+        entities = {
+            entity_id
+            for entity_id in (
+                *self.statistics_entities,
+                *(
+                    entity_id
+                    for provider in price_providers
+                    for entity_id in (
+                        provider["buy_entity_id"],
+                        provider["sell_entity_id"],
+                        *provider.get("sell_tariff_entity_ids", {}).values(),
+                    )
+                ),
+            )
+            if entity_id
+        }
         end = dt_util.utcnow().replace(minute=0, second=0, microsecond=0)
         start = end - datetime.timedelta(days=history_days)
         try:
@@ -255,14 +288,39 @@ class BattMindCoordinator(CoordinatorLifecycle, CoordinatorEvents, CoordinatorDa
                     no_attributes=True,
                 )
             )
+            eds_sell_entities = {
+                provider["sell_entity_id"]
+                for provider in price_providers
+                if provider["name"] == "Energi Data Service" and provider["sell_entity_id"]
+            }
+            tariff_states = (
+                await recorder.async_add_executor_job(
+                    partial(
+                        history.get_significant_states,
+                        self.hass,
+                        start,
+                        end,
+                        eds_sell_entities,
+                        None,
+                        include_start_time_state=True,
+                        significant_changes_only=False,
+                        minimal_response=False,
+                        no_attributes=False,
+                    )
+                )
+                if eds_sell_entities
+                else {}
+            )
         except Exception as err:  # noqa: BLE001
             raise HomeAssistantError(f"Could not read Recorder history and long-term statistics: {err}") from err
         recorder_hourly = self._recorder_hourly_means(states, start, end)
         combined_stats, statistical_timestamps = self._combine_what_if_statistics(entities, stats, recorder_hourly)
+        tariff_history = self._recorder_tariff_history(tariff_states)
+        for provider in price_providers:
+            if provider["name"] == "Energi Data Service" and provider["sell_entity_id"]:
+                provider["sell_tariff_history"] = tariff_history.get(provider["sell_entity_id"], [])
         data = {
-            "buy_entity_id": buy_id,
-            "sell_entity_id": sell_id,
-            "sell_price_history_available": sell_price_history_available,
+            "price_providers": price_providers,
             "stats": combined_stats,
             "long_term_statistics_timestamps": statistical_timestamps,
         }

@@ -47,6 +47,9 @@ switch states beside the scenario states.
 |---|---|
 | **period** | first/last hour and the amount of historical data actually used |
 | **data_sources** | counts of used entity-hour samples from long-term statistics and raw Recorder fallback |
+| **price_provider** | configured provider with the most complete matching hourly data |
+| **tariff_estimated_hours** | hours where the closest recorded tariff value was used instead of an exact-hour value |
+| **tariff_unavailable_hours** | hours where required tariff history was unavailable; export income is conservatively set to zero |
 | **current_assumptions** | configured battery values used as the current comparison |
 | **assumptions** | the complete temporary battery values used for the scenario |
 | **current** | historical economy with the configured battery |
@@ -67,8 +70,19 @@ Recorder state history for the same configured entities. Unknown/unavailable sta
 filled or assumed. Hours without data for every required entity are skipped, so a gap does not discard
 older valid history. The calculation treats each continuous section separated by a gap independently:
 the first section uses the selected starting level and later sections restart at the battery's minimum
-level rather than carrying an unknown state of charge across missing data. The simulator does not use
-BattMind's offline price database or assume that the buy price was earned when selling.
+level rather than carrying an unknown state of charge across missing data. If both Strømligning and
+Energi Data Service are configured, it uses the one with the most complete matching hourly data for the
+whole simulation and reports that provider; it does not mix prices from different providers. The
+simulator does not use BattMind's offline price database or assume that the buy price was earned when
+selling.
+
+Historical sell prices use BattMind's normal sell-price formula, including the configured sell fee and
+the recorded tax/tariff components. Energi Data Service tariff schedules are read from timestamped
+Recorder attributes; Strømligning tariff sensors use the nearest recorded hourly value. When a
+tariff sample is missing at the exact simulation hour, the closest available sample is used and the
+notification reports the number of estimated hours. If a configured tariff has no history at all
+(or an EDS schedule is incomplete), sales are valued at zero for that hour rather than assuming a
+favorable tariff.
 
 The current controller mode is included under **current_assumptions.control_mode**. The current rule
 switches and the scenario's overridden switches constrain which actions the historical

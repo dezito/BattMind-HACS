@@ -26,6 +26,19 @@ _ZERO_TARIFFS = {
 }
 
 
+def calculate_sell_price(price: float, tariffs: dict[str, float], sell_fee: float) -> float:
+    """Apply the shared BattMind sell-price formula to a raw price and tariff values."""
+    tariff_sum = sum(tariffs.values())
+    return round(
+        price
+        - tariff_sum
+        + sell_fee
+        + tariffs.get("transmissions_nettarif", 0.0)
+        + tariffs.get("systemtarif", 0.0),
+        2,
+    )
+
+
 def _naive(timestamp):
     return timestamp.replace(tzinfo=None) if isinstance(timestamp, datetime.datetime) else timestamp
 
@@ -90,8 +103,7 @@ class BasePriceProvider:
 
     def calculate_sell_price(self, timestamp: datetime.datetime, price: float) -> float:
         tariff = self.get_tariffs(timestamp)
-        tariff_sum = sum(tariff.values())
-        return round(price - tariff_sum + self.sell_fee + tariff["transmissions_nettarif"] + tariff["systemtarif"], 2)
+        return calculate_sell_price(price, tariff, self.sell_fee)
 
     def buy_price_entity_id(self) -> str:
         return ""
