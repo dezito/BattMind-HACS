@@ -35,13 +35,13 @@ class Battery:
         return max(round(self.percentage_to_kwh(target_level - battery), 2), 0.0)
 
     def get_charging_loss(self) -> float:
-        """Round trip loss: configured, or measured from the history after 6 full cycles."""
+        """Round trip loss: configured, or measured after one battery capacity of charging."""
         if "charging_loss" in self._job_cache:
             return self._job_cache["charging_loss"]
         solar = self.config["solar"]
         loss = solar["powerwall_charge_discharge_loss"]
         charged_kwh = self.charging_history_total.get("charged_kwh", 0.0)
-        if solar["use_charge_discharge_loss_from_history"] and charged_kwh > solar["powerwall_battery_size"] * 6:
+        if solar["use_charge_discharge_loss_from_history"] and charged_kwh >= solar["powerwall_battery_size"]:
             in_battery = self.percentage_to_kwh(self.get_battery_level() - solar["powerwall_battery_level_min"])
             discharged_kwh = self.charging_history_total.get("discharged_kwh", 0.0) + in_battery
             loss = 1 - discharged_kwh / charged_kwh

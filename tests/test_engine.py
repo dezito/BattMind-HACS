@@ -246,6 +246,19 @@ def test_round_trip_loss_in_price_and_battery_level() -> None:
         assert session["battery_level"] == pytest.approx(engine.kwh_to_percentage(session["kWh"]) * 0.8**0.5, abs=0.05)
 
 
+@pytest.mark.parametrize(("charged_kwh", "expected_loss"), [(9.99, 0.1), (10.0, 0.4)])
+def test_historical_round_trip_loss_is_used_after_one_battery_capacity(charged_kwh: float, expected_loss: float) -> None:
+    engine = BattMindEngine(build_config(OPTIONS), "test", TEXTS)
+    engine.charging_history_total = {"charged_kwh": charged_kwh, "discharged_kwh": 6.0}
+    now = datetime.datetime.combine(DAY, datetime.time(3, 30))
+
+    loss = engine.run_job(snapshot(now, 5), engine.get_charging_loss)
+    efficiency = engine.run_job(snapshot(now, 5), engine.charging_efficiency)
+
+    assert loss.value == pytest.approx(expected_loss)
+    assert efficiency.value == pytest.approx((1 - expected_loss) ** 0.5)
+
+
 def test_configured_efficiency_curves_override_the_round_trip_loss() -> None:
     options = {
         **OPTIONS,
