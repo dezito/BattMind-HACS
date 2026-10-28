@@ -267,7 +267,7 @@
       "price_provider": "Price provider used: {provider}.",
       "price_provider_hours": "{provider} ({hours} hours)",
       "tariff_estimated": "Tariffs estimated from the nearest Recorder value for {hours} hours.",
-      "tariff_unavailable": "Tariffs were unavailable for {hours} hours; sales are valued at 0 in those hours.",
+      "tariff_unavailable": "Tariffs were unavailable for {hours} hours; those hours are left out of the simulation.",
       "control_mode": "Active controller: {mode}.",
       "optimizer_mode": "optimizer",
       "rules_mode": "rules",

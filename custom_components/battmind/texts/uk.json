@@ -267,7 +267,7 @@
       "price_provider": "Використаний постачальник цін: {provider}.",
       "price_provider_hours": "{provider} ({hours} год.)",
       "tariff_estimated": "Тарифи оцінено за найближчим значенням Recorder для {hours} годин.",
-      "tariff_unavailable": "Тарифи відсутні протягом {hours} годин; продаж у ці години оцінено в 0.",
+      "tariff_unavailable": "Тарифи відсутні протягом {hours} годин; ці години не враховано в симуляції.",
       "control_mode": "Активний режим керування: {mode}.",
       "optimizer_mode": "оптимізатор",
       "rules_mode": "правила",

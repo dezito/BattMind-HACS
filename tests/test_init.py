@@ -181,6 +181,7 @@ async def test_what_if_reads_statistics_and_raw_recorder_history(
             "buy_entity_id": "sensor.energi_data_service",
             "sell_entity_id": "sensor.eds_sell",
             "sell_fee": 0.03,
+            "sell_includes_tariffs": True,
             "sell_tariff_history": [],
         },
     ]
@@ -199,6 +200,16 @@ async def test_what_if_reads_statistics_and_raw_recorder_history(
     assert states_call.args[3] == sorted(states_call.args[3])
     assert tariff_call.args[3] == ["sensor.eds_sell"]
     assert overrides == {}
+
+    # A raw Energi Data Service price (tariffs disabled) has no tariffs attribute to read.
+    hass.states.async_set("sensor.eds_sell", "0.5", {"unit_of_measurement": "kr/kWh"})
+    recorder.async_add_executor_job.reset_mock()
+    recorder.async_add_executor_job.side_effect = [{}, {}]
+    with patch("homeassistant.components.recorder.get_instance", return_value=recorder):
+        await coordinator.async_what_if({}, 1)
+    assert recorder.async_add_executor_job.await_count == 2
+    _, data, _ = coordinator.async_run_job.await_args.args
+    assert data["price_providers"][1]["sell_includes_tariffs"] is False
 
 
 async def test_what_if_service_returns_simulation_without_changing_options(
@@ -350,9 +361,9 @@ async def test_what_if_service_returns_simulation_without_changing_options(
         f"{coordinator.t('ui.what_if.enabled')} | {coordinator.t('ui.what_if.disabled')} |"
         in notification
     )
-    optimize_solar_label = coordinator.t("charging_type.optimize_solar_charging.description")
-    assert optimize_solar_label in notification
-    assert "charging_type.optimize_solar_charging.description" not in notification
+    # Only rules that differ between current and scenario are listed.
+    assert coordinator.t("charging_type.optimize_solar_charging.description") not in notification
+    assert "charging_type.most_profit.description" not in notification
     assert (
         f"| | **{coordinator.t('ui.what_if.current')}** "
         f"| **{coordinator.t('ui.what_if.scenario')}** | |"
@@ -378,9 +389,11 @@ async def test_what_if_service_returns_simulation_without_changing_options(
     same_improvement = _what_if_notification(
         coordinator,
         {**simulation, "difference": {"profit": 25, "bill": -25}},
-        {"battery_size": 20, "round_trip_loss": 5, "most_profit": False},
+        {"battery_size": 20, "round_trip_loss": 5, "most_profit": False, "minimum_level": 10},
     )
     assert profit_difference in same_improvement
+    # An override equal to the configured value is not a change.
+    assert f"**{coordinator.t('ui.what_if.minimum_level')}**" not in same_improvement
     assert coordinator.t("ui.what_if.bill_difference") not in same_improvement
     assert simulation["assumptions"]["battery_size"] == 20
     assert simulation["assumptions"]["round_trip_loss"] == 5

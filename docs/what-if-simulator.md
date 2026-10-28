@@ -14,7 +14,8 @@ uses up to 365 days. Nothing is saved, the active plan is not changed, and no in
 
 Open **Developer tools ? Actions**, select **BattMind: What-if simulator**, choose the BattMind config
 entry and fill only the values you want to replace. Run the action to receive a persistent notification
-with a two-column comparison of the configured values and the what-if scenario. The action also keeps
+with a two-column comparison of the configured values and the what-if scenario; only values and rule
+switches that differ from the current setup are listed. The action also keeps
 returning the full simulation response for automations and scripts. A progress notification is shown
 while history is loaded and the simulation runs; the finished result (or an error) replaces that same
 notification.
@@ -39,7 +40,7 @@ are percentages. Setting **round_trip_loss** temporarily replaces the configured
 You can also override the rule switches used by the optimizer as constraints (for example
 **most_profit**, **grid_charge_to_sell**, or **optimize_solar_charging**) and the thresholds
 **min_profit_per_kwh**, **min_total_profit**, and **min_sell_kwh**. The notification shows the current
-switch states beside the scenario states.
+state beside the scenario state for each switch you changed.
 
 ## Reading the response
 
@@ -49,7 +50,7 @@ switch states beside the scenario states.
 | **data_sources** | counts of used entity-hour samples from long-term statistics and raw Recorder fallback |
 | **price_provider** | configured provider with the most complete matching hourly data |
 | **tariff_estimated_hours** | hours where the closest recorded tariff value was used instead of an exact-hour value |
-| **tariff_unavailable_hours** | hours where required tariff history was unavailable; export income is conservatively set to zero |
+| **tariff_unavailable_hours** | hours left out of the simulation because required tariff history was unavailable |
 | **current_assumptions** | configured battery values used as the current comparison |
 | **assumptions** | the complete temporary battery values used for the scenario |
 | **current** | historical economy with the configured battery |
@@ -82,9 +83,13 @@ Historical sell prices use BattMind's normal sell-price formula, including the c
 the recorded tax/tariff components. Energi Data Service tariff schedules are read from timestamped
 Recorder attributes; Strømligning tariff sensors use the nearest recorded hourly value. When a
 tariff sample is missing at the exact simulation hour, the closest available sample is used and the
-notification reports the number of estimated hours. If a configured tariff has no history at all
-(or an EDS schedule is incomplete), sales are valued at zero for that hour rather than assuming a
-favorable tariff.
+notification reports the number of estimated hours. Energi Data Service does not save its tariff
+attribute in the Recorder, so a schedule is only available if another Recorder setup kept it. A sell
+sensor without a tariff attribute (tariffs disabled in Energi Data Service, a raw price) needs no
+tariffs, the same as in the live plan; BattMind checks this from the sensor's current state. If the
+tariffs of an hour are still unknown, the hour uses the next price provider with prices and tariffs.
+If no provider has them, the hour is left out like missing data: there are no purchases or sales in
+that hour, rather than purchases without the matching sales.
 
 The current controller mode is included under **current_assumptions.control_mode**. The current rule
 switches and the scenario's overridden switches constrain which actions the historical
