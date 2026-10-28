@@ -16,6 +16,7 @@ import pytest
 from custom_components.battmind.utils.codec import decode, encode
 from custom_components.battmind.const import POWERWALL_ACTION_STATES, build_config, default_options
 from custom_components.battmind.engine import BattMindEngine, Snapshot
+from custom_components.battmind.engine.energy.energy import derive_power_values
 
 TZ = zoneinfo.ZoneInfo("Europe/Copenhagen")
 DAY = datetime.date(2026, 10, 22)
@@ -469,3 +470,23 @@ def test_codec_roundtrip() -> None:
         "nested": {"when": datetime.datetime(2026, 5, 5)},
     }
     assert decode(json.loads(json.dumps(encode(data)))) == data
+
+
+@pytest.mark.parametrize(
+    ("include_charging", "include_discharging", "consumption", "charging", "discharging", "expected"),
+    [
+        (False, True, 1000.0, 500.0, 0.0, 800.0),
+        (True, True, 1500.0, 500.0, 0.0, 800.0),
+        (False, False, 600.0, 0.0, 400.0, 800.0),
+        (False, True, 100.0, 500.0, 0.0, 0.0),
+    ],
+)
+def test_house_consumption_does_not_subtract_battery_charging_twice(
+    include_charging: bool, include_discharging: bool, consumption: float, charging: float, discharging: float, expected: float
+) -> None:
+    home = {
+        "power_consumption_entity_id_include_powerwall_charging": include_charging,
+        "power_consumption_entity_id_include_powerwall_discharging": include_discharging,
+    }
+    values = derive_power_values(home, consumption, 200.0, charging, discharging, 0.0)
+    assert values["power_consumption_without_all_exclusion"] == pytest.approx(expected)

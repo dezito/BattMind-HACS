@@ -26,7 +26,10 @@ POWER_VALUE_KEYS = (
 
 
 def derive_power_values(home: dict, consumption: float, ignored: float, charging: float, discharging: float, solar: float) -> dict:
-    """POWER_VALUE_KEYS from the measured W (house consumption corrected for the battery like configured)."""
+    """POWER_VALUE_KEYS from the measured W (house consumption corrected for the battery like configured).
+
+    After the correction the consumption never contains the battery charging, so it is not subtracted again.
+    """
     if not home["power_consumption_entity_id_include_powerwall_discharging"]:
         consumption += discharging
     if home["power_consumption_entity_id_include_powerwall_charging"]:
@@ -39,7 +42,7 @@ def derive_power_values(home: dict, consumption: float, ignored: float, charging
         "powerwall_discharging_consumption": discharging,
         "solar_production": solar,
         "power_consumption_without_ignored": without_ignored,
-        "power_consumption_without_all_exclusion": max(round(without_ignored - charging, 2), 0.0),
+        "power_consumption_without_all_exclusion": max(without_ignored, 0.0),
     }
 
 
