@@ -118,6 +118,39 @@ TEXT_SETTINGS: dict[str, dict[str, Any]] = {
     },
 }
 
+# Settings the what-if simulator can change for its scenario (the rest is planning only:
+# the forecast type and the price forecast correction, as the history is known)
+WHAT_IF_SWITCHES = (
+    "optimizer_control",
+    "use_midnight_battery_level",
+    "solar_charging",
+    "enhance_battery_efficiency",
+    "cheapest_hour_fill_planner",
+    "cheapest_hour_fill_up",
+    "most_expensive_planner",
+    "needed_before_max_level_planner",
+    "negative_price_planner",
+    "grid_charge_to_sell",
+    "most_profit",
+    "sell_excess_kwh_available",
+    "force_powerwall_max_hours_old_discharge",
+    "discharge_before_solar",
+    "only_discharge_on_profit",
+    "prioritize_discharge_hours_by_energy_cost",
+    "optimize_solar_charging",
+)
+WHAT_IF_NUMBERS = (
+    "usage_reserve",
+    "min_profit_per_kwh",
+    "min_total_profit",
+    "min_sell_kwh",
+    "cheap_price_periods",
+    "cheapest_price_rise_threshold",
+    "cheap_price_period_rise_threshold",
+    "powerwall_max_hours_old",
+)
+WHAT_IF_TEXTS = ("exclude_sell_hours",)
+
 # Output sensors (icons in icons.json)
 SENSOR_KEYS = (
     "current_charging_rule",

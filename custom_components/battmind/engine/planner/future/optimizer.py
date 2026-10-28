@@ -23,6 +23,33 @@ _LOGGER = logging.getLogger(__name__)
 class FutureOptimizer:
     """Runs the optimizer next to the rules and applies its plan."""
 
+    def shadow_optimize(self, hours: list[OptimizerHour], start_level: float, cfg: OptimizerConfig, end_value: float):
+        """The optimal plan of the hours: (OptimizerResult, explanation per hour)."""
+        # the rule switches decide which actions the optimiser may use;
+        # use_midnight_battery_level: every day is optimised on its own until midnight
+        optimize = optimize_per_day if self.enabled("use_midnight_battery_level") else optimize_with_rules
+        return optimize(hours, start_level, cfg, end_value, self.enabled)
+
+    def optimizer_config(self, max_kwh_charging: float, max_kwh_discharging: float, efficiency: float) -> OptimizerConfig:
+        """The battery model of the optimizer from the configuration and the current settings."""
+        solar = self.config["solar"]
+        return OptimizerConfig(
+            battery_size=solar["powerwall_battery_size"],
+            level_min=solar["powerwall_battery_level_min"],
+            level_max=solar["powerwall_battery_level_max"],
+            max_charge=max_kwh_charging,
+            max_discharge=abs(max_kwh_discharging),
+            efficiency=efficiency,
+            wear=abs(solar["powerwall_wear_cost_per_kwh"]),
+            charge_efficiency_curve=self.charging_efficiency_curve(),
+            discharge_efficiency_curve=self.discharging_efficiency_curve(),
+            curve_fallback_efficiency=self._fallback_efficiency(),
+            min_profit_per_kwh=self.get_min_profit_per_kwh(),
+            min_sell_kwh=self.number("min_sell_kwh"),
+            min_total_profit=self.get_min_total_profit(),
+            usage_reserve=self.number("usage_reserve"),
+        )
+
     def shadow_plan(self, ctx, days):
         """Whole horizon optimisation next to the rules (compared in the overview).
 
@@ -75,36 +102,23 @@ class FutureOptimizer:
         if not hours:
             return None
         wear = abs(ctx.config["solar"]["powerwall_wear_cost_per_kwh"])
-        optimizer_config = OptimizerConfig(
-            battery_size=ctx.config["solar"]["powerwall_battery_size"],
-            level_min=ctx.config["solar"]["powerwall_battery_level_min"],
-            level_max=ctx.config["solar"]["powerwall_battery_level_max"],
-            max_charge=ctx.max_kwh_charging,
-            max_discharge=abs(ctx.max_kwh_discharging),
-            efficiency=ctx.efficiency,
-            wear=wear,
-            charge_efficiency_curve=self.charging_efficiency_curve(),
-            discharge_efficiency_curve=self.discharging_efficiency_curve(),
-            curve_fallback_efficiency=self._fallback_efficiency(),
-            min_profit_per_kwh=ctx.get_min_profit_per_kwh(),
-            min_sell_kwh=self.number("min_sell_kwh"),
-            min_total_profit=self.get_min_total_profit(),
-            usage_reserve=self.number("usage_reserve"),
-        )
+        optimizer_config = self.optimizer_config(ctx.max_kwh_charging, ctx.max_kwh_discharging, ctx.efficiency)
         # a kWh left in the battery at the end saves the average buy price later (after wear and
         # the min. profit, else buying just to hold the energy at the end would pay)
         end_value = ctx.efficiency * max(average([hour.buy for hour in hours]) - wear - ctx.get_min_profit_per_kwh(), 0.0)
         start_level = ctx.get_battery_level()
-        # the rule switches decide which actions the optimiser may use;
-        # use_midnight_battery_level: every day is optimised on its own until midnight
-        optimize = optimize_per_day if self.enabled("use_midnight_battery_level") else optimize_with_rules
-        optimal, explanations = optimize(hours, start_level, optimizer_config, end_value, self.enabled)
+        optimal, explanations = self.shadow_optimize(hours, start_level, optimizer_config, end_value)
         rules = simulate(hours, start_level, optimizer_config, rule_actions, end_value, rule_limits)
         self_consumption = simulate(hours, start_level, optimizer_config, ["discharge_allowed"] * len(hours), end_value)
         optimal_limits = [
             grid if action == "grid_charging" else sold if action == "force_discharge" else None
             for action, grid, sold in zip(optimal.actions, optimal.grid_kwh, optimal.sold_kwh)
         ]
+        # the action and kWh limit per hour of both plans (the what-if replay executes one of them)
+        self.shadow_plan_actions = {
+            "rules": {hour.timestamp: (action, limit) for hour, action, limit in zip(hours, rule_actions, rule_limits)},
+            "optimal": {hour.timestamp: (action, limit) for hour, action, limit in zip(hours, optimal.actions, optimal_limits)},
+        }
         self.optimizer_shadow = {
             # totals of the plan for the overview (the one that controls the battery is shown)
             "summary_rules": breakdown(hours, start_level, optimizer_config, rule_actions, end_value, rule_limits),

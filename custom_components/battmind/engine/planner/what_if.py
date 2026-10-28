@@ -3,16 +3,38 @@ from __future__ import annotations
 
 import datetime
 import math
+import time
 from bisect import bisect_left
 from copy import deepcopy
-from dataclasses import replace
 
-from ..optimizer import RULE_SWITCHES, OptimizerConfig, OptimizerHour, breakdown, optimize_per_day
-from ...utils.efficiency import efficiency_at_power
+from ...const import (
+    NUMBER_SETTINGS,
+    SELECT_SETTINGS,
+    SWITCH_SETTINGS,
+    TEXT_SETTINGS,
+    WHAT_IF_NUMBERS,
+    WHAT_IF_SWITCHES,
+    WHAT_IF_TEXTS,
+)
+from ..optimizer import OptimizerConfig, OptimizerHour
 from ..energy.energy import derive_power_values
 from ...prices.base import calculate_sell_price
 from ...utils.power import unit_factor_to_w
-from ...utils.helpers import average
+from ...utils.helpers import float_or_none
+from .replay import replay_history
+
+# seconds between two progress reports of a running simulation
+PROGRESS_INTERVAL = 10.0
+
+# what-if input -> battery configuration (config["solar"])
+_CONFIG_OVERRIDES = {
+    "battery_size": "powerwall_battery_size",
+    "minimum_level": "powerwall_battery_level_min",
+    "maximum_level": "powerwall_battery_level_max",
+    "max_charging_power": "powerwall_charging_power_limit",
+    "max_discharging_power": "powerwall_discharging_power",
+    "wear_cost_per_kwh": "powerwall_wear_cost_per_kwh",
+}
 
 
 def _nearest_value(
@@ -60,12 +82,12 @@ def _nearest_eds_tariffs(
 class WhatIf:
     """The what-if calculation of the planner."""
 
-    _RULE_SETTING_KEYS = tuple(dict.fromkeys(
-        switch for switches in RULE_SWITCHES.values() for switch in switches
-    ))
+    def what_if(self, data: dict, overrides: dict, progress=None) -> dict:
+        """Compare battery assumptions against historical hourly statistics.
 
-    def what_if(self, data: dict, overrides: dict) -> dict:
-        """Compare battery assumptions against historical hourly statistics."""
+        progress (optional) is called from the worker thread at most every PROGRESS_INTERVAL
+        seconds with {"percent", "step", "steps", "hours", "total_hours"}.
+        """
         stats = data.get("stats") or {}
         units = self._snap.units if self._snap else {}
         home = self.config["home"]
@@ -213,6 +235,7 @@ class WhatIf:
         }
         positive_is_charging = home["invert_powerwall_watt_flow_entity_id"]
         hours = []
+        planner_sell = {}  # the sell price per hour the planner sees
         for ts in timestamps:
             battery = flow.get(ts, 0.0)
             charging = max(battery if positive_is_charging else -battery, 0.0)
@@ -251,130 +274,61 @@ class WhatIf:
                 sell_value = self.sell_value(sell_price)
             else:
                 sell_value = self.sell_value(0.0)
+            can_sell = hour_sell_history or self.config["solar"]["production_price"] != -1.0
+            timestamp = datetime.datetime.fromtimestamp(ts, tz).replace(tzinfo=None)
+            if can_sell:
+                planner_sell[timestamp] = sell_price if hour_sell_history else 0.0
             hours.append(OptimizerHour(
-                datetime.datetime.fromtimestamp(ts, tz).replace(tzinfo=None),
+                timestamp,
                 buy_price,
                 sell_value,
                 max(net_use - produced, 0.0),
                 max(produced - net_use, 0.0),
-                can_sell=(
-                    hour_sell_history
-                    or self.config["solar"]["production_price"] != -1.0
-                ),
+                can_sell=can_sell,
             ))
         if not hours:
             raise ValueError("No matching hourly consumption and price statistics were found")
 
-        solar_cfg = self.config["solar"]
-        max_charge = abs(self.max_kwh_charging)
-        max_discharge = abs(self.max_kwh_discharging)
-        fallback = self._fallback_efficiency()
-        base_cfg = OptimizerConfig(
-            battery_size=solar_cfg["powerwall_battery_size"],
-            level_min=solar_cfg["powerwall_battery_level_min"],
-            level_max=solar_cfg["powerwall_battery_level_max"],
-            max_charge=max_charge,
-            max_discharge=max_discharge,
-            efficiency=fallback,
-            wear=abs(solar_cfg["powerwall_wear_cost_per_kwh"]),
-            charge_efficiency_curve=self.charging_efficiency_curve(),
-            discharge_efficiency_curve=self.discharging_efficiency_curve(),
-            curve_fallback_efficiency=fallback,
-            min_profit_per_kwh=self.get_min_profit_per_kwh(),
-            min_sell_kwh=self.number("min_sell_kwh"),
-            min_total_profit=self.get_min_total_profit(),
-            usage_reserve=self.number("usage_reserve"),
-        )
-        rule_values = {key: self.enabled(key) for key in self._RULE_SETTING_KEYS}
-        scenario_rule_values = {
-            key: bool(overrides.get(key, value))
-            for key, value in rule_values.items()
-        }
-        cfg = base_cfg
-        changes = {}
-        mapping = {
-            "battery_size": "battery_size",
-            "minimum_level": "level_min",
-            "maximum_level": "level_max",
-            "wear_cost_per_kwh": "wear",
-            "usage_reserve": "usage_reserve",
-            "min_profit_per_kwh": "min_profit_per_kwh",
-            "min_total_profit": "min_total_profit",
-            "min_sell_kwh": "min_sell_kwh",
-        }
-        for input_key, config_key in mapping.items():
-            if input_key in overrides:
-                changes[config_key] = float(overrides[input_key])
-        if "max_charging_power" in overrides:
-            changes["max_charge"] = float(overrides["max_charging_power"]) / 1000.0
-        if "max_discharging_power" in overrides:
-            changes["max_discharge"] = float(overrides["max_discharging_power"]) / 1000.0
-        if "round_trip_loss" in overrides:
-            loss = float(overrides["round_trip_loss"]) / 100.0
-            efficiency = math.sqrt(1.0 - loss)
-            changes.update(
-                efficiency=efficiency,
-                curve_fallback_efficiency=efficiency,
-                charge_efficiency_curve=(),
-                discharge_efficiency_curve=(),
-            )
-        cfg = replace(cfg, **changes)
-
-        def effective_efficiency(calc_cfg: OptimizerConfig) -> OptimizerConfig:
-            curve_fallback = calc_cfg.curve_fallback_efficiency or calc_cfg.efficiency
-            charge_efficiency = efficiency_at_power(
-                calc_cfg.charge_efficiency_curve, calc_cfg.max_charge * 1000.0, curve_fallback
-            )
-            discharge_efficiency = efficiency_at_power(
-                calc_cfg.discharge_efficiency_curve, calc_cfg.max_discharge * 1000.0, curve_fallback
-            )
-            return replace(calc_cfg, efficiency=math.sqrt(charge_efficiency * discharge_efficiency))
-
-        base_cfg = effective_efficiency(base_cfg)
-        cfg = effective_efficiency(cfg)
-
+        current_config, current_settings = self._what_if_setup({})
+        scenario_config, scenario_settings = self._what_if_setup(overrides)
         requested_start = overrides.get("starting_level")
-        start_level = float(requested_start if requested_start is not None else cfg.level_min)
-        current_start_level = float(requested_start if requested_start is not None else base_cfg.level_min)
-        if cfg.level_min >= cfg.level_max:
-            raise ValueError("Minimum level must be lower than maximum level")
-        if not cfg.level_min <= start_level <= cfg.level_max:
-            raise ValueError("Starting level must be between minimum and maximum level")
-        if not base_cfg.level_min <= current_start_level <= base_cfg.level_max:
-            raise ValueError("Starting level must also fit the configured battery limits")
+        starts = []
+        for config in (current_config, scenario_config):
+            level_min = config["solar"]["powerwall_battery_level_min"]
+            level_max = config["solar"]["powerwall_battery_level_max"]
+            if level_min >= level_max:
+                raise ValueError("Minimum level must be lower than maximum level")
+            start = float(requested_start if requested_start is not None else level_min)
+            if not level_min <= start <= level_max:
+                raise ValueError("Starting level must be between minimum and maximum level")
+            starts.append(start)
+        current_start_level, start_level = starts
 
-        def calculate(calc_cfg: OptimizerConfig, initial_level: float, rules: dict[str, bool]) -> dict:
-            def enabled(key: str) -> bool:
-                return rules.get(key, self.enabled(key))
+        unchanged = (scenario_config, scenario_settings, start_level) == (current_config, current_settings, current_start_level)
+        steps = 1 if unchanged else 2
+        last_report = [time.monotonic()]
 
-            end_value = calc_cfg.efficiency * max(
-                average([hour.buy for hour in hours]) - calc_cfg.wear - calc_cfg.min_profit_per_kwh, 0.0
+        def reporter(step: int):
+            def report(done: int) -> None:
+                now = time.monotonic()
+                if progress is None or now - last_report[0] < PROGRESS_INTERVAL:
+                    return
+                last_report[0] = now
+                progress({
+                    "percent": int(((step - 1) * len(hours) + done) * 100 / (steps * len(hours))),
+                    "step": step,
+                    "steps": steps,
+                    "hours": done,
+                    "total_hours": len(hours),
+                })
+            return report
+
+        def calculate(config: dict, settings: dict, initial_level: float, step: int) -> dict:
+            replay = replay_history(
+                type(self), config, f"{self.name}_what_if", self.texts, settings, tz, hours, planner_sell, initial_level,
+                reporter(step),
             )
-            segments = []
-            for hour in hours:
-                if (
-                    not segments
-                    or (hour.timestamp - segments[-1][-1].timestamp).total_seconds() == 3600
-                ):
-                    if not segments:
-                        segments.append([])
-                    segments[-1].append(hour)
-                else:
-                    segments.append([hour])
-
-            summaries = []
-            for index, segment in enumerate(segments):
-                segment_start_level = initial_level if index == 0 else calc_cfg.level_min
-                result, _ = optimize_per_day(
-                    deepcopy(segment), segment_start_level, calc_cfg, end_value, enabled
-                )
-                limits = [
-                    grid if action == "grid_charging" else sold if action == "force_discharge" else None
-                    for action, grid, sold in zip(result.actions, result.grid_kwh, result.sold_kwh)
-                ]
-                summaries.append(
-                    breakdown(segment, segment_start_level, calc_cfg, result.actions, end_value, limits)
-                )
+            summaries = replay["summaries"]
 
             def total(column: str, key: str) -> float:
                 return round(sum(summary[column][key] for summary in summaries), 2)
@@ -384,6 +338,7 @@ class WhatIf:
             cycled = sum(summary["delivered_house_kwh"] + summary["with"]["sold_kwh"] for summary in summaries)
             profit = round(without["bill"] - with_battery["bill"], 2)
             return {
+                "config": replay["config"],
                 "without": without,
                 "with": with_battery,
                 "profit": profit,
@@ -396,8 +351,9 @@ class WhatIf:
                 "end": summaries[-1]["end"].isoformat(),
             }
 
-        current = calculate(base_cfg, current_start_level, rule_values)
-        summary = calculate(cfg, start_level, scenario_rule_values)
+        current = calculate(current_config, current_settings, current_start_level, 1)
+        summary = deepcopy(current) if unchanged else calculate(scenario_config, scenario_settings, start_level, 2)
+        current_cfg, cfg = current.pop("config"), summary.pop("config")
         return {
             "price_provider": ", ".join(
                 source["provider"]["name"] for source in used_sources if source["provider"].get("name")
@@ -416,37 +372,10 @@ class WhatIf:
                 "days": round(len(hours) / 24.0, 1),
             },
             "assumptions": {
-                "battery_size": cfg.battery_size,
-                "minimum_level": cfg.level_min,
-                "maximum_level": cfg.level_max,
-                "starting_level": start_level,
-                "max_charging_power": cfg.max_charge * 1000.0,
-                "max_discharging_power": cfg.max_discharge * 1000.0,
-                "round_trip_loss": round((1.0 - cfg.efficiency**2) * 100.0, 2),
-                "wear_cost_per_kwh": cfg.wear,
-                "usage_reserve": cfg.usage_reserve,
-                "min_profit_per_kwh": cfg.min_profit_per_kwh,
-                "min_total_profit": cfg.min_total_profit,
-                "min_sell_kwh": cfg.min_sell_kwh,
+                **self._what_if_assumptions(cfg, scenario_settings, start_level),
                 "sell_price_history_available": sell_price_history_available,
-                "rules": scenario_rule_values,
             },
-            "current_assumptions": {
-                "battery_size": base_cfg.battery_size,
-                "minimum_level": base_cfg.level_min,
-                "maximum_level": base_cfg.level_max,
-                "starting_level": current_start_level,
-                "max_charging_power": base_cfg.max_charge * 1000.0,
-                "max_discharging_power": base_cfg.max_discharge * 1000.0,
-                "round_trip_loss": round((1.0 - base_cfg.efficiency**2) * 100.0, 2),
-                "wear_cost_per_kwh": base_cfg.wear,
-                "usage_reserve": base_cfg.usage_reserve,
-                "min_profit_per_kwh": base_cfg.min_profit_per_kwh,
-                "min_total_profit": base_cfg.min_total_profit,
-                "min_sell_kwh": base_cfg.min_sell_kwh,
-                "rules": rule_values,
-                "control_mode": "optimizer" if self.enabled("optimizer_control") else "rules",
-            },
+            "current_assumptions": self._what_if_assumptions(current_cfg, current_settings, current_start_level),
             "data_sources": data_sources,
             "current": current,
             "scenario": summary,
@@ -454,4 +383,49 @@ class WhatIf:
                 "profit": round(summary["profit"] - current["profit"], 2),
                 "bill": round(summary["with"]["bill"] - current["with"]["bill"], 2),
             },
+        }
+
+    def _what_if_setup(self, overrides: dict) -> tuple[dict, dict]:
+        """Configuration and settings of a replay: the current ones with the what-if values."""
+        config = deepcopy(self.config)
+        solar = config["solar"]
+        # the replay has no charging history: the measured round trip loss is used as configured
+        solar["powerwall_charge_discharge_loss"] = self.get_charging_loss()
+        solar["use_charge_discharge_loss_from_history"] = False
+        settings = {key: self.setting(key) for key in (*SWITCH_SETTINGS, *NUMBER_SETTINGS, *SELECT_SETTINGS, *TEXT_SETTINGS)}
+        for input_key, config_key in _CONFIG_OVERRIDES.items():
+            if input_key in overrides:
+                solar[config_key] = float(overrides[input_key])
+        if "round_trip_loss" in overrides:
+            # a fixed loss instead of the configured efficiency curves
+            solar["powerwall_charge_discharge_loss"] = float(overrides["round_trip_loss"]) / 100.0
+            settings["enhance_battery_efficiency"] = False
+        for key in (*WHAT_IF_SWITCHES, *WHAT_IF_NUMBERS, *WHAT_IF_TEXTS):
+            if key in overrides and not (key == "enhance_battery_efficiency" and "round_trip_loss" in overrides):
+                settings[key] = overrides[key]
+        return config, settings
+
+    @staticmethod
+    def _what_if_assumptions(cfg: OptimizerConfig, settings: dict, start_level: float) -> dict:
+        def number(key: str) -> float:
+            value = float_or_none(settings.get(key))
+            return float(NUMBER_SETTINGS[key]["default"]) if value is None else value
+
+        def enabled(key: str) -> bool:
+            value = settings.get(key)
+            return bool(SWITCH_SETTINGS[key]["default"] if value is None else value)
+
+        return {
+            "battery_size": cfg.battery_size,
+            "minimum_level": cfg.level_min,
+            "maximum_level": cfg.level_max,
+            "starting_level": start_level,
+            "max_charging_power": cfg.max_charge * 1000.0,
+            "max_discharging_power": cfg.max_discharge * 1000.0,
+            "round_trip_loss": round((1.0 - cfg.efficiency**2) * 100.0, 2),
+            "wear_cost_per_kwh": cfg.wear,
+            **{key: number(key) for key in WHAT_IF_NUMBERS},
+            "exclude_sell_hours": str(settings.get("exclude_sell_hours") or ""),
+            "rules": {key: enabled(key) for key in WHAT_IF_SWITCHES},
+            "control_mode": "optimizer" if enabled("optimizer_control") else "rules",
         }

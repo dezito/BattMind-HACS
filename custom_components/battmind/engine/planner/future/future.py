@@ -92,6 +92,7 @@ class FutureCharging(FutureSupport, FutureChargeRules, FutureDischargeRules, Fut
 
         # always calculated: it controls the battery, or it is compared with the rules
         self.optimizer_shadow = None
+        self.shadow_plan_actions = None
         try:
             result = self.shadow_plan(ctx, days)
             if self.enabled("optimizer_control") and result is not None:

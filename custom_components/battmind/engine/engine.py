@@ -84,6 +84,7 @@ class BattMindEngine(Planner, History, Energy, Analysis, Battery, Pricing, Plann
         self.sell_price_cache: dict = {"using_offline_prices": False}
         self.plan: dict = {}
         self.optimizer_shadow: dict | None = None
+        self.shadow_plan_actions: dict | None = None
         self.charge_hours: dict = {}
         self.battery_expenses: dict = {}
         self.charging_history_total: dict = {}

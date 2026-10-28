@@ -5,19 +5,46 @@ The **battmind.what_if** action answers questions such as:
 - Would a larger battery have saved more money during the last year?
 - How much would more charge/discharge power have improved the economy?
 - How much do loss, wear or the reserve affect the result?
+- Would the rules have done better or worse than the whole period optimisation?
+- What would another rule switch, threshold or excluded selling hours have meant?
 
-It backtests the configured battery and the temporary battery values against the same hourly Home
-Assistant long-term statistics for consumption, solar production and buy/sell prices. By default it
-uses up to 365 days. Nothing is saved, the active plan is not changed, and no inverter command is sent.
+It replays the BattMind planner on your own hourly history twice: once with the current configuration
+and settings, and once with the values you change. Both use the same hourly Home Assistant long-term
+statistics for consumption, solar production and buy/sell prices. By default it uses up to 365 days.
+Nothing is saved, the active plan is not changed, and no inverter command is sent.
+
+## How the replay works
+
+A separate planner (not the live one, its plan or its databases) plans every historical day with the
+real BattMind rules and the whole period optimisation, exactly as the live planner does:
+
+- **Prices:** only the real recorded prices of the configured buy/sell entities (Strømligning first,
+  Energi Data Service for the hours without Strømligning history). The planner runs when the prices of
+  the next day are published (13:00) and plans until the end of the next day; that plan is executed
+  until the next publication. A history that starts before 13:00 is first planned with the prices of
+  its own day. No price forecast or offline prices are used.
+- **Consumption and solar:** the actual consumption (without ignored consumers) and the actual solar
+  surplus of each hour are the forecast, so the plan is not disturbed by a bad forecast. The forecast
+  type and the price forecast correction therefore have no effect in the simulator.
+- **Controller:** with **optimizer_control** on, the hours are executed with the whole period
+  optimisation, otherwise with the rule plan, both converted to battery actions the same way as the live
+  battery control. The rules can only use what they are allowed to by the rule switches.
+- **Execution:** every hour is calculated with the actual consumption and solar production and the
+  same battery model (limits, charge/discharge efficiency, wear), so the two columns can be compared.
+  The cost and age of the energy in the battery come from the simulated charging, the same as the live
+  charging history.
+- **Round-trip loss:** the replay has no charging history, so the round-trip loss currently measured
+  by BattMind (or the configured one) is used for both columns.
 
 ## Run a simulation
 
-Open **Developer tools ? Actions**, select **BattMind: What-if simulator**, choose the BattMind config
+Open **Developer tools → Actions**, select **BattMind: What-if simulator**, choose the BattMind config
 entry and fill only the values you want to replace. Run the action to receive a persistent notification
 with a two-column comparison of the configured values and the what-if scenario; only values and rule
 switches that differ from the current setup are listed. The action also keeps
 returning the full simulation response for automations and scripts. A progress notification is shown
-while history is loaded and the simulation runs; the finished result (or an error) replaces that same
+while history is loaded and the simulation runs; it is updated at most every 10 seconds with the
+percentage done and the simulated days, and the finished result (or an error) replaces that same
 notification.
 
 Example action:
@@ -32,15 +59,27 @@ Example action:
       round_trip_loss: 5
       wear_cost_per_kwh: 0.1
       usage_reserve: 30
+      optimizer_control: false
       most_profit: false
       min_profit_per_kwh: 0.25
+      exclude_sell_hours: "17,18,19"
 
-All fields are optional. Power is in W, battery capacity in kWh, and battery levels and round-trip loss
-are percentages. Setting **round_trip_loss** temporarily replaces the configured efficiency curves.
-You can also override the rule switches used by the optimizer as constraints (for example
-**most_profit**, **grid_charge_to_sell**, or **optimize_solar_charging**) and the thresholds
-**min_profit_per_kwh**, **min_total_profit**, and **min_sell_kwh**. The notification shows the current
-state beside the scenario state for each switch you changed.
+All fields are optional; a field you leave out uses the current setting. Power is in W, battery capacity
+in kWh, and battery levels and round-trip loss are percentages.
+
+| Group | Fields |
+|---|---|
+| Battery | **battery_size**, **minimum_level**, **maximum_level**, **starting_level**, **max_charging_power**, **max_discharging_power**, **round_trip_loss**, **wear_cost_per_kwh** |
+| Controller | **optimizer_control** (on: whole period optimisation, off: rules), **use_midnight_battery_level**, **solar_charging**, **enhance_battery_efficiency** |
+| Profit and selling | **min_profit_per_kwh**, **min_total_profit**, **min_sell_kwh**, **usage_reserve**, **exclude_sell_hours** |
+| Charging rules | **cheapest_hour_fill_planner**, **cheapest_hour_fill_up**, **cheap_price_periods**, **cheapest_price_rise_threshold**, **cheap_price_period_rise_threshold**, **most_expensive_planner**, **needed_before_max_level_planner**, **negative_price_planner**, **grid_charge_to_sell** |
+| Discharging and selling rules | **only_discharge_on_profit**, **prioritize_discharge_hours_by_energy_cost**, **discharge_before_solar**, **most_profit**, **sell_excess_kwh_available**, **force_powerwall_max_hours_old_discharge**, **powerwall_max_hours_old** |
+| Solar | **optimize_solar_charging** |
+
+Setting **round_trip_loss** temporarily replaces the configured efficiency curves (as if
+**enhance_battery_efficiency** were off). The rule thresholds (cheap price periods, rise thresholds,
+maximum kWh age) only change the result when the rules control the battery. The notification shows
+the current value beside the scenario value for each setting you changed.
 
 ## Reading the response
 
@@ -51,10 +90,10 @@ state beside the scenario state for each switch you changed.
 | **price_provider** | configured provider with the most complete matching hourly data |
 | **tariff_estimated_hours** | hours where the closest recorded tariff value was used instead of an exact-hour value |
 | **tariff_unavailable_hours** | hours left out of the simulation because required tariff history was unavailable |
-| **current_assumptions** | configured battery values used as the current comparison |
-| **assumptions** | the complete temporary battery values used for the scenario |
-| **current** | historical economy with the configured battery |
-| **scenario** | economy with the temporary values |
+| **current_assumptions** | battery values, settings, rule switches (**rules**) and controller (**control_mode**) of the current comparison |
+| **assumptions** | the same for the scenario |
+| **current** | historical economy with the current configuration and settings |
+| **scenario** | economy with the changed values |
 | **difference.profit** | scenario profit minus current profit; positive is better |
 | **difference.bill** | scenario bill minus current bill; negative is better |
 
@@ -63,9 +102,9 @@ charged grid/solar energy, energy delivered to the house, sales, wear and the fi
 A negative net result is not necessarily a cash credit: the calculation includes an estimated value for
 energy remaining in the battery, but excludes the battery purchase price and any fixed fees.
 
-This is a hindsight calculation, not a forecast or guarantee: the simulation uses each day's actual
-prices and solar production as if they were known ahead of time, so treat the result as an optimistic
-historical benchmark rather than expected savings or battery payback. It uses Home Assistant Recorder's
+This is a hindsight calculation, not a forecast or guarantee: the planner knows the actual consumption
+and solar production of the planned hours, so treat the result as an optimistic historical benchmark
+rather than expected savings or battery payback. It uses Home Assistant Recorder's
 long-term statistics first and fills missing hourly values only from fully covered, time-weighted raw
 Recorder state history for the same configured entities. Unknown/unavailable state periods are never
 filled or assumed. Hours without data for every required entity are skipped, so a gap does not discard
@@ -91,12 +130,10 @@ tariffs of an hour are still unknown, the hour uses the next price provider with
 If no provider has them, the hour is left out like missing data: there are no purchases or sales in
 that hour, rather than purchases without the matching sales.
 
-The current controller mode is included under **current_assumptions.control_mode**. The current rule
-switches and the scenario's overridden switches constrain which actions the historical
-optimizer may choose. This is not a replay of the exact live rule planner: the optimizer still has
-hindsight of actual prices and solar, and uses the configured rule switches as action constraints.
-For tractable year-long comparisons, it optimizes one day at a time regardless of the live
-**use_midnight_battery_level** setting.
+The live planner plans again every few minutes from the measured battery level; the replay plans once
+per published price day, which gives the same plan as long as the forecast is right (it is, in the
+replay). A year of history means a few hundred planner runs per column, so the simulation can take a
+few minutes; the progress notification is shown meanwhile.
 The displayed day count is based on hourly samples, not calendar dates. Without a configured historical
 sell-price entity, variable export revenue is treated as zero (a fixed configured solar sell price is
 still used). Home Assistant may provide fewer days than requested if older statistics are unavailable.
