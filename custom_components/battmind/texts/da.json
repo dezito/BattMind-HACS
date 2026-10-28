@@ -265,6 +265,7 @@
       "period": "Simulering baseret på {days} dage / {hours} timer.",
       "data_sources": "Datagrundlag: {statistics} statistikmålinger, {recorder} Recorder-målinger.",
       "price_provider": "Prisudbyder brugt: {provider}.",
+      "price_provider_hours": "{provider} ({hours} timer)",
       "tariff_estimated": "Tariffer estimeret med nærmeste Recorder-værdi i {hours} timer.",
       "tariff_unavailable": "Tariffer manglede i {hours} timer; salg er sat til 0 kr. i disse timer.",
       "control_mode": "Aktiv styring: {mode}.",

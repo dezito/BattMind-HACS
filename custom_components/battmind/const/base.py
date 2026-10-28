@@ -8,6 +8,10 @@ DEFAULT_ENTITY_PREFIX = "battmind"
 
 PLATFORMS = ["sensor", "switch", "number", "select", "text", "button"]
 
+# Price providers in priority order. For each hour the planner and the what-if use the
+# first configured provider that has a price, then fall back to the next one.
+PRICE_PROVIDER_PRIORITY = ("stromligning", "energidataservice")
+
 LEGACY_DB_FILES = {
     "charging_history": "{prefix}_charging_history_db.yaml",
     "power_values": "{prefix}_power_values_db.yaml",

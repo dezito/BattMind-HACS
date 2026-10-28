@@ -71,8 +71,10 @@ filled or assumed. Hours without data for every required entity are skipped, so 
 older valid history. The calculation treats each continuous section separated by a gap independently:
 the first section uses the selected starting level and later sections restart at the battery's minimum
 level rather than carrying an unknown state of charge across missing data. If both Strømligning and
-Energi Data Service are configured, it uses the one with the most complete matching hourly data for the
-whole simulation and reports that provider; it does not mix prices from different providers. The
+Energi Data Service are configured, each hour uses Strømligning's price history first and falls back
+to Energi Data Service for hours where Strømligning has no history, the same priority as the planner.
+Buy and sell prices for an hour always come from the same provider, and the result reports how many
+hours each provider supplied. The
 simulator does not use BattMind's offline price database or assume that the buy price was earned when
 selling.
 
