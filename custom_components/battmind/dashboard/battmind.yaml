@@ -1564,6 +1564,39 @@ views:
               position: sidebar
       - type: grid
         cards:
+          - type: heading
+            heading: '@@section_status@@'
+            icon: mdi:home-battery
+          - type: entities
+            state_color: true
+            show_header_toggle: false
+            entities:
+              - entity: sensor.powerwall_charge
+                name:
+                  type: entity
+              - entity: sensor.powerwall_battery_now
+                name:
+                  type: entity
+              - entity: sensor.house_power_consumption
+                name:
+                  type: entity
+              - entity: sensor.solar_power_production
+                name:
+                  type: entity
+              - entity: sensor.battmind_kwh_charged_by_solar
+                name:
+                  type: entity
+              - entity: sensor.stromligning_current_price_vat
+                name:
+                  type: entity
+              - entity: sensor.energi_data_service
+                name:
+                  type: entity
+              - entity: sensor.battmind_analysis
+                name:
+                  type: entity
+            grid_options:
+              columns: full
           - type: markdown
             content: >-
               {{ states.sensor.battmind_emoji_description.attributes.description

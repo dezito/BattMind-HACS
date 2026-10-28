@@ -302,7 +302,28 @@ def test_what_if_simulator_does_not_change_the_active_plan() -> None:
         eds_provider,
     ]
     provider_data = {**data, "stats": provider_stats, "price_providers": providers}
-    provider_result = engine.run_job(snap, engine.what_if, provider_data, {})
+    # Strømligning has priority; Energi Data Service only fills the hours it lacks.
+    fallback_result = engine.run_job(snap, engine.what_if, provider_data, {})
+    assert fallback_result.error is None, fallback_result.error
+    assert fallback_result.value["price_provider"] == "Strømligning, Energi Data Service"
+    assert fallback_result.value["price_provider_hours"] == {
+        "Strømligning": len(timestamps) - 24,
+        "Energi Data Service": 24,
+    }
+    assert fallback_result.value["period"]["hours"] == len(timestamps)
+    assert fallback_result.value["tariff_estimated_hours"] == 23
+    assert fallback_result.value["tariff_unavailable_hours"] == 0
+    priority_result = engine.run_job(
+        snap,
+        engine.what_if,
+        {**provider_data, "stats": {**provider_stats, buy_id: data["stats"][buy_id], sell_id: data["stats"][sell_id]}},
+        {},
+    )
+    assert priority_result.error is None, priority_result.error
+    assert priority_result.value["price_provider_hours"] == {"Strømligning": len(timestamps)}
+
+    eds_data = {**provider_data, "price_providers": [eds_provider]}
+    provider_result = engine.run_job(snap, engine.what_if, eds_data, {})
     assert provider_result.error is None, provider_result.error
     assert provider_result.value["price_provider"] == "Energi Data Service"
     assert provider_result.value["period"]["hours"] == len(timestamps)
@@ -312,11 +333,8 @@ def test_what_if_simulator_does_not_change_the_active_plan() -> None:
         snap,
         engine.what_if,
         {
-            **provider_data,
-            "price_providers": [
-                providers[0],
-                {**eds_provider, "sell_tariff_history": []},
-            ],
+            **eds_data,
+            "price_providers": [{**eds_provider, "sell_tariff_history": []}],
         },
         {},
     )

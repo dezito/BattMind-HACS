@@ -155,6 +155,12 @@ def _what_if_notification(coordinator: BattMindCoordinator, simulation: dict, ov
         recorder=simulation["data_sources"]["recorder_history_fallback_samples"],
     )
     price_provider = simulation.get("price_provider")
+    price_provider_hours = simulation.get("price_provider_hours") or {}
+    if len(price_provider_hours) > 1:
+        price_provider = ", ".join(
+            coordinator.t("ui.what_if.price_provider_hours", provider=name, hours=hours)
+            for name, hours in price_provider_hours.items()
+        )
     tariff_estimated_hours = simulation.get("tariff_estimated_hours", 0)
     tariff_unavailable_hours = simulation.get("tariff_unavailable_hours", 0)
     control_mode = coordinator.t(

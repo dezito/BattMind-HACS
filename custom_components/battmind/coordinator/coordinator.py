@@ -22,7 +22,7 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.util import dt as dt_util
 
-from ..const import CONF_ENTITY_PREFIX, SIGNAL_UPDATE, build_config, default_options
+from ..const import CONF_ENTITY_PREFIX, PRICE_PROVIDER_PRIORITY, SIGNAL_UPDATE, build_config, default_options
 from ..engine import BattMindEngine, JobResult
 from ..utils.formatting import translate
 from ..management.debug_export import DebugRecorder
@@ -216,10 +216,15 @@ class BattMindCoordinator(CoordinatorLifecycle, CoordinatorEvents, CoordinatorDa
 
         price_ids = self.config["prices"]["entity_ids"]
         price_providers = []
-        for name, buy_key, sell_key in (
-            ("Strømligning", "stromligning_buy_current_price", "stromligning_sell_current_price"),
-            ("Energi Data Service", "energidataservice_buy_entity_id", "energidataservice_sell_entity_id"),
-        ):
+        # PRICE_PROVIDER_PRIORITY order: the what-if uses the first provider with price
+        # history for each hour and falls back to the next one.
+        provider_keys = {
+            "stromligning": ("Strømligning", "stromligning_buy_current_price", "stromligning_sell_current_price"),
+            "energidataservice": (
+                "Energi Data Service", "energidataservice_buy_entity_id", "energidataservice_sell_entity_id"
+            ),
+        }
+        for name, buy_key, sell_key in (provider_keys[key] for key in PRICE_PROVIDER_PRIORITY):
             buy_id = price_ids[buy_key]
             if buy_id:
                 sell_id = price_ids[sell_key] or None
@@ -280,7 +285,7 @@ class BattMindCoordinator(CoordinatorLifecycle, CoordinatorEvents, CoordinatorDa
                     self.hass,
                     start,
                     end,
-                    entities,
+                    sorted(entities),
                     None,
                     include_start_time_state=True,
                     significant_changes_only=False,
@@ -300,7 +305,7 @@ class BattMindCoordinator(CoordinatorLifecycle, CoordinatorEvents, CoordinatorDa
                         self.hass,
                         start,
                         end,
-                        eds_sell_entities,
+                        sorted(eds_sell_entities),
                         None,
                         include_start_time_state=True,
                         significant_changes_only=False,

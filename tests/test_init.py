@@ -182,7 +182,7 @@ async def test_what_if_reads_statistics_and_raw_recorder_history(
             "sell_entity_id": "sensor.eds_sell",
             "sell_fee": 0.03,
             "sell_tariff_history": [],
-        }
+        },
     ]
     assert {
         "sensor.stromligning_buy",
@@ -193,6 +193,11 @@ async def test_what_if_reads_statistics_and_raw_recorder_history(
         "sensor.energi_data_service",
         "sensor.eds_sell",
     }.issubset(recorder.async_add_executor_job.call_args_list[0].args[4])
+    # Recorder history indexes entity_ids (entity_ids[0] for one entity), so it must get a list.
+    states_call, tariff_call = (call.args[0] for call in recorder.async_add_executor_job.call_args_list[1:])
+    assert isinstance(states_call.args[3], list)
+    assert states_call.args[3] == sorted(states_call.args[3])
+    assert tariff_call.args[3] == ["sensor.eds_sell"]
     assert overrides == {}
 
 

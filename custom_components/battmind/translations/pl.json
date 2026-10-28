@@ -612,7 +612,7 @@
         "name": "kWh naładowane z PV"
       },
       "analysis": {
-        "name": "Analiza"
+        "name": "Oszczędności w tym miesiącu"
       }
     }
   },

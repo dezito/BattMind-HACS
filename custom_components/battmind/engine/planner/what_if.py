@@ -114,57 +114,49 @@ class WhatIf:
                 "sell_fee": 0.0,
             }
         ]
-        candidates = []
+        # Providers are in priority order: each hour uses the first provider with price
+        # history for that hour. Buy and sell prices of an hour come from the same provider.
+        price_sources = []
         for provider in providers:
             buy_id = provider["buy_entity_id"]
             sell_id = provider.get("sell_entity_id")
-            provider_required = dict(required)
-            provider_required[buy_id] = series(buy_id, power=False)
-            if sell_id:
-                provider_required[sell_id] = series(sell_id, power=False)
-            if any(not values for values in provider_required.values()):
-                continue
-            first = max(min(values) for values in provider_required.values())
-            last = min(max(values) for values in provider_required.values())
-            if first > last:
-                continue
-            span_hours = (last - first) / 3600.0
-            hour_count = round(span_hours) + 1
-            if abs(span_hours - round(span_hours)) > 1e-6:
-                continue
-            timestamps = [
-                first + hour * 3600.0
-                for hour in range(hour_count)
-                if all(
-                    first + hour * 3600.0 in values
-                    for values in provider_required.values()
-                )
-            ]
-            if timestamps:
-                candidates.append(
-                    (len(timestamps), provider, provider_required, timestamps)
-                )
-        if not candidates:
+            buy_values = series(buy_id, power=False)
+            sell_values = series(sell_id, power=False) if sell_id else {}
+            price_sources.append({
+                "provider": provider,
+                "entity_ids": [buy_id, sell_id] if sell_id else [buy_id],
+                "timestamps": buy_values.keys() & sell_values.keys() if sell_id else buy_values.keys(),
+                "buy": buy_values,
+                "sell": sell_values,
+                "sell_price_history_available": bool(sell_id),
+                "tariff_series": {
+                    tariff: sorted(series(entity_id, power=False).items())
+                    for tariff, entity_id in provider.get("sell_tariff_entity_ids", {}).items()
+                },
+                "eds_sell_tariff_history": sorted(
+                    provider.get("sell_tariff_history") or [],
+                    key=lambda row: row[0],
+                ),
+                "hours": 0,
+            })
+        hour_sources = {}
+        for ts in sorted(set.intersection(*(set(values) for values in required.values()))):
+            source = next((item for item in price_sources if ts in item["timestamps"]), None)
+            if source is not None:
+                hour_sources[ts] = source
+                source["hours"] += 1
+        timestamps = list(hour_sources)
+        if not timestamps:
             raise ValueError(
                 "No complete hourly data is available for the required entities and any configured price provider"
             )
-        _, selected_provider, required, timestamps = max(candidates, key=lambda item: item[0])
-        buy_id = selected_provider["buy_entity_id"]
-        sell_id = selected_provider.get("sell_entity_id") or buy_id
-        buy = series(buy_id, power=False)
-        sell = series(sell_id, power=False)
-        sell_price_history_available = bool(selected_provider.get("sell_entity_id"))
-        selected_tariff_series = {
-            tariff: sorted(series(entity_id, power=False).items())
-            for tariff, entity_id in selected_provider.get("sell_tariff_entity_ids", {}).items()
-        }
-        eds_sell_tariff_history = sorted(
-            selected_provider.get("sell_tariff_history") or [],
-            key=lambda row: row[0],
+        used_sources = [source for source in price_sources if source["hours"]]
+        sell_price_history_available = all(
+            source["sell_price_history_available"] for source in used_sources
         )
         tariff_estimated_hours = 0
         tariff_unavailable_hours = 0
-        sample_count = len(required) * len(timestamps)
+        sample_count = sum(len(required) + len(hour_sources[ts]["entity_ids"]) for ts in timestamps)
         if "long_term_statistics_timestamps" not in data:
             statistical_sample_count = sample_count
         else:
@@ -175,9 +167,9 @@ class WhatIf:
             statistical_sample_count = sum(
                 sum(
                     timestamp in statistical_timestamps.get(entity_id, set())
-                    for timestamp in timestamps
+                    for entity_id in (*required, *hour_sources[timestamp]["entity_ids"])
                 )
-                for entity_id in required
+                for timestamp in timestamps
             )
         data_sources = {
             "long_term_statistics_samples": statistical_sample_count,
@@ -201,23 +193,27 @@ class WhatIf:
             row = self._analysis_row(values)
             net_use = row["use"]
             produced = row["solar"]
-            sell_price = sell.get(ts, buy[ts])
+            source = hour_sources[ts]
+            hour_provider = source["provider"]
+            buy_price = source["buy"][ts]
+            sell_price = source["sell"].get(ts, buy_price)
+            hour_sell_history = source["sell_price_history_available"]
             tariff_available = True
             tariff_exact = True
             tariffs: dict[str, float] = {}
-            if sell_price_history_available:
+            if hour_sell_history:
                 local_timestamp = datetime.datetime.fromtimestamp(ts, tz)
-                if selected_tariff_series:
-                    for key, tariff_values in selected_tariff_series.items():
+                if source["tariff_series"]:
+                    for key, tariff_values in source["tariff_series"].items():
                         nearest = _nearest_value(tariff_values, ts)
                         if nearest is None:
                             tariff_available = False
                             break
                         tariffs[key], exact = nearest
                         tariff_exact = tariff_exact and exact
-                elif selected_provider.get("name") == "Energi Data Service":
+                elif hour_provider.get("name") == "Energi Data Service":
                     nearest = _nearest_eds_tariffs(
-                        eds_sell_tariff_history, ts, local_timestamp.hour
+                        source["eds_sell_tariff_history"], ts, local_timestamp.hour
                     )
                     if nearest is None:
                         tariff_available = False
@@ -235,25 +231,25 @@ class WhatIf:
                             "tariffs": tariffs.get("tariffs", 0.0),
                             "surcharge": tariffs.get("surcharge", 0.0),
                         },
-                        float(selected_provider.get("sell_fee", 0.0)),
+                        float(hour_provider.get("sell_fee", 0.0)),
                     )
                 else:
                     tariff_unavailable_hours += 1
                     sell_price = 0.0
-            if sell_price_history_available:
+            if hour_sell_history:
                 sell_value = self.sell_value(sell_price) if tariff_available else 0.0
             else:
                 sell_value = self.sell_value(0.0)
             hours.append(OptimizerHour(
                 datetime.datetime.fromtimestamp(ts, tz).replace(tzinfo=None),
-                buy[ts],
+                buy_price,
                 sell_value,
                 max(net_use - produced, 0.0),
                 max(produced - net_use, 0.0),
                 can_sell=(
-                    (sell_price_history_available and tariff_available)
+                    (hour_sell_history and tariff_available)
                     or (
-                        not sell_price_history_available
+                        not hour_sell_history
                         and self.config["solar"]["production_price"] != -1.0
                     )
                 ),
@@ -395,7 +391,14 @@ class WhatIf:
         current = calculate(base_cfg, current_start_level, rule_values)
         summary = calculate(cfg, start_level, scenario_rule_values)
         return {
-            "price_provider": selected_provider.get("name") or None,
+            "price_provider": ", ".join(
+                source["provider"]["name"] for source in used_sources if source["provider"].get("name")
+            ) or None,
+            "price_provider_hours": {
+                source["provider"]["name"]: source["hours"]
+                for source in used_sources
+                if source["provider"].get("name")
+            },
             "tariff_estimated_hours": tariff_estimated_hours,
             "tariff_unavailable_hours": tariff_unavailable_hours,
             "period": {
