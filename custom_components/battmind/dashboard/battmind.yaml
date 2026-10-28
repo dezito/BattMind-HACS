@@ -2701,11 +2701,11 @@ views:
               {% if f.last_30 -%}
               @@price_forecast_intro@@
 
-              | @@days_ahead@@ | @@days@@ | @@mae@@ 7 @@days@@ | @@mae@@ 30 @@days@@ | @@bias@@ | @@worst_hour@@ | @@cheap_hits@@ | @@dear_hits@@ | @@correction@@ |
-              |:---|---:|---:|---:|---:|---:|---:|---:|---:|
+              | @@days_ahead@@ | @@days@@ | @@mae@@ 7 @@days@@ | @@mae@@ 30 @@days@@ | @@bias@@ | @@worst_hour@@ | @@cheap_hits@@ | @@correction@@ |
+              |:---|---:|---:|---:|---:|---:|---:|---:|
               {% for l in f.last_30 -%}
               {% set w = week | selectattr('lead', 'eq', l.lead) | first -%}
-              | **{{ l.lead }}** | {{ l.days }} | {{ n(w.mae if w else none) }} | {{ n(l.mae) }} | {{ n(l.bias) }} | {{ n(l.max) }} | {{ p(l.cheap) }} ({{ n(l.cheap_miss) }}) | {{ p(l.dear) }} ({{ n(l.dear_miss) }}) | {{ n(l.correction) }} |
+              | **{{ l.lead }}** | {{ l.days }} | {{ n(w.mae if w else none) }} | {{ n(l.mae) }} | {{ n(l.bias) }} | {{ n(l.max) }} | {{ p(l.cheap) }} ({{ n(l.cheap_miss) }}) | {{ n(l.correction) }} |
               {% endfor %}
               @@price_forecast_unit@@
 
@@ -2715,7 +2715,7 @@ views:
               <ha-alert alert-type="info">@@price_forecast_correction_waiting@@</ha-alert>
               {%- endif %}
               {%- else -%}
-              <ha-alert alert-type="info">@@no_data_yet@@</ha-alert>
+              <ha-alert alert-type="info">@@price_forecast_no_data@@</ha-alert>
               {%- endif %}
             grid_options:
               columns: full
@@ -2726,7 +2726,7 @@ views:
               show_states: false
             graph_span: 6d
             span:
-              end: minute
+              start: day
               offset: -2d
             now:
               show: true

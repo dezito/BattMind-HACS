@@ -242,12 +242,26 @@ def test_overview_does_not_show_raw_powerwall_action_card() -> None:
 def test_price_forecast_chart_series_share_the_same_hours() -> None:
     content = yaml.safe_load(rendered("en"))
     chart = next(node for node in walk(content) if node.get("type") == "custom:apexcharts-card" and node.get("graph_span") == "6d")
+    assert chart["span"] == {"start": "day", "offset": "-2d"}
     assert len(chart["series"]) == 9
     for series in chart["series"]:
         generator = series["data_generator"]
         assert "const hours = ((entity.attributes.price_forecast || {}).hours || []);" in generator
         assert "return hours.map(h =>" in generator
         assert ".filter(" not in generator
+
+
+def test_price_forecast_analysis_matches_the_cjp_dashboard() -> None:
+    content = yaml.safe_load(rendered("en"))
+    cards = [
+        node for node in walk(content)
+        if node.get("type") == "markdown" and "| Days ahead |" in node.get("content", "")
+    ]
+    assert len(cards) == 1
+    table = cards[0]["content"]
+    assert "| Days ahead | days | Error 7 days | Error 30 days | Bias | Worst hour | Cheapest found | Correction |" in table
+    assert "Most expensive found" not in table
+    assert "first figures tomorrow at 13:00" in table
 
 
 def test_efficiency_curve_chart_keeps_points_inside_its_time_window() -> None:
