@@ -738,7 +738,8 @@ def test_what_if_reports_the_progress_at_most_every_interval(monkeypatch: pytest
     monkeypatch.setattr(what_if_module, "PROGRESS_INTERVAL", 3600.0)
     result = engine.run_job(realistic_snapshot(now, 40, settings), engine.what_if, data, {}, progress=reports.append)
     assert result.error is None, result.error
-    assert reports == []
+    # only the first plan: the simulation has started
+    assert len(reports) == 1 and reports[0]["step"] == 1 and reports[0]["steps"] == 1
 
 
 def test_replay_plans_when_the_prices_of_the_next_day_are_published() -> None:
