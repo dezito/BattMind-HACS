@@ -5,11 +5,12 @@ import asyncio
 import bisect
 import datetime
 import logging
+import math
 import time
 from functools import partial
 
 from homeassistant.const import SUN_EVENT_SUNRISE, SUN_EVENT_SUNSET
-from homeassistant.core import Event, callback
+from homeassistant.core import Event, State, callback
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.event import async_track_state_change_event
 from homeassistant.helpers.sun import get_astral_event_date
@@ -40,6 +41,85 @@ def _strip_forecast_suffix(entity_id: str) -> str:
 
 class CoordinatorData:
     """Collects the snapshot for the worker and keeps the history buffers."""
+
+    @staticmethod
+    def _recorder_hourly_means(
+        states: dict[str, list[State]], start: datetime.datetime, end: datetime.datetime
+    ) -> dict[str, list[tuple[float, float]]]:
+        """Calculate time-weighted hourly means from Recorder states with full-hour coverage."""
+        start_ts = start.timestamp()
+        end_ts = end.timestamp()
+        result = {}
+        for entity_id, entity_states in states.items():
+            by_time = {}
+            for state in entity_states:
+                try:
+                    by_time[state.last_updated.timestamp()] = float_or_none(state.state)
+                except AttributeError:
+                    continue
+            events = sorted(by_time.items())
+            times = [timestamp for timestamp, _ in events]
+            values = [value for _, value in events]
+            rows = []
+            hour_start = start_ts
+            while hour_start + 3600.0 <= end_ts:
+                index = bisect.bisect_right(times, hour_start) - 1
+                if index >= 0:
+                    cursor = hour_start
+                    weighted_value = 0.0
+                    valid = True
+                    while cursor < hour_start + 3600.0:
+                        if values[index] is None or not math.isfinite(values[index]):
+                            valid = False
+                            break
+                        next_timestamp = times[index + 1] if index + 1 < len(times) else hour_start + 3600.0
+                        segment_end = min(next_timestamp, hour_start + 3600.0)
+                        if segment_end <= cursor:
+                            index += 1
+                            continue
+                        weighted_value += values[index] * (segment_end - cursor)
+                        cursor = segment_end
+                        if cursor < hour_start + 3600.0:
+                            index += 1
+                            if index >= len(values):
+                                valid = False
+                                break
+                    if valid and cursor == hour_start + 3600.0:
+                        rows.append((hour_start, weighted_value / 3600.0))
+                hour_start += 3600.0
+            result[entity_id] = rows
+        return result
+
+    @staticmethod
+    def _combine_what_if_statistics(
+        entities: set[str],
+        stats: dict[str, list[dict]],
+        recorder_hourly: dict[str, list[tuple[float, float]]],
+    ) -> tuple[dict[str, list[tuple[float, float]]], dict[str, list[float]]]:
+        """Prefer long-term statistics and fill only missing hours from Recorder states."""
+        combined_stats = {}
+        statistical_timestamps = {}
+        for entity_id in entities:
+            statistical_rows = []
+            for row in stats.get(entity_id, []):
+                value = row.get("mean") if row.get("mean") is not None else row.get("state")
+                if isinstance(value, (int, float)) and math.isfinite(value):
+                    timestamp = (
+                        row["start"].timestamp()
+                        if isinstance(row["start"], datetime.datetime)
+                        else float(row["start"])
+                    )
+                    statistical_rows.append((timestamp, value))
+            combined = {timestamp: value for timestamp, value in statistical_rows}
+            statistical_timestamps[entity_id] = list(combined)
+            fallback_rows = [
+                (timestamp, value)
+                for timestamp, value in recorder_hourly.get(entity_id, [])
+                if timestamp not in combined
+            ]
+            combined.update(fallback_rows)
+            combined_stats[entity_id] = sorted(combined.items())
+        return combined_stats, statistical_timestamps
 
     async def _async_snapshot(self, include_prices: bool = False, include_forecast: bool = False) -> Snapshot:
         await self._async_refresh_statistics()

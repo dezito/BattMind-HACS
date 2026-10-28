@@ -49,6 +49,24 @@ _WHAT_IF_SETTINGS = (
     ("round_trip_loss", "round_trip_loss", "%"),
     ("wear_cost_per_kwh", "wear_cost_per_kwh", "{valuta}/kWh"),
     ("usage_reserve", "usage_reserve", "%"),
+    ("min_profit_per_kwh", "min_profit_per_kwh", "{valuta}/kWh"),
+    ("min_total_profit", "min_total_profit", "{valuta}"),
+    ("min_sell_kwh", "min_sell_kwh", "kWh"),
+)
+
+_WHAT_IF_RULES = (
+    "cheapest_hour_fill_planner",
+    "most_expensive_planner",
+    "needed_before_max_level_planner",
+    "negative_price_planner",
+    "grid_charge_to_sell",
+    "most_profit",
+    "sell_excess_kwh_available",
+    "force_powerwall_max_hours_old_discharge",
+    "discharge_before_solar",
+    "only_discharge_on_profit",
+    "prioritize_discharge_hours_by_energy_cost",
+    "optimize_solar_charging",
 )
 
 
@@ -91,6 +109,20 @@ def _what_if_notification(coordinator: BattMindCoordinator, simulation: dict, ov
                 unit=translated_unit,
             )
         )
+    for key in _WHAT_IF_RULES:
+        current_enabled = simulation["current_assumptions"]["rules"][key]
+        scenario_enabled = simulation["assumptions"]["rules"][key]
+        setting_rows.append(
+            "| **{label}** | {current} | {scenario} |".format(
+                label=coordinator.t(
+                    "ui.what_if.use_midnight_battery_level"
+                    if key == "use_midnight_battery_level"
+                    else f"charging_type.{key}.description"
+                ),
+                current=coordinator.t("ui.what_if.enabled" if current_enabled else "ui.what_if.disabled"),
+                scenario=coordinator.t("ui.what_if.enabled" if scenario_enabled else "ui.what_if.disabled"),
+            )
+        )
 
     currency = coordinator.t("ui.common.valuta")
     current_summary = simulation["current"]["with"]
@@ -117,6 +149,19 @@ def _what_if_notification(coordinator: BattMindCoordinator, simulation: dict, ov
         days=simulation["period"]["days"],
         hours=simulation["period"]["hours"],
     )
+    data_sources = coordinator.t(
+        "ui.what_if.data_sources",
+        statistics=simulation["data_sources"]["long_term_statistics_samples"],
+        recorder=simulation["data_sources"]["recorder_history_fallback_samples"],
+    )
+    control_mode = coordinator.t(
+        "ui.what_if.control_mode",
+        mode=coordinator.t(
+            "ui.what_if.optimizer_mode"
+            if simulation["current_assumptions"]["control_mode"] == "optimizer"
+            else "ui.what_if.rules_mode"
+        ),
+    )
     heading = (
         f"| | **{coordinator.t('ui.what_if.current')}** "
         f"| **{coordinator.t('ui.what_if.scenario')}** |"
@@ -126,7 +171,7 @@ def _what_if_notification(coordinator: BattMindCoordinator, simulation: dict, ov
         f"| **{coordinator.t('ui.what_if.scenario')}** "
         "| |"
     )
-    lines = [period, ""]
+    lines = [period, data_sources, control_mode, ""]
     if setting_rows:
         lines.extend((f"**{coordinator.t('ui.what_if.changed_settings')}**", heading, "|---|---|---|", *setting_rows, ""))
     lines.extend(
@@ -177,6 +222,10 @@ WHAT_IF_SCHEMA = vol.Schema(
         vol.Optional("round_trip_loss"): vol.All(vol.Coerce(float), vol.Range(min=0, max=90)),
         vol.Optional("wear_cost_per_kwh"): vol.All(vol.Coerce(float), vol.Range(min=0, max=10)),
         vol.Optional("usage_reserve"): vol.All(vol.Coerce(float), vol.Range(min=0, max=100)),
+        vol.Optional("min_profit_per_kwh"): vol.All(vol.Coerce(float), vol.Range(min=0, max=10)),
+        vol.Optional("min_total_profit"): vol.All(vol.Coerce(float), vol.Range(min=0, max=100)),
+        vol.Optional("min_sell_kwh"): vol.All(vol.Coerce(float), vol.Range(min=0.2, max=1.0)),
+        **{vol.Optional(key): cv.boolean for key in _WHAT_IF_RULES if key != "use_midnight_battery_level"},
     }
 )
 

@@ -112,7 +112,66 @@ what_if:
           step: 1
           unit_of_measurement: "%"
           mode: box
-
+    min_profit_per_kwh:
+      selector:
+        number:
+          min: 0
+          max: 10
+          step: 0.01
+          unit_of_measurement: kr/kWh
+          mode: box
+    min_total_profit:
+      selector:
+        number:
+          min: 0
+          max: 100
+          step: 0.01
+          unit_of_measurement: kr
+          mode: box
+    min_sell_kwh:
+      selector:
+        number:
+          min: 0.2
+          max: 1
+          step: 0.1
+          unit_of_measurement: kWh
+          mode: box
+    cheapest_hour_fill_planner:
+      selector:
+        boolean:
+    most_expensive_planner:
+      selector:
+        boolean:
+    needed_before_max_level_planner:
+      selector:
+        boolean:
+    negative_price_planner:
+      selector:
+        boolean:
+    grid_charge_to_sell:
+      selector:
+        boolean:
+    most_profit:
+      selector:
+        boolean:
+    sell_excess_kwh_available:
+      selector:
+        boolean:
+    force_powerwall_max_hours_old_discharge:
+      selector:
+        boolean:
+    discharge_before_solar:
+      selector:
+        boolean:
+    only_discharge_on_profit:
+      selector:
+        boolean:
+    prioritize_discharge_hours_by_energy_cost:
+      selector:
+        boolean:
+    optimize_solar_charging:
+      selector:
+        boolean:
 export_data:
   fields:
     config_entry_id:

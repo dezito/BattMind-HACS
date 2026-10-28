@@ -6,7 +6,7 @@ import math
 from copy import deepcopy
 from dataclasses import replace
 
-from ..optimizer import OptimizerConfig, OptimizerHour, breakdown, optimize_per_day
+from ..optimizer import RULE_SWITCHES, OptimizerConfig, OptimizerHour, breakdown, optimize_per_day
 from ...utils.efficiency import efficiency_at_power
 from ..energy.energy import derive_power_values
 from ...utils.power import unit_factor_to_w
@@ -15,6 +15,10 @@ from ...utils.helpers import average
 
 class WhatIf:
     """The what-if calculation of the planner."""
+
+    _RULE_SETTING_KEYS = tuple(dict.fromkeys(
+        switch for switches in RULE_SWITCHES.values() for switch in switches
+    ))
 
     def what_if(self, data: dict, overrides: dict) -> dict:
         """Compare battery assumptions against historical hourly statistics."""
@@ -90,6 +94,25 @@ class WhatIf:
                     "No continuous hourly long-term statistics remain after the latest gap "
                     "in the required entities"
                 )
+        sample_count = len(required) * len(timestamps)
+        if "long_term_statistics_timestamps" not in data:
+            statistical_sample_count = sample_count
+        else:
+            statistical_timestamps = {
+                entity_id: set(entity_timestamps)
+                for entity_id, entity_timestamps in data["long_term_statistics_timestamps"].items()
+            }
+            statistical_sample_count = sum(
+                sum(
+                    timestamp in statistical_timestamps.get(entity_id, set())
+                    for timestamp in timestamps
+                )
+                for entity_id in required
+            )
+        data_sources = {
+            "long_term_statistics_samples": statistical_sample_count,
+            "recorder_history_fallback_samples": sample_count - statistical_sample_count,
+        }
         positive_is_charging = home["invert_powerwall_watt_flow_entity_id"]
         tz = self._snap.tz if self._snap else None
         hours = []
@@ -142,6 +165,11 @@ class WhatIf:
             min_total_profit=self.get_min_total_profit(),
             usage_reserve=self.number("usage_reserve"),
         )
+        rule_values = {key: self.enabled(key) for key in self._RULE_SETTING_KEYS}
+        scenario_rule_values = {
+            key: bool(overrides.get(key, value))
+            for key, value in rule_values.items()
+        }
         cfg = base_cfg
         changes = {}
         mapping = {
@@ -150,6 +178,9 @@ class WhatIf:
             "maximum_level": "level_max",
             "wear_cost_per_kwh": "wear",
             "usage_reserve": "usage_reserve",
+            "min_profit_per_kwh": "min_profit_per_kwh",
+            "min_total_profit": "min_total_profit",
+            "min_sell_kwh": "min_sell_kwh",
         }
         for input_key, config_key in mapping.items():
             if input_key in overrides:
@@ -192,11 +223,14 @@ class WhatIf:
         if not base_cfg.level_min <= current_start_level <= base_cfg.level_max:
             raise ValueError("Starting level must also fit the configured battery limits")
 
-        def calculate(calc_cfg: OptimizerConfig, initial_level: float) -> dict:
+        def calculate(calc_cfg: OptimizerConfig, initial_level: float, rules: dict[str, bool]) -> dict:
+            def enabled(key: str) -> bool:
+                return rules.get(key, self.enabled(key))
+
             end_value = calc_cfg.efficiency * max(
                 average([hour.buy for hour in hours]) - calc_cfg.wear - calc_cfg.min_profit_per_kwh, 0.0
             )
-            result, _ = optimize_per_day(deepcopy(hours), initial_level, calc_cfg, end_value, self.enabled)
+            result, _ = optimize_per_day(deepcopy(hours), initial_level, calc_cfg, end_value, enabled)
             limits = [
                 grid if action == "grid_charging" else sold if action == "force_discharge" else None
                 for action, grid, sold in zip(result.actions, result.grid_kwh, result.sold_kwh)
@@ -206,8 +240,8 @@ class WhatIf:
             summary["end"] = summary["end"].isoformat()
             return summary
 
-        current = calculate(base_cfg, current_start_level)
-        summary = calculate(cfg, start_level)
+        current = calculate(base_cfg, current_start_level, rule_values)
+        summary = calculate(cfg, start_level, scenario_rule_values)
         return {
             "period": {
                 "start": hours[0].timestamp.isoformat(),
@@ -225,7 +259,11 @@ class WhatIf:
                 "round_trip_loss": round((1.0 - cfg.efficiency**2) * 100.0, 2),
                 "wear_cost_per_kwh": cfg.wear,
                 "usage_reserve": cfg.usage_reserve,
+                "min_profit_per_kwh": cfg.min_profit_per_kwh,
+                "min_total_profit": cfg.min_total_profit,
+                "min_sell_kwh": cfg.min_sell_kwh,
                 "sell_price_history_available": sell_price_history_available,
+                "rules": scenario_rule_values,
             },
             "current_assumptions": {
                 "battery_size": base_cfg.battery_size,
@@ -237,7 +275,13 @@ class WhatIf:
                 "round_trip_loss": round((1.0 - base_cfg.efficiency**2) * 100.0, 2),
                 "wear_cost_per_kwh": base_cfg.wear,
                 "usage_reserve": base_cfg.usage_reserve,
+                "min_profit_per_kwh": base_cfg.min_profit_per_kwh,
+                "min_total_profit": base_cfg.min_total_profit,
+                "min_sell_kwh": base_cfg.min_sell_kwh,
+                "rules": rule_values,
+                "control_mode": "optimizer" if self.enabled("optimizer_control") else "rules",
             },
+            "data_sources": data_sources,
             "current": current,
             "scenario": summary,
             "difference": {
