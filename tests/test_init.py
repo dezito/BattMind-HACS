@@ -1,19 +1,73 @@
 """Setup, entities, services and unload of a BattMind entry."""
 from __future__ import annotations
 
+import json
+from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
+import pytest
+import yaml
 from homeassistant.components import persistent_notification
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.const import EVENT_HOMEASSISTANT_STARTED
 from homeassistant.core import CoreState, HomeAssistant
+from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers import entity_registry as er
 
-from custom_components.battmind import _async_run_after_home_assistant_started
+from custom_components.battmind import _async_run_after_home_assistant_started, _what_if_notification
 from custom_components.battmind.const import DOMAIN, NUMBER_SETTINGS, SELECT_SETTINGS, SENSOR_KEYS, SWITCH_SETTINGS, TEXT_SETTINGS
 from custom_components.battmind.engine import JobResult
 
 from .conftest import CONSUMPTION, PREFIX, async_advance, async_unload_and_join, set_source_states
+
+
+def test_what_if_new_service_fields_have_entity_names_and_descriptions() -> None:
+    component = Path(__file__).parents[1] / "custom_components" / "battmind"
+    fields = yaml.safe_load((component / "services.yaml").read_text(encoding="utf-8"))["what_if"]["fields"]
+    new_fields = {
+        "min_profit_per_kwh",
+        "min_total_profit",
+        "min_sell_kwh",
+        "cheapest_hour_fill_planner",
+        "most_expensive_planner",
+        "needed_before_max_level_planner",
+        "negative_price_planner",
+        "grid_charge_to_sell",
+        "most_profit",
+        "sell_excess_kwh_available",
+        "force_powerwall_max_hours_old_discharge",
+        "discharge_before_solar",
+        "only_discharge_on_profit",
+        "prioritize_discharge_hours_by_energy_cost",
+        "optimize_solar_charging",
+        "optimize_solar_charging",
+    }
+
+    for key in new_fields:
+        assert fields[key]["name"]
+        assert fields[key]["description"]
+
+    for language in ("da", "en"):
+        translations = json.loads(
+            (component / "translations" / f"{language}.json").read_text(encoding="utf-8")
+        )
+        service_fields = translations["services"]["what_if"]["fields"]
+        for key in new_fields:
+            assert service_fields[key]["name"]
+            assert service_fields[key]["description"]
+        rule_fields = new_fields - {"min_profit_per_kwh", "min_total_profit", "min_sell_kwh"}
+        for key in rule_fields:
+            assert (
+                service_fields[key]["name"]
+                == translations["entity"]["switch"][key]["name"]
+            )
+
+
+def test_optimize_solar_charging_has_a_label_in_every_language() -> None:
+    texts = Path(__file__).parents[1] / "custom_components" / "battmind" / "texts"
+    for path in texts.glob("*.json"):
+        translations = json.loads(path.read_text(encoding="utf-8"))
+        assert translations["charging_type"]["optimize_solar_charging"]["description"]
 
 
 async def test_post_setup_work_waits_until_home_assistant_started(hass: HomeAssistant, mock_entry) -> None:
@@ -218,8 +272,15 @@ async def test_what_if_service_returns_simulation_without_changing_options(
             return_response=True,
         )
 
-    create.assert_called_once()
-    notification = create.call_args.args[1]
+    assert create.call_count == 2
+    progress_call, result_call = create.call_args_list
+    notification_id = f"{PREFIX}_what_if"
+    assert progress_call.kwargs["notification_id"] == notification_id
+    assert progress_call.args[1] == loaded_entry.runtime_data.t(
+        "ui.what_if.started", days=365
+    )
+    assert result_call.kwargs["notification_id"] == notification_id
+    notification = result_call.args[1]
     coordinator = loaded_entry.runtime_data
     assert (
         f"| | **{coordinator.t('ui.what_if.current')}** "
@@ -237,6 +298,9 @@ async def test_what_if_service_returns_simulation_without_changing_options(
         f"{coordinator.t('ui.what_if.enabled')} | {coordinator.t('ui.what_if.disabled')} |"
         in notification
     )
+    optimize_solar_label = coordinator.t("charging_type.optimize_solar_charging.description")
+    assert optimize_solar_label in notification
+    assert "charging_type.optimize_solar_charging.description" not in notification
     assert (
         f"| | **{coordinator.t('ui.what_if.current')}** "
         f"| **{coordinator.t('ui.what_if.scenario')}** | |"
@@ -259,12 +323,42 @@ async def test_what_if_service_returns_simulation_without_changing_options(
     assert coordinator.t("ui.what_if.note") in notification
 
     simulation = response["simulations"][PREFIX]
+    same_improvement = _what_if_notification(
+        coordinator,
+        {**simulation, "difference": {"profit": 25, "bill": -25}},
+        {"battery_size": 20, "round_trip_loss": 5, "most_profit": False},
+    )
+    assert profit_difference in same_improvement
+    assert coordinator.t("ui.what_if.bill_difference") not in same_improvement
     assert simulation["assumptions"]["battery_size"] == 20
     assert simulation["assumptions"]["round_trip_loss"] == 5
     assert simulation["period"]["days"] == 365
     assert "plan" not in simulation
     loaded_entry.runtime_data.async_what_if.assert_awaited_once()
     assert loaded_entry.options == options
+
+
+async def test_what_if_replaces_progress_notification_with_error(
+    hass: HomeAssistant, loaded_entry
+) -> None:
+    coordinator = loaded_entry.runtime_data
+    coordinator.async_what_if = AsyncMock(side_effect=HomeAssistantError("Recorder unavailable"))
+    with (
+        patch.object(persistent_notification, "async_create") as create,
+        pytest.raises(ServiceValidationError, match="Recorder unavailable"),
+    ):
+        await hass.services.async_call(
+            DOMAIN,
+            "what_if",
+            {"config_entry_id": loaded_entry.entry_id},
+            blocking=True,
+            return_response=True,
+        )
+
+    assert create.call_count == 2
+    assert create.call_args_list[0].kwargs["notification_id"] == f"{PREFIX}_what_if"
+    assert create.call_args_list[1].kwargs["notification_id"] == f"{PREFIX}_what_if"
+    assert "Recorder unavailable" in create.call_args_list[1].args[1]
 
 
 async def test_debug_info_service(hass: HomeAssistant, loaded_entry) -> None:

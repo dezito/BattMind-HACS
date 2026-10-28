@@ -15,7 +15,9 @@ uses up to 365 days. Nothing is saved, the active plan is not changed, and no in
 Open **Developer tools ? Actions**, select **BattMind: What-if simulator**, choose the BattMind config
 entry and fill only the values you want to replace. Run the action to receive a persistent notification
 with a two-column comparison of the configured values and the what-if scenario. The action also keeps
-returning the full simulation response for automations and scripts.
+returning the full simulation response for automations and scripts. A progress notification is shown
+while history is loaded and the simulation runs; the finished result (or an error) replaces that same
+notification.
 
 Example action:
 
@@ -62,9 +64,11 @@ prices and solar production as if they were known ahead of time, so treat the re
 historical benchmark rather than expected savings or battery payback. It uses Home Assistant Recorder's
 long-term statistics first and fills missing hourly values only from fully covered, time-weighted raw
 Recorder state history for the same configured entities. Unknown/unavailable state periods are never
-filled or assumed. The simulator does not use BattMind's offline price database. It uses only the latest
-continuous period shared by the required entities, starting after the most recent remaining gap; it
-never skips missing hours or assumes that the buy price was earned when selling.
+filled or assumed. Hours without data for every required entity are skipped, so a gap does not discard
+older valid history. The calculation treats each continuous section separated by a gap independently:
+the first section uses the selected starting level and later sections restart at the battery's minimum
+level rather than carrying an unknown state of charge across missing data. The simulator does not use
+BattMind's offline price database or assume that the buy price was earned when selling.
 
 The current controller mode is included under **current_assumptions.control_mode**. The current rule
 switches and the scenario's overridden switches constrain which actions the historical

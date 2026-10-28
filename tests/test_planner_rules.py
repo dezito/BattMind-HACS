@@ -215,20 +215,32 @@ def test_what_if_simulator_does_not_change_the_active_plan() -> None:
     assert no_sales.error is None, no_sales.error
     assert no_sales.value["scenario"]["profit"] < no_sales.value["current"]["profit"]
 
-    gap_index = len(timestamps) // 2
-    expected_start = datetime.datetime.fromtimestamp(
-        timestamps[gap_index + 1], snap.tz
+    missing_indices = (12, 35)
+    incomplete_stats = dict(data["stats"])
+    for entity_id, gap_index in zip(
+        (buy_id, ids["powerwall_watt_flow_entity_id"]), missing_indices
+    ):
+        incomplete_stats[entity_id] = [
+            row for row in incomplete_stats[entity_id] if row[0] != timestamps[gap_index]
+        ]
+    incomplete = engine.run_job(
+        snap, engine.what_if, {**data, "stats": incomplete_stats}, {}
+    )
+    assert incomplete.error is None, incomplete.error
+    assert incomplete.value["period"]["hours"] == len(timestamps) - len(missing_indices)
+    assert incomplete.value["period"]["start"] == datetime.datetime.fromtimestamp(
+        timestamps[0], snap.tz
     ).replace(tzinfo=None).isoformat()
-    for entity_id in (buy_id, sell_id, ids["power_consumption_entity_id"]):
-        incomplete_stats = dict(data["stats"])
-        incomplete_series = list(incomplete_stats[entity_id])
-        del incomplete_series[gap_index]
-        incomplete_stats[entity_id] = incomplete_series
-        incomplete_data = {**data, "stats": incomplete_stats}
-        incomplete = engine.run_job(snap, engine.what_if, incomplete_data, {})
-        assert incomplete.error is None, incomplete.error
-        assert incomplete.value["period"]["hours"] == len(timestamps) - gap_index - 1
-        assert incomplete.value["period"]["start"] == expected_start
+    assert incomplete.value["period"]["end"] == datetime.datetime.fromtimestamp(
+        timestamps[-1], snap.tz
+    ).replace(tzinfo=None).isoformat()
+    statistics_per_hour = (
+        unchanged.value["data_sources"]["long_term_statistics_samples"] // len(timestamps)
+    )
+    assert incomplete.value["data_sources"]["long_term_statistics_samples"] == (
+        unchanged.value["data_sources"]["long_term_statistics_samples"]
+        - statistics_per_hour * len(missing_indices)
+    )
 
 
 CFG = OptimizerConfig(battery_size=10.0, level_min=5.0, level_max=100.0, max_charge=5.0, max_discharge=5.0, efficiency=0.95, wear=0.1)

@@ -72,6 +72,9 @@
     "force_powerwall_max_hours_old_discharge": {
       "description": "Stara energia zużyta/sprzedana"
     },
+    "optimize_solar_charging": {
+      "description": "Optymalizacja ładowania energią słoneczną"
+    },
     "blocked_solar_charge": {
       "description": "Zablokowane ładowanie z energii słonecznej"
     }
@@ -253,6 +256,8 @@
     },
     "what_if": {
       "title": "BattMind ({prefix}) · Wynik what-if",
+      "started": "Obliczanie what-if rozpoczęło się i może chwilę potrwać przy dłuższej historii. Wczytywanie danych z maksymalnie {days} dni; godziny z brakującymi danymi są pomijane.",
+      "failed": "Obliczanie what-if nie powiodło się: {error}",
       "current": "Obecnie",
       "scenario": "What-if",
       "changed_settings": "Wybrane zmiany i reguły",

@@ -72,6 +72,9 @@
     "force_powerwall_max_hours_old_discharge": {
       "description": "Стара енергія використана/продана"
     },
+    "optimize_solar_charging": {
+      "description": "Оптимізація заряджання від сонячної енергії"
+    },
     "blocked_solar_charge": {
       "description": "Заблоковане заряджання від сонячної енергії"
     }
@@ -253,6 +256,8 @@
     },
     "what_if": {
       "title": "BattMind ({prefix}) · Результат what-if",
+      "started": "Розрахунок what-if розпочато; для довшої історії він може тривати деякий час. Завантажуються дані за період до {days} днів; години з відсутніми даними пропускаються.",
+      "failed": "Не вдалося виконати розрахунок what-if: {error}",
       "current": "Поточний",
       "scenario": "What-if",
       "changed_settings": "Вибрані зміни та правила",

@@ -182,21 +182,26 @@ def _what_if_notification(coordinator: BattMindCoordinator, simulation: dict, ov
             *metric_rows,
         )
     )
+    profit_difference = round(simulation["difference"]["profit"], 2)
+    bill_improvement = round(-simulation["difference"]["bill"], 2)
     lines.extend(
         (
             "",
             "**{label}:** {profit} {currency}".format(
                 label=coordinator.t("ui.what_if.profit_difference"),
-                profit=_format_what_if_number(simulation["difference"]["profit"], 2),
-                currency=currency,
-            ),
-            "**{label}:** {bill} {currency}".format(
-                label=coordinator.t("ui.what_if.bill_difference"),
-                bill=_format_what_if_number(-simulation["difference"]["bill"], 2),
+                profit=_format_what_if_number(profit_difference, 2),
                 currency=currency,
             ),
         )
     )
+    if bill_improvement != profit_difference:
+        lines.append(
+            "**{label}:** {bill} {currency}".format(
+                label=coordinator.t("ui.what_if.bill_difference"),
+                bill=_format_what_if_number(bill_improvement, 2),
+                currency=currency,
+            )
+        )
     lines.extend(("", coordinator.t("ui.what_if.note")))
     return "\n".join(lines)
 
@@ -270,18 +275,47 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         overrides = {key: value for key, value in call.data.items() if key not in ("config_entry_id", "history_days")}
         output = {}
         for coordinator in _coordinators(hass, call):
+            notification_id = f"{coordinator.prefix}_what_if"
+            title = coordinator.t("ui.what_if.title", prefix=coordinator.prefix)
+            persistent_notification.async_create(
+                hass,
+                coordinator.t("ui.what_if.started", days=history_days),
+                title=title,
+                notification_id=notification_id,
+            )
             try:
                 result = await coordinator.async_what_if(overrides, history_days)
             except HomeAssistantError as err:
+                persistent_notification.async_create(
+                    hass,
+                    coordinator.t("ui.what_if.failed", error=err),
+                    title=title,
+                    notification_id=notification_id,
+                )
                 raise ServiceValidationError(str(err)) from err
+            except Exception as err:
+                _LOGGER.exception("Unexpected error while running the BattMind what-if simulation")
+                persistent_notification.async_create(
+                    hass,
+                    coordinator.t("ui.what_if.failed", error=err),
+                    title=title,
+                    notification_id=notification_id,
+                )
+                raise
             if result.error:
+                persistent_notification.async_create(
+                    hass,
+                    coordinator.t("ui.what_if.failed", error=result.error),
+                    title=title,
+                    notification_id=notification_id,
+                )
                 raise ServiceValidationError(str(result.error))
             output[coordinator.prefix] = result.value
             persistent_notification.async_create(
                 hass,
                 _what_if_notification(coordinator, result.value, overrides),
-                title=coordinator.t("ui.what_if.title", prefix=coordinator.prefix),
-                notification_id=f"{coordinator.prefix}_what_if",
+                title=title,
+                notification_id=notification_id,
             )
         return {"simulations": output}
 

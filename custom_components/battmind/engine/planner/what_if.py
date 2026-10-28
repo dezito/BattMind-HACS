@@ -75,25 +75,13 @@ class WhatIf:
         hour_count = round(span_hours) + 1
         if abs(span_hours - round(span_hours)) > 1e-6:
             raise ValueError("Required long-term statistics are not aligned to the same hourly intervals")
-        timestamps = [first + hour * 3600.0 for hour in range(hour_count)]
-        missing_hours = {
-            entity_id: sum(timestamp not in values for timestamp in timestamps)
-            for entity_id, values in required.items()
-        }
-        missing_hours = {entity_id: count for entity_id, count in missing_hours.items() if count}
-        if missing_hours:
-            latest_gap = max(
-                timestamp
-                for values in required.values()
-                for timestamp in timestamps
-                if timestamp not in values
-            )
-            timestamps = [timestamp for timestamp in timestamps if timestamp > latest_gap]
-            if not timestamps:
-                raise ValueError(
-                    "No continuous hourly long-term statistics remain after the latest gap "
-                    "in the required entities"
-                )
+        timestamps = [
+            first + hour * 3600.0
+            for hour in range(hour_count)
+            if all(first + hour * 3600.0 in values for values in required.values())
+        ]
+        if not timestamps:
+            raise ValueError("No complete hourly data is available for all required entities")
         sample_count = len(required) * len(timestamps)
         if "long_term_statistics_timestamps" not in data:
             statistical_sample_count = sample_count
@@ -230,15 +218,51 @@ class WhatIf:
             end_value = calc_cfg.efficiency * max(
                 average([hour.buy for hour in hours]) - calc_cfg.wear - calc_cfg.min_profit_per_kwh, 0.0
             )
-            result, _ = optimize_per_day(deepcopy(hours), initial_level, calc_cfg, end_value, enabled)
-            limits = [
-                grid if action == "grid_charging" else sold if action == "force_discharge" else None
-                for action, grid, sold in zip(result.actions, result.grid_kwh, result.sold_kwh)
-            ]
-            summary = breakdown(hours, initial_level, calc_cfg, result.actions, end_value, limits)
-            summary["start"] = summary["start"].isoformat()
-            summary["end"] = summary["end"].isoformat()
-            return summary
+            segments = []
+            for hour in hours:
+                if (
+                    not segments
+                    or (hour.timestamp - segments[-1][-1].timestamp).total_seconds() == 3600
+                ):
+                    if not segments:
+                        segments.append([])
+                    segments[-1].append(hour)
+                else:
+                    segments.append([hour])
+
+            summaries = []
+            for index, segment in enumerate(segments):
+                segment_start_level = initial_level if index == 0 else calc_cfg.level_min
+                result, _ = optimize_per_day(
+                    deepcopy(segment), segment_start_level, calc_cfg, end_value, enabled
+                )
+                limits = [
+                    grid if action == "grid_charging" else sold if action == "force_discharge" else None
+                    for action, grid, sold in zip(result.actions, result.grid_kwh, result.sold_kwh)
+                ]
+                summaries.append(
+                    breakdown(segment, segment_start_level, calc_cfg, result.actions, end_value, limits)
+                )
+
+            def total(column: str, key: str) -> float:
+                return round(sum(summary[column][key] for summary in summaries), 2)
+
+            without = {key: total("without", key) for key in summaries[0]["without"]}
+            with_battery = {key: total("with", key) for key in summaries[0]["with"]}
+            cycled = sum(summary["delivered_house_kwh"] + summary["with"]["sold_kwh"] for summary in summaries)
+            profit = round(without["bill"] - with_battery["bill"], 2)
+            return {
+                "without": without,
+                "with": with_battery,
+                "profit": profit,
+                "profit_per_kwh": round(profit / cycled, 2) if cycled > 0 else 0.0,
+                "delivered_house_kwh": round(sum(item["delivered_house_kwh"] for item in summaries), 2),
+                "charged_grid_kwh": round(sum(item["charged_grid_kwh"] for item in summaries), 2),
+                "charged_solar_kwh": round(sum(item["charged_solar_kwh"] for item in summaries), 2),
+                "end_level": summaries[-1]["end_level"],
+                "start": summaries[0]["start"].isoformat(),
+                "end": summaries[-1]["end"].isoformat(),
+            }
 
         current = calculate(base_cfg, current_start_level, rule_values)
         summary = calculate(cfg, start_level, scenario_rule_values)
