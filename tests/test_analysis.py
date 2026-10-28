@@ -1,11 +1,11 @@
-"""The analysis (engine_analysis.py): hourly recording, the day summary and the monthly sensor."""
+"""The analysis (engine/analysis): hourly recording, the day summary and the monthly sensor."""
 from __future__ import annotations
 
 import datetime
 
 import pytest
 
-from custom_components.battmind.engine_analysis import (
+from custom_components.battmind.engine.analysis.helpers import (
     evaluate_price_day,
     grid_cost,
     hindsight_cost,

@@ -12,7 +12,7 @@ from homeassistant.helpers.restore_state import RestoreEntity
 from .const import NUMBER_SETTINGS
 from .coordinator import BattMindCoordinator
 from .entity import BattMindEntity
-from .helpers import float_or_none
+from .utils.helpers import float_or_none
 
 
 async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities: AddEntitiesCallback) -> None:

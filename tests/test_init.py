@@ -184,14 +184,15 @@ async def test_what_if_service_returns_simulation_without_changing_options(
     assert f"**{coordinator.t('ui.what_if.round_trip_loss')}**" in notification
     assert f"**{coordinator.t('ui.what_if.minimum_level')}**" not in notification
     assert f"| **{coordinator.t('ui.what_if.house_kwh')}** | 800,0 | 750,0 | kWh |" in notification
-    assert f"| **{coordinator.t('ui.what_if.paid')}** | 425,00 | 405,00 | kr |" in notification
-    assert f"| **{coordinator.t('ui.what_if.earned')}** | 25,00 | 26,00 | kr |" in notification
-    assert f"| **{coordinator.t('ui.what_if.bill')}** | 500,00 | 475,00 | kr |" in notification
+    valuta = coordinator.t("ui.common.valuta")
+    assert f"| **{coordinator.t('ui.what_if.paid')}** | 425,00 | 405,00 | {valuta} |" in notification
+    assert f"| **{coordinator.t('ui.what_if.earned')}** | 25,00 | 26,00 | {valuta} |" in notification
+    assert f"| **{coordinator.t('ui.what_if.bill')}** | 500,00 | 475,00 | {valuta} |" in notification
     result_table_end = notification.index(
-        f"| **{coordinator.t('ui.what_if.bill')}** | 500,00 | 475,00 | kr |"
+        f"| **{coordinator.t('ui.what_if.bill')}** | 500,00 | 475,00 | {valuta} |"
     )
-    profit_difference = f"**{coordinator.t('ui.what_if.profit_difference')}:** 25,00 kr"
-    bill_difference = f"**{coordinator.t('ui.what_if.bill_difference')}:** 25,00 kr"
+    profit_difference = f"**{coordinator.t('ui.what_if.profit_difference')}:** 25,00 {valuta}"
+    bill_difference = f"**{coordinator.t('ui.what_if.bill_difference')}:** 25,00 {valuta}"
     assert notification.index(profit_difference) > result_table_end
     assert notification.index(bill_difference) > result_table_end
 

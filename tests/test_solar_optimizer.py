@@ -1,7 +1,7 @@
 """optimize_solar_charging: sell the solar surplus expensive, charge cheap, still end full."""
 from __future__ import annotations
 
-from custom_components.battmind.engine_planner import _optimize_solar_blocking
+from custom_components.battmind.engine.planner._helpers import _optimize_solar_blocking
 
 HOURS = list(range(6, 24))
 

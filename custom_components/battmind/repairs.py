@@ -6,7 +6,7 @@ from typing import Any
 from homeassistant.components.repairs import ConfirmRepairFlow, RepairsFlow, RepairsFlowResult
 from homeassistant.core import HomeAssistant
 
-from .blueprint_install import async_update_blueprint
+from .management.blueprint_install import async_update_blueprint
 
 
 class BlueprintUpdateFlow(ConfirmRepairFlow):
