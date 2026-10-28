@@ -78,11 +78,18 @@ class WhatIf:
         }
         missing_hours = {entity_id: count for entity_id, count in missing_hours.items() if count}
         if missing_hours:
-            detail = ", ".join(f"{entity_id} ({count} missing)" for entity_id, count in missing_hours.items())
-            raise ValueError(
-                "Incomplete hourly long-term statistics in the comparison period: "
-                f"{detail}. Choose a shorter history period or restore the missing statistics."
+            latest_gap = max(
+                timestamp
+                for values in required.values()
+                for timestamp in timestamps
+                if timestamp not in values
             )
+            timestamps = [timestamp for timestamp in timestamps if timestamp > latest_gap]
+            if not timestamps:
+                raise ValueError(
+                    "No continuous hourly long-term statistics remain after the latest gap "
+                    "in the required entities"
+                )
         positive_is_charging = home["invert_powerwall_watt_flow_entity_id"]
         tz = self._snap.tz if self._snap else None
         hours = []
@@ -206,7 +213,7 @@ class WhatIf:
                 "start": hours[0].timestamp.isoformat(),
                 "end": hours[-1].timestamp.isoformat(),
                 "hours": len(hours),
-                "days": len({hour.timestamp.date() for hour in hours}),
+                "days": round(len(hours) / 24.0, 1),
             },
             "assumptions": {
                 "battery_size": cfg.battery_size,

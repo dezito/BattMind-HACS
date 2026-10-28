@@ -152,6 +152,7 @@ def _what_if_notification(coordinator: BattMindCoordinator, simulation: dict, ov
             ),
         )
     )
+    lines.extend(("", coordinator.t("ui.what_if.note")))
     return "\n".join(lines)
 
 

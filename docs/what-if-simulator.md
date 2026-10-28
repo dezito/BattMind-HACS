@@ -45,15 +45,20 @@ are percentages. Setting **round_trip_loss** temporarily replaces the configured
 | **difference.profit** | scenario profit minus current profit; positive is better |
 | **difference.bill** | scenario bill minus current bill; negative is better |
 
-Both **current** and **scenario** contain the bill with and without the battery, expected profit, charged
-grid/solar energy, energy delivered to the house, sales, wear and the final battery level.
+Both **current** and **scenario** contain the net result with and without the battery, expected profit,
+charged grid/solar energy, energy delivered to the house, sales, wear and the final battery level.
+A negative net result is not necessarily a cash credit: the calculation includes an estimated value for
+energy remaining in the battery, but excludes the battery purchase price and any fixed fees.
 
 This is a hindsight calculation, not a forecast or guarantee: the simulation uses each day's actual
 prices and solar production as if they were known ahead of time, so treat the result as an optimistic
 historical benchmark rather than expected savings or battery payback. It requires continuous hourly
 long-term statistics for the configured consumption, battery-power, solar, ignored-load and price
-entities used in the comparison. The simulator uses the period shared by those entities; if there are
-gaps inside that period, the action fails instead of silently skipping hours or assuming that the buy
-price was earned when selling. Without a configured historical sell-price entity, variable export
-revenue is treated as zero (a fixed configured solar sell price is still used). Home Assistant may
-provide fewer days than requested if older statistics are unavailable.
+entities used in the comparison. Statistics are read from Home Assistant's Recorder for those
+configured entities; the simulator does not fall back to BattMind's offline price database. The
+simulator uses only the latest continuous period shared by the required entities, starting after the
+most recent gap. It never skips missing hours within the simulated period or assumes that the buy price
+was earned when selling. The displayed day count is based on the number of hourly samples, not calendar
+dates. Without a configured historical sell-price entity, variable export revenue is treated as zero
+(a fixed configured solar sell price is still used). Home Assistant may provide fewer days than
+requested if older statistics are unavailable.
