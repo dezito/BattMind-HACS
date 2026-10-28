@@ -264,6 +264,7 @@
       "results": "Результат за період",
       "period": "Симуляція за {days} днів / {hours} годин.",
       "data_sources": "Використані дані: {statistics} значень статистики, {recorder} значень Recorder.",
+      "price_provider": "Використаний постачальник цін: {provider}.",
       "control_mode": "Активний режим керування: {mode}.",
       "optimizer_mode": "оптимізатор",
       "rules_mode": "правила",

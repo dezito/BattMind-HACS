@@ -215,6 +215,31 @@ def test_what_if_simulator_does_not_change_the_active_plan() -> None:
     assert no_sales.error is None, no_sales.error
     assert no_sales.value["scenario"]["profit"] < no_sales.value["current"]["profit"]
 
+    eds_buy_id, eds_sell_id = "sensor.eds_buy", "sensor.eds_sell"
+    provider_stats = {
+        **data["stats"],
+        buy_id: [(ts, value) for ts, value in data["stats"][buy_id] if ts >= timestamps[24]],
+        sell_id: [(ts, value) for ts, value in data["stats"][sell_id] if ts >= timestamps[24]],
+        eds_buy_id: [(ts, 1.0) for ts in timestamps],
+        eds_sell_id: [(ts, 0.8) for ts in timestamps],
+    }
+    provider_result = engine.run_job(
+        snap,
+        engine.what_if,
+        {
+            **data,
+            "stats": provider_stats,
+            "price_providers": [
+                {"name": "Strømligning", "buy_entity_id": buy_id, "sell_entity_id": sell_id},
+                {"name": "Energi Data Service", "buy_entity_id": eds_buy_id, "sell_entity_id": eds_sell_id},
+            ],
+        },
+        {},
+    )
+    assert provider_result.error is None, provider_result.error
+    assert provider_result.value["price_provider"] == "Energi Data Service"
+    assert provider_result.value["period"]["hours"] == len(timestamps)
+
     missing_indices = (12, 35)
     incomplete_stats = dict(data["stats"])
     for entity_id, gap_index in zip(

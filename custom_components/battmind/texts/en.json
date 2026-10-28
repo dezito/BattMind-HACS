@@ -264,6 +264,7 @@
       "results": "Results for the period",
       "period": "Simulation based on {days} days / {hours} hours.",
       "data_sources": "Data used: {statistics} statistics samples, {recorder} Recorder samples.",
+      "price_provider": "Price provider used: {provider}.",
       "control_mode": "Active controller: {mode}.",
       "optimizer_mode": "optimizer",
       "rules_mode": "rules",

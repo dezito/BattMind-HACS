@@ -142,6 +142,13 @@ async def test_what_if_reads_statistics_and_raw_recorder_history(
 ) -> None:
     hass.config.components.add("recorder")
     coordinator = loaded_entry.runtime_data
+    coordinator.config["prices"]["entity_ids"].update(
+        {
+            "stromligning_buy_current_price": "sensor.stromligning_buy",
+            "stromligning_sell_current_price": "sensor.stromligning_sell",
+            "energidataservice_sell_entity_id": "sensor.eds_sell",
+        }
+    )
     recorder = AsyncMock()
     recorder.async_add_executor_job.side_effect = [{}, {}]
     coordinator.async_run_job = AsyncMock(return_value=JobResult(value={}))
@@ -154,6 +161,24 @@ async def test_what_if_reads_statistics_and_raw_recorder_history(
     assert job_name == "what_if"
     assert "stats" in data
     assert "long_term_statistics_timestamps" in data
+    assert data["price_providers"] == [
+        {
+            "name": "Strømligning",
+            "buy_entity_id": "sensor.stromligning_buy",
+            "sell_entity_id": "sensor.stromligning_sell",
+        },
+        {
+            "name": "Energi Data Service",
+            "buy_entity_id": "sensor.energi_data_service",
+            "sell_entity_id": "sensor.eds_sell",
+        }
+    ]
+    assert {
+        "sensor.stromligning_buy",
+        "sensor.stromligning_sell",
+        "sensor.energi_data_service",
+        "sensor.eds_sell",
+    }.issubset(recorder.async_add_executor_job.call_args_list[0].args[4])
     assert overrides == {}
 
 
@@ -184,6 +209,7 @@ async def test_what_if_service_returns_simulation_without_changing_options(
             return_value=JobResult(
                 value={
                     "period": {"days": 365, "hours": 8760},
+                    "price_provider": "Energi Data Service",
                     "data_sources": {
                         "long_term_statistics_samples": 100,
                         "recorder_history_fallback_samples": 5,
@@ -289,6 +315,9 @@ async def test_what_if_service_returns_simulation_without_changing_options(
     )
     assert "|---|---|---|" in notification
     assert coordinator.t("ui.what_if.data_sources", statistics=100, recorder=5) in notification
+    assert coordinator.t(
+        "ui.what_if.price_provider", provider="Energi Data Service"
+    ) in notification
     assert coordinator.t(
         "ui.what_if.control_mode", mode=coordinator.t("ui.what_if.optimizer_mode")
     ) in notification

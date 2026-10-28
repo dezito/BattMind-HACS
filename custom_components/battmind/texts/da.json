@@ -264,6 +264,7 @@
       "results": "Resultat for perioden",
       "period": "Simulering baseret på {days} dage / {hours} timer.",
       "data_sources": "Datagrundlag: {statistics} statistikmålinger, {recorder} Recorder-målinger.",
+      "price_provider": "Prisudbyder brugt: {provider}.",
       "control_mode": "Aktiv styring: {mode}.",
       "optimizer_mode": "optimering",
       "rules_mode": "regler",

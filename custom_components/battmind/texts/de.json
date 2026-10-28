@@ -264,6 +264,7 @@
       "results": "Ergebnis für den Zeitraum",
       "period": "Simulation über {days} Tage / {hours} Stunden.",
       "data_sources": "Verwendete Daten: {statistics} Statistikwerte, {recorder} Recorder-Werte.",
+      "price_provider": "Verwendeter Preisanbieter: {provider}.",
       "control_mode": "Aktive Steuerung: {mode}.",
       "optimizer_mode": "Optimierer",
       "rules_mode": "Regeln",

@@ -264,6 +264,7 @@
       "results": "Wynik za ten okres",
       "period": "Symulacja na podstawie {days} dni / {hours} godzin.",
       "data_sources": "Użyte dane: {statistics} wartości statystyk, {recorder} wartości Recorder.",
+      "price_provider": "Użyty dostawca cen: {provider}.",
       "control_mode": "Aktywny tryb sterowania: {mode}.",
       "optimizer_mode": "optymalizator",
       "rules_mode": "reguły",

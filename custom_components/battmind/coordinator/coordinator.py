@@ -215,18 +215,34 @@ class BattMindCoordinator(CoordinatorLifecycle, CoordinatorEvents, CoordinatorDa
         from homeassistant.components.recorder.statistics import statistics_during_period
 
         price_ids = self.config["prices"]["entity_ids"]
-        buy_id = price_ids["stromligning_buy_current_price"] or price_ids["energidataservice_buy_entity_id"]
-        if not buy_id:
+        price_providers = []
+        for name, buy_key, sell_key in (
+            ("Strømligning", "stromligning_buy_current_price", "stromligning_sell_current_price"),
+            ("Energi Data Service", "energidataservice_buy_entity_id", "energidataservice_sell_entity_id"),
+        ):
+            buy_id = price_ids[buy_key]
+            if buy_id:
+                price_providers.append(
+                    {
+                        "name": name,
+                        "buy_entity_id": buy_id,
+                        "sell_entity_id": price_ids[sell_key] or None,
+                    }
+                )
+        if not price_providers:
             raise HomeAssistantError("A buy-price entity is required for the historical what-if comparison")
-        sell_price_history_available = bool(
-            price_ids["stromligning_sell_current_price"] or price_ids["energidataservice_sell_entity_id"]
-        )
-        sell_id = (
-            price_ids["stromligning_sell_current_price"]
-            or price_ids["energidataservice_sell_entity_id"]
-            or buy_id
-        )
-        entities = {entity_id for entity_id in (*self.statistics_entities, buy_id, sell_id) if entity_id}
+        entities = {
+            entity_id
+            for entity_id in (
+                *self.statistics_entities,
+                *(
+                    entity_id
+                    for provider in price_providers
+                    for entity_id in (provider["buy_entity_id"], provider["sell_entity_id"])
+                ),
+            )
+            if entity_id
+        }
         end = dt_util.utcnow().replace(minute=0, second=0, microsecond=0)
         start = end - datetime.timedelta(days=history_days)
         try:
@@ -260,9 +276,7 @@ class BattMindCoordinator(CoordinatorLifecycle, CoordinatorEvents, CoordinatorDa
         recorder_hourly = self._recorder_hourly_means(states, start, end)
         combined_stats, statistical_timestamps = self._combine_what_if_statistics(entities, stats, recorder_hourly)
         data = {
-            "buy_entity_id": buy_id,
-            "sell_entity_id": sell_id,
-            "sell_price_history_available": sell_price_history_available,
+            "price_providers": price_providers,
             "stats": combined_stats,
             "long_term_statistics_timestamps": statistical_timestamps,
         }

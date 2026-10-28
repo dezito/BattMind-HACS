@@ -39,15 +39,10 @@ class WhatIf:
         flow_id = ids["powerwall_watt_flow_entity_id"]
         solar_id = self.config["solar"]["entity_ids"]["production_entity_id"]
         ignored_ids = [entity_id for entity_id in ids["ignore_consumption_from_entity_ids"] or [] if entity_id]
-        buy_id = data["buy_entity_id"]
-        sell_id = data["sell_entity_id"]
-        sell_price_history_available = data.get("sell_price_history_available", True)
         consumption = series(consumption_id)
         flow = series(flow_id)
         solar = series(solar_id)
         ignored = [series(entity_id) for entity_id in ignored_ids]
-        buy = series(buy_id, power=False)
-        sell = series(sell_id, power=False)
         required_ids = list(dict.fromkeys(
             entity_id
             for entity_id in (
@@ -55,33 +50,65 @@ class WhatIf:
                 flow_id,
                 solar_id,
                 *ignored_ids,
-                buy_id,
-                sell_id if sell_price_history_available else "",
             )
             if entity_id
         ))
-        required = {
-            entity_id: series(entity_id, power=entity_id not in (buy_id, sell_id))
-            for entity_id in required_ids
-        }
+        required = {entity_id: series(entity_id) for entity_id in required_ids}
         missing_series = [entity_id for entity_id, values in required.items() if not values]
         if missing_series:
             raise ValueError("No hourly long-term statistics for required entities: " + ", ".join(missing_series))
-        first = max(min(values) for values in required.values())
-        last = min(max(values) for values in required.values())
-        if first > last:
-            raise ValueError("No overlapping hourly long-term statistics were found for the required entities")
-        span_hours = (last - first) / 3600.0
-        hour_count = round(span_hours) + 1
-        if abs(span_hours - round(span_hours)) > 1e-6:
-            raise ValueError("Required long-term statistics are not aligned to the same hourly intervals")
-        timestamps = [
-            first + hour * 3600.0
-            for hour in range(hour_count)
-            if all(first + hour * 3600.0 in values for values in required.values())
+
+        providers = data.get("price_providers") or [
+            {
+                "name": "",
+                "buy_entity_id": data["buy_entity_id"],
+                "sell_entity_id": (
+                    data["sell_entity_id"]
+                    if data.get("sell_price_history_available", True)
+                    else None
+                ),
+            }
         ]
-        if not timestamps:
-            raise ValueError("No complete hourly data is available for all required entities")
+        candidates = []
+        for provider in providers:
+            buy_id = provider["buy_entity_id"]
+            sell_id = provider.get("sell_entity_id")
+            provider_required = dict(required)
+            provider_required[buy_id] = series(buy_id, power=False)
+            if sell_id:
+                provider_required[sell_id] = series(sell_id, power=False)
+            if any(not values for values in provider_required.values()):
+                continue
+            first = max(min(values) for values in provider_required.values())
+            last = min(max(values) for values in provider_required.values())
+            if first > last:
+                continue
+            span_hours = (last - first) / 3600.0
+            hour_count = round(span_hours) + 1
+            if abs(span_hours - round(span_hours)) > 1e-6:
+                continue
+            timestamps = [
+                first + hour * 3600.0
+                for hour in range(hour_count)
+                if all(
+                    first + hour * 3600.0 in values
+                    for values in provider_required.values()
+                )
+            ]
+            if timestamps:
+                candidates.append(
+                    (len(timestamps), provider, provider_required, timestamps)
+                )
+        if not candidates:
+            raise ValueError(
+                "No complete hourly data is available for the required entities and any configured price provider"
+            )
+        _, selected_provider, required, timestamps = max(candidates, key=lambda item: item[0])
+        buy_id = selected_provider["buy_entity_id"]
+        sell_id = selected_provider.get("sell_entity_id") or buy_id
+        buy = series(buy_id, power=False)
+        sell = series(sell_id, power=False)
+        sell_price_history_available = bool(selected_provider.get("sell_entity_id"))
         sample_count = len(required) * len(timestamps)
         if "long_term_statistics_timestamps" not in data:
             statistical_sample_count = sample_count
@@ -267,6 +294,7 @@ class WhatIf:
         current = calculate(base_cfg, current_start_level, rule_values)
         summary = calculate(cfg, start_level, scenario_rule_values)
         return {
+            "price_provider": selected_provider.get("name") or None,
             "period": {
                 "start": hours[0].timestamp.isoformat(),
                 "end": hours[-1].timestamp.isoformat(),
