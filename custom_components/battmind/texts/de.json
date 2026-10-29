@@ -222,6 +222,12 @@
         "controlled_by": "Gesteuert von",
         "optimizer": "Optimierung des ganzen Zeitraums",
         "rules": "Den Regeln",
+        "ev_title": "Elektroautos im Zeitraum",
+        "ev_car": "Auto",
+        "ev_hours": "Ladestunden",
+        "ev_unavailable": "nicht verfügbar",
+        "ev_bill": "Stromrechnung inkl. Elektroautos",
+        "ev_note": "Geplantes Laden der Elektroautos aus dem Netz laut Cable Juice Planner (inkl. Ladeverlust). Die Autos sind nicht Teil des Batterieplans; Laden mit Solarüberschuss ist nicht enthalten.",
         "note": "Positive Zahlen sind Kosten, negative Einnahmen. Prognose für den ganzen Zeitraum."
       }
     },

@@ -222,6 +222,12 @@
         "controlled_by": "Sterowane przez",
         "optimizer": "Optymalizacja całego okresu",
         "rules": "Reguły",
+        "ev_title": "Samochody elektryczne w okresie",
+        "ev_car": "Samochód",
+        "ev_hours": "Godziny ładowania",
+        "ev_unavailable": "niedostępne",
+        "ev_bill": "Rachunek za prąd z samochodami elektrycznymi",
+        "ev_note": "Zaplanowane ładowanie samochodów z sieci według Cable Juice Planner (z uwzględnieniem strat ładowania). Samochody nie są częścią planu baterii; ładowanie nadwyżką słoneczną nie jest uwzględnione.",
         "note": "Liczby dodatnie to koszty, ujemne to przychody. Prognoza dla całego okresu."
       }
     },

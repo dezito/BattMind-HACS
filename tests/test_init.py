@@ -13,6 +13,7 @@ from homeassistant.const import EVENT_HOMEASSISTANT_STARTED
 from homeassistant.core import CoreState, HomeAssistant
 from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers import entity_registry as er
+from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.battmind import _async_run_after_home_assistant_started, _what_if_notification
 from custom_components.battmind.const import (
@@ -159,6 +160,24 @@ async def test_startup_publishes_plan(hass: HomeAssistant, loaded_entry) -> None
     assert "⛔" not in rule.state, rule.state
     assert loaded_entry.runtime_data.last_job.get("error") is None
     assert hass.states.get(f"sensor.{PREFIX}_overview").state not in ("unknown", "unavailable")
+
+
+async def test_snapshot_reads_the_cable_juice_planner_cars(hass: HomeAssistant, loaded_entry) -> None:
+    """Every CJP car (not the site entry) with the charge_plan of its current_charging_rule; None = no plan."""
+    registry = er.async_get(hass)
+    tesla = MockConfigEntry(domain="cable_juice_planner", title="Cable Juice Planner (Tesla)", data={"name": "Tesla", "entity_prefix": "cjp_tesla"})
+    zoe = MockConfigEntry(domain="cable_juice_planner", title="Cable Juice Planner (cjp_zoe)", data={"name": "", "entity_prefix": "cjp_zoe"})
+    site = MockConfigEntry(domain="cable_juice_planner", title="Site", data={"site": True})
+    for entry in (tesla, zoe, site):
+        entry.add_to_hass(hass)
+    for entry, object_id in ((tesla, "cjp_tesla_current_charging_rule"), (zoe, "cjp_zoe_current_charging_rule")):
+        registry.async_get_or_create("sensor", "cable_juice_planner", f"{entry.entry_id}_current_charging_rule", config_entry=entry, suggested_object_id=object_id)
+    plan = [{"time": "2026-10-30T03:00:00", "end": "2026-10-30T04:00:00", "kwh": 5.37, "price": 2.48, "cost": 13.32, "emoji": "💸"}]
+    hass.states.async_set("sensor.cjp_tesla_current_charging_rule", "Lader", {"charge_plan": plan})
+
+    snapshot = await loaded_entry.runtime_data._async_snapshot()
+
+    assert snapshot.ev_charging == [{"name": "Tesla", "charge_plan": plan}, {"name": "cjp_zoe", "charge_plan": None}]
 
 
 async def test_enforce_planning_service(hass: HomeAssistant, loaded_entry) -> None:

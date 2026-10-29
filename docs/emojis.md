@@ -9,7 +9,7 @@ emoji always means the same rule.
 |---|---|
 | `sensor.<prefix>_current_charging_rule` (dashboard → current rule) | the rule behind the action right now, e.g. *💸 Charging up to …*. A second line shows the battery's measured power, with the rules of the current hour and ⌛ (an average) |
 | The plan in the overview | every hour starts with the emoji of its rule – click the row to see the numbers behind it. 📦 joins neighbouring periods with the same rule |
-| The bill of the period (overview) | 📈 charged from the grid, 📤 sold, ☀️ solar, 💰 the saving |
+| The bill of the period (overview) | 📈 charged from the grid, 📤 sold, ☀️ solar, 💰 the saving, 🚗 the Cable Juice Planner cars' planned charging |
 | The solar forecast (overview) | ☀️ the surplus per day, 🌅/🌇 sunrise and sunset, 🌤️ when the sun would fill the battery |
 | The charging history | the rules that were active in each hour, and the column headers (📈 charged, 📉 discharged, ⚖️ balance, 💰 savings, ☀️ solar share) |
 | The analysis → *Per rule* | charged and discharged kWh per rule |

@@ -222,6 +222,12 @@
         "controlled_by": "Controlled by",
         "optimizer": "Whole period optimisation",
         "rules": "The rules",
+        "ev_title": "Electric cars in the period",
+        "ev_car": "Car",
+        "ev_hours": "Charging hours",
+        "ev_unavailable": "not available",
+        "ev_bill": "Electricity bill incl. electric cars",
+        "ev_note": "The cars' planned charging from the grid according to Cable Juice Planner (incl. charging loss). The cars are not part of the battery plan; charging with solar surplus is not included.",
         "note": "Positive numbers are costs, negative are income. Forecast for the whole period."
       }
     },

@@ -22,6 +22,8 @@ class Snapshot:
     forecast_dict: dict = field(default_factory=lambda: {"hourly": [], "daily": []})
     solcast: dict[str, list] = field(default_factory=dict)
     sun_events: dict = field(default_factory=dict)
+    # Cable Juice Planner cars: {"name", "charge_plan"}; charge_plan None = no plan available
+    ev_charging: list[dict] = field(default_factory=list)
 
 
 @dataclass
