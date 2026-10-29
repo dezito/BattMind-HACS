@@ -17,7 +17,7 @@ It needs these HACS frontend cards: [ApexCharts Card](https://github.com/RomRide
 | **Electricity prices** | the buy price incl. taxes, the sell price, the price forecast and the solar forecast. The title shows 🔵 lowest, 🟢 average and 🟣 highest price. A warning with a restart button appears if the price integration is down |
 | **Current rule and action** | `sensor.<prefix>_current_charging_rule` and the action, incl. the battery's power right now |
 | **Charging history** | each charge and discharge with its rule, kWh and price, and totals per month |
-| **Overview** | the plan per day with a reason for each hour (click a row to see the numbers), the bill of the period without/with the battery, and the solar forecast per day |
+| **Overview** | the plan per day with a reason for each hour (click a row to see the numbers), the bill of the period without/with the battery (with [Cable Juice Planner](cookbook.md#together-with-cable-juice-planner-ev) also the cars' planned charging and the bill incl. the cars), and the solar forecast per day |
 | **Status** | above the emoji explanation: the battery level and power, house consumption, solar production and kWh charged by solar, the current buy price and `sensor.<prefix>_analysis` (savings this month). Rows whose entity is not configured are left out |
 
 At the top: **Force planning** recalculates the plan now. The sidebar has the emoji explanation – see [Emojis](emojis.md).

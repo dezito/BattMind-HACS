@@ -3,13 +3,30 @@ from __future__ import annotations
 
 import datetime
 import logging
+import math
 from collections import defaultdict
 
 from ...utils.formatting import emoji_parse, emoji_text_format
-from ...utils.helpers import day_of_week_text, reset_time_to_hour
+from ...utils.helpers import day_of_week_text, float_or_none, reset_time_to_hour
 from ._helpers import _group_hour_rules, _join_timestamps_by_hour, _joined_reason
 
 _LOGGER = logging.getLogger(__name__)
+
+
+def _finite(value) -> float | None:
+    number = float_or_none(value)
+    return number if number is not None and math.isfinite(number) else None
+
+
+def _ev_hour(value, tz) -> datetime.datetime | None:
+    """The local (naive) hour of a Cable Juice Planner charge_plan time."""
+    try:
+        timestamp = datetime.datetime.fromisoformat(str(value))
+    except ValueError:
+        return None
+    if timestamp.tzinfo is not None:
+        timestamp = timestamp.astimezone(tz)
+    return reset_time_to_hour(timestamp)
 
 
 class Overview:
@@ -178,9 +195,64 @@ class Overview:
             f"| **🔋 {t(f'{prefix}.end_level')}** | {summary['end_level']:.0f}% |",
             f"| **📆 {t(f'{prefix}.period')}** | {period} |",
             f"| **🧠 {t(f'{prefix}.controlled_by')}** | {t(f'{prefix}.optimizer') if controls else t(f'{prefix}.rules')} |",
+            *self._ev_charging_lines(start, end, with_battery["bill"], valuta, valuta_kwh),
             f"\n*{t(f'{prefix}.note')}*",
             "</details>\n",
         ]
+
+    def _ev_charging_totals(self, start: datetime.datetime, end: datetime.datetime) -> list[dict]:
+        """The planned charging of each Cable Juice Planner car in the hours start..end; kwh None = no valid plan."""
+        tz = self._snap.tz if self._snap else None
+        cars = []
+        for car in self._snap.ev_charging if self._snap else []:
+            plan = car.get("charge_plan")
+            hours, kwh, cost, valid = set(), 0.0, 0.0, isinstance(plan, list)
+            for row in plan or []:
+                hour = _ev_hour(row.get("time"), tz)
+                row_kwh = _finite(row.get("kwh"))
+                row_cost = _finite(row.get("cost"))
+                if row_cost is None and row_kwh is not None and (price := _finite(row.get("price"))) is not None:
+                    row_cost = row_kwh * price  # a Cable Juice Planner without the cost per hour
+                if hour is None or row_kwh is None or row_cost is None:
+                    valid = False  # never count a broken plan as no charging
+                    break
+                if start <= hour <= end:
+                    hours.add(hour)
+                    kwh += row_kwh
+                    cost += row_cost
+            name = str(car.get("name") or "-").replace("|", "/")
+            cars.append({"name": name, "hours": len(hours), "kwh": kwh, "cost": cost} if valid else {"name": name, "hours": None, "kwh": None, "cost": None})
+        return cars
+
+    def _ev_charging_lines(self, start, end, bill: float, valuta: str, valuta_kwh: str) -> list[str]:
+        """🚗 The cars' planned charging in the period and the bill incl. the cars (only with Cable Juice Planner cars)."""
+        cars = self._ev_charging_totals(start, end) if start and end else []
+        if not cars:
+            return []
+        t = self.t
+        prefix = "ui.cheap_grid_charge_hours.plan_summary"
+
+        def cells(hours: int, kwh: float, cost: float) -> list[str]:
+            return [str(hours), f"{kwh:.1f}", f"{cost:.2f} {valuta}", f"{cost / kwh:.2f}" if kwh > 0.0 else "–"]
+
+        lines = [
+            "",
+            f"**🚗 {t(f'{prefix}.ev_title')}**",
+            "",
+            f"| {t(f'{prefix}.ev_car')} | {t(f'{prefix}.ev_hours')} | kWh | {t('ui.common.price')} | {valuta_kwh} |",
+            "|:---|---:|---:|---:|---:|",
+        ]
+        for car in cars:
+            values = cells(car["hours"], car["kwh"], car["cost"]) if car["kwh"] is not None else ["–", "–", t(f"{prefix}.ev_unavailable"), "–"]
+            lines.append(f"| {car['name']} | {' | '.join(values)} |")
+        if all(car["kwh"] is not None for car in cars):  # not with a car missing: the totals would be too low
+            total_cost = sum(car["cost"] for car in cars)
+            if len(cars) > 1:
+                total = cells(sum(car["hours"] for car in cars), sum(car["kwh"] for car in cars), total_cost)
+                lines.append(f"| **{t(f'{prefix}.total')}** | {' | '.join(f'**{cell}**' for cell in total)} |")
+            lines += ["", "|  |  |", "|:---|---:|", f"| **= {t(f'{prefix}.ev_bill')}** | **{bill + total_cost:.2f} {valuta}** |"]
+        lines.append(f"\n*{t(f'{prefix}.ev_note')}*")
+        return lines
 
     def _build_overview(self, charging_plan, charge_hours, battery_expenses, solar_over_production) -> list[str]:  # noqa: C901
         t = self.t

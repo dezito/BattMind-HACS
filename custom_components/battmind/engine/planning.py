@@ -19,6 +19,7 @@ class Planning:
         """Hash of everything the plan depends on. The plan is skipped when it is unchanged."""
         cache = self.grid_price_cache
         settings = self._snap.settings if self._snap else {}
+        ev_charging = self._snap.ev_charging if self._snap else []
         data = (
             reset_time_to_hour(self.now()),
             self.forecast_type,
@@ -27,6 +28,7 @@ class Planning:
             self.get_battery_level(),
             tuple(self.battery_expenses.items()),
             tuple(sorted(settings.items())),
+            ev_charging,  # only shown in the overview (🚗 cars), but it has to follow the cars' plans
         )
         return hashlib.blake2b(repr(data).encode(), digest_size=16).hexdigest()
 

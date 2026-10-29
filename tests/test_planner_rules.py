@@ -605,6 +605,64 @@ def test_overview_has_the_plan_and_its_totals(optimizer_control: bool) -> None:
     assert ("Optimering af hele perioden" if optimizer_control else "Reglerne") in overview
 
 
+def _planned_with_cars(ev_charging) -> tuple[BattMindEngine, dict]:
+    """planned(), then planned again with the Cable Juice Planner cars (ev_charging(start, end) of the first plan)."""
+    engine, _ = planned(0, 30, {})
+    summary = engine.optimizer_shadow["summary_optimal"]
+    snap = realistic_snapshot(datetime.datetime.combine(DAY, datetime.time(0, 30)), 30, {})
+    snap.ev_charging = ev_charging(summary["start"], summary["end"])
+    assert engine.run_job(snap, engine.charge_if_needed).error is None  # replans: the cars are in the plan inputs
+    return engine, engine.optimizer_shadow["summary_optimal"]
+
+
+def test_overview_shows_the_planned_charging_of_the_cars() -> None:
+    hour = datetime.timedelta(hours=1)
+
+    def cars(start: datetime.datetime, end: datetime.datetime) -> list[dict]:
+        aware = (start + 2 * hour).replace(tzinfo=TZ).astimezone(datetime.UTC).isoformat()
+        return [
+            {"name": "Tesla", "charge_plan": [
+                {"time": (start + hour).isoformat(), "kwh": 10.0, "price": 1.99, "cost": 20.0},
+                {"time": aware, "kwh": 2.5, "price": 2.0, "cost": 5.0},  # UTC -> local
+                {"time": end.replace(minute=20).isoformat(), "kwh": 2.5, "price": 2.0, "cost": 5.0},  # the last hour
+                {"time": (end + hour).isoformat(), "kwh": 50.0, "price": 2.0, "cost": 100.0},  # after the period
+            ]},
+            {"name": "Zoe", "charge_plan": [{"time": start.isoformat(), "kwh": 5.0, "price": 1.6}]},  # no cost: kwh x price
+        ]
+
+    engine, summary = _planned_with_cars(cars)
+    overview = engine.last_overview
+    assert "**🚗 Elbiler i perioden**" in overview
+    assert "| Bil | Ladetimer | kWh | Pris | kr/kWh |" in overview
+    assert "| Tesla | 3 | 15.0 | 30.00 kr | 2.00 |" in overview
+    assert "| Zoe | 1 | 5.0 | 8.00 kr | 1.60 |" in overview
+    assert "| **I alt** | **4** | **20.0** | **38.00 kr** | **1.90** |" in overview
+    assert f"| **= Elregning inkl. elbiler** | **{summary['with']['bill'] + 38.0:.2f} kr** |" in overview
+    # inside the totals, before their note
+    assert overview.index("💰 I alt") < overview.index("🚗 Elbiler") < overview.index("Positive tal er udgifter")
+
+
+def test_a_car_without_a_plan_is_not_counted_as_no_charging() -> None:
+    def cars(start: datetime.datetime, _end: datetime.datetime) -> list[dict]:
+        return [
+            {"name": "Tesla", "charge_plan": None},
+            {"name": "Zoe", "charge_plan": [{"time": start.isoformat(), "kwh": "unknown", "price": 1.6, "cost": 8.0}]},
+            {"name": "Leaf", "charge_plan": []},
+        ]
+
+    overview = _planned_with_cars(cars)[0].last_overview
+    assert "| Tesla | – | – | ikke tilgængelig | – |" in overview
+    assert "| Zoe | – | – | ikke tilgængelig | – |" in overview
+    assert "| Leaf | 0 | 0.0 | 0.00 kr | – |" in overview
+    # too low with cars missing
+    assert "| **I alt** |" not in overview.split("🚗")[1] and "Elregning inkl. elbiler" not in overview
+
+
+def test_overview_without_cable_juice_planner_has_no_cars() -> None:
+    engine, _ = planned(0, 30, {})
+    assert "🚗" not in engine.last_overview and "Elregning inkl. elbiler" not in engine.last_overview
+
+
 def test_bill_with_the_battery_is_the_simulated_cost() -> None:
     """breakdown()'s bill with the battery is the same as simulate() of the plan, without = no battery at all."""
     from custom_components.battmind.engine.optimizer import breakdown

@@ -53,6 +53,14 @@ The home battery shouldn't be drained into the car – unless there is energy to
 The car is then charged from the home battery only while CJP allows it and the battery is above the
 level you set.
 
+The overview's bill of the period then also shows **🚗 Electric cars in the period**: each CJP car's planned
+grid charging in that period (charging hours, kWh incl. charging loss, cost and price per kWh, read from
+`sensor.cjp_<car>_current_charging_rule`'s `charge_plan`) and the electricity bill incl. the cars. BattMind
+finds the cars itself; without CJP the overview is unchanged. The cars are not part of the battery plan, and
+charging with solar surplus is not included. A car whose plan is not available is shown as *not available*,
+and the total and the bill incl. the cars are then left out. Right after a restart this can happen until
+CJP has published its plan; the next planning picks it up.
+
 ## Careful: fewer cycles, more margin
 
 For a new battery, or when you don't trust the price forecast yet:

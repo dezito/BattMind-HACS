@@ -222,6 +222,12 @@
         "controlled_by": "Styres af",
         "optimizer": "Optimering af hele perioden",
         "rules": "Reglerne",
+        "ev_title": "Elbiler i perioden",
+        "ev_car": "Bil",
+        "ev_hours": "Ladetimer",
+        "ev_unavailable": "ikke tilgængelig",
+        "ev_bill": "Elregning inkl. elbiler",
+        "ev_note": "Elbilernes planlagte ladning fra nettet ifølge Cable Juice Planner (inkl. ladetab). Bilerne indgår ikke i batteriets plan; ladning med soloverskud er ikke medregnet.",
         "note": "Positive tal er udgifter, negative er indtægter. Prognose for hele perioden."
       }
     },

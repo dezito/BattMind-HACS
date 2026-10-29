@@ -12,6 +12,7 @@ from functools import partial
 from homeassistant.const import SUN_EVENT_SUNRISE, SUN_EVENT_SUNSET
 from homeassistant.core import Event, State, callback
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.event import async_track_state_change_event
 from homeassistant.helpers.sun import get_astral_event_date
 from homeassistant.util import dt as dt_util
@@ -27,7 +28,8 @@ from .constants import FORECAST_TIMEOUT, STATISTICS_REFRESH_SECONDS
 _LOGGER = logging.getLogger(__name__)
 
 
-SOLCAST_ENDINGS = ["today", "tomorrow", "day_3", "day_4", "day_5", "day_6", "day_7"]
+CJP_DOMAIN = "cable_juice_planner"
+SOLCAST_ENDINGS =["today", "tomorrow", "day_3", "day_4", "day_5", "day_6", "day_7"]
 
 
 def _strip_forecast_suffix(entity_id: str) -> str:
@@ -159,6 +161,7 @@ class CoordinatorData:
             buffers={entity_id: list(rows) for entity_id, rows in self._buffers.items()},
             statistics={entity_id: list(rows) for entity_id, rows in self._statistics.items()},
             sun_events=self._sun_events(now),
+            ev_charging=self._ev_charging_snapshot(),
         )
         if include_prices:
             snapshot.price_data = self._price_snapshot()
@@ -182,6 +185,22 @@ class CoordinatorData:
                 value = float_or_none(state.state)
                 values[entity_id] = value if value is not None else 0.0
         return {"attributes": attributes, "values": values}
+
+    def _ev_charging_snapshot(self) -> list[dict]:
+        """The planned charging of each Cable Juice Planner car (charge_plan of its current_charging_rule)."""
+        registry = er.async_get(self.hass)
+        cars = []
+        for entry in self.hass.config_entries.async_entries(CJP_DOMAIN):
+            if entry.data.get("site") or entry.disabled_by:
+                continue
+            entity_id = registry.async_get_entity_id("sensor", CJP_DOMAIN, f"{entry.entry_id}_current_charging_rule")
+            state = self.hass.states.get(entity_id) if entity_id else None
+            plan = state.attributes.get("charge_plan") if state else None
+            cars.append({
+                "name": str(entry.data.get("name") or "").strip() or str(entry.data.get("entity_prefix") or "").strip() or entry.title,
+                "charge_plan": [dict(row) for row in plan if isinstance(row, dict)] if isinstance(plan, list) else None,
+            })
+        return cars
 
     def _solcast_snapshot(self) -> dict[str, list]:
         forecast_entity = self.config["solar"]["entity_ids"]["forecast_entity_id"]
