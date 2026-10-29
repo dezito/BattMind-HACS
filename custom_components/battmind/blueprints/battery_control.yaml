@@ -30,6 +30,13 @@ blueprint:
     Fields left empty do nothing.
 
 
+    **Commands too fast for the inverter?** The steps of an action run right after
+    each other. If your inverter (e.g. over Modbus or a slow cloud) does not take
+    commands that close together, add a "Delay" step (e.g. 2 seconds) between them
+    in the action. That is safe: if BattMind changes action during the delay, the
+    run starts over and sends the whole new action.
+
+
     **EV (optional):** Choose your charger's power sensor and what should happen
     while the car is charging - e.g. stop discharging, so the battery is not
     drained into the car. Discharging into the car can still be allowed with an

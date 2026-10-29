@@ -40,6 +40,10 @@ One field per action: **Stop battery**, **Charge from grid**, **Forced discharge
 charge/discharge power, *Switch: Turn on/off*, or a service from the inverter integration. Fields left
 empty do nothing.
 
+The steps of an action run right after each other. If the inverter doesn't take commands that close together
+(e.g. over Modbus or a slow cloud), add a *Delay* step (e.g. 2 seconds) between them in the action. That is
+safe: if BattMind changes action during the delay, the run starts over and sends the whole new action.
+
 Tips per action:
 
 - **Stop battery** - stop forced charge/discharge and set both maximum powers to 0. This action must be
