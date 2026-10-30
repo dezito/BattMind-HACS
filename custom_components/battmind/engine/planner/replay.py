@@ -141,8 +141,9 @@ def replay_history(
     hours: the actual hours (consumption and solar surplus in kWh, buy price, sell value);
     sell: the sell price per hour the planner sees (hours without a sell price can't sell);
     progress: called with the number of executed hours after every plan.
-    months: the profit and hours per calendar month ("YYYY-MM"); the change of the battery level
-    in a month is valued like the energy left at the end, so the months add up to the profit.
+    months: the hours, profit and bill with the battery per calendar month ("YYYY-MM"); the change
+    of the battery level in a month is valued like the energy left at the end, so the months add up
+    to the profit and the bill of the summaries.
     """
     replay_class = type("ReplayEngine", (ReplayInputs, engine_class), {})
     engine = replay_class(config, prefix, texts)
@@ -171,6 +172,9 @@ def replay_history(
         level = segment_start
         actions, limits = [], []
         position = 0
+        # the energy in the battery at the start is deducted from the bill, like in breakdown()
+        month = months.setdefault(segment[0].timestamp.strftime("%Y-%m"), {"hours": 0, "profit": 0.0, "bill": 0.0})
+        month["bill"] -= (segment_start - cfg.level_min) * to_kwh * end_value
         while position < len(segment):
             now = segment[position].timestamp
             known_until, next_planning = _known_until(now), _next_planning(now)
@@ -180,12 +184,11 @@ def replay_history(
                 details: dict = {}
                 previous_level = level
                 level, cost, _, _ = step_hour(hour, level, action, cfg, limit, details)
-                month = months.setdefault(hour.timestamp.strftime("%Y-%m"), {"hours": 0, "profit": 0.0})
+                stored_value = (level - previous_level) * to_kwh * end_value
+                month = months.setdefault(hour.timestamp.strftime("%Y-%m"), {"hours": 0, "profit": 0.0, "bill": 0.0})
                 month["hours"] += 1
-                month["profit"] += (
-                    hour.consumption * hour.buy - hour.solar * hour.sell - cost
-                    + (level - previous_level) * to_kwh * end_value
-                )
+                month["profit"] += hour.consumption * hour.buy - hour.solar * hour.sell - cost + stored_value
+                month["bill"] += cost - stored_value
                 actions.append(action)
                 limits.append(limit)
                 charged = details["solar_in"] + details["grid"]

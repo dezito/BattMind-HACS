@@ -1,6 +1,8 @@
 """Setup, entities, services and unload of a BattMind entry."""
 from __future__ import annotations
 
+import asyncio
+import datetime
 import json
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
@@ -13,7 +15,8 @@ from homeassistant.const import EVENT_HOMEASSISTANT_STARTED
 from homeassistant.core import CoreState, HomeAssistant
 from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers import entity_registry as er
-from pytest_homeassistant_custom_component.common import MockConfigEntry
+from homeassistant.util import dt as dt_util
+from pytest_homeassistant_custom_component.common import MockConfigEntry, async_fire_time_changed
 
 from custom_components.battmind import _async_run_after_home_assistant_started, _what_if_notification
 from custom_components.battmind.const import (
@@ -262,6 +265,52 @@ async def test_what_if_reads_statistics_and_raw_recorder_history(
     assert data["price_providers"][1]["sell_includes_tariffs"] is False
 
 
+async def test_what_if_reports_the_loading_phases_until_the_simulation_starts(
+    hass: HomeAssistant, loaded_entry
+) -> None:
+    hass.config.components.add("recorder")
+    coordinator = loaded_entry.runtime_data
+    coordinator.config["prices"]["entity_ids"]["energidataservice_sell_entity_id"] = "sensor.eds_sell"
+    release = asyncio.Event()
+
+    async def recorder_job(*args):
+        if not release.is_set():
+            await release.wait()  # a slow long-term statistics query
+        return {}
+
+    async def run_job(job, data, overrides, progress=None):
+        progress({"percent": 50, "step": 1, "steps": 1, "hours": 12, "total_hours": 24})
+        return JobResult(value={})
+
+    recorder = AsyncMock()
+    recorder.async_add_executor_job.side_effect = recorder_job
+    coordinator.async_run_job = run_job
+    reports: list[dict] = []
+    with patch("homeassistant.components.recorder.get_instance", return_value=recorder):
+        # not a Home Assistant task: async_block_till_done() would wait for the blocked query
+        task = asyncio.ensure_future(coordinator.async_what_if({}, 1, reports.append))
+        for _ in range(5):
+            await asyncio.sleep(0)
+        assert [report["phase"] for report in reports] == ["statistics"]
+        # the phase is repeated with the elapsed time while a step takes long
+        async_fire_time_changed(hass, dt_util.utcnow() + datetime.timedelta(seconds=11))
+        for _ in range(5):
+            await asyncio.sleep(0)
+        assert [report["phase"] for report in reports] == ["statistics", "statistics"]
+        release.set()
+        await asyncio.wait_for(task, 30)
+        await hass.async_block_till_done()
+
+    assert [report.get("phase") for report in reports] == [
+        "statistics", "statistics", "states", "tariffs", "hourly", "preparing", None
+    ]
+    assert all(isinstance(report["seconds"], int) for report in reports[:-1])
+    assert reports[-1]["percent"] == 50
+    # the ticker stops with the simulation
+    await async_advance(hass, 30)
+    assert len(reports) == 7
+
+
 async def test_what_if_service_returns_simulation_without_changing_options(
     hass: HomeAssistant, loaded_entry
 ) -> None:
@@ -453,9 +502,9 @@ async def test_what_if_service_returns_simulation_without_changing_options(
         "estimated_hours": 840,
         "reference_months": {"2026-07": [8], "2026-08": [8]},
         "estimated_from_other_months": ["2026-07"],
-        "current": {"profit": 100, "estimated": 50.5, "total": 150.5},
-        "scenario": {"profit": 125, "estimated": 60, "total": 185},
-        "difference": 34.5,
+        "current": {"bill": 500, "estimated": 250.5, "total": 750.5},
+        "scenario": {"bill": -633.03, "estimated": -300, "total": -933.03},
+        "difference": -1683.53,
     }
     partial = _what_if_notification(
         coordinator, {**simulation, "period": {"days": 65.0, "hours": 1560}, "coverage": coverage, "estimate": estimate}, {}
@@ -466,10 +515,12 @@ async def test_what_if_service_returns_simulation_without_changing_options(
     # the reliable results come first, the estimate is a separate section after them
     estimate_title = f"**{coordinator.t('ui.what_if.estimate_title', days=100)}**"
     assert partial.index(estimate_title) > partial.index(profit_difference)
-    assert f"| **{coordinator.t('ui.what_if.estimate_safe', days=65.0)}** | 100,00 | 125,00 | {valuta} |" in partial
-    assert f"| **{coordinator.t('ui.what_if.estimate_missing', days='35,0')}** | 50,50 | 60,00 | {valuta} |" in partial
-    assert f"| **{coordinator.t('ui.what_if.estimate_total', days=100)}** | 150,50 | 185,00 | {valuta} |" in partial
-    assert f"**{coordinator.t('ui.what_if.estimate_difference')}:** 34,50 {valuta}" in partial
+    # the net result after purchases and sales, like the result table
+    assert f"| **{coordinator.t('ui.what_if.estimate_safe', days=65.0)}** | 500,00 | -633,03 | {valuta} |" in partial
+    assert f"| **{coordinator.t('ui.what_if.estimate_missing', days='35,0')}** | 250,50 | -300,00 | {valuta} |" in partial
+    assert f"| **{coordinator.t('ui.what_if.estimate_total', days=100)}** | 750,50 | -933,03 | {valuta} |" in partial
+    # a lower net result in the scenario is an improvement
+    assert f"**{coordinator.t('ui.what_if.estimate_difference')}:** 1683,53 {valuta}" in partial
     assert coordinator.t("ui.what_if.estimate_other_months", months="2026-07") in partial
     assert coordinator.t("ui.what_if.estimate_note") in partial
     assert "ui.what_if" not in partial
@@ -513,6 +564,7 @@ async def test_what_if_progress_updates_the_same_notification(hass: HomeAssistan
     coordinator = loaded_entry.runtime_data
 
     async def what_if(overrides, history_days, progress):
+        progress({"phase": "states", "seconds": 12})
         progress({"percent": 40, "step": 1, "steps": 2, "hours": 240, "total_hours": 600})
         raise HomeAssistantError("Recorder unavailable")
 
@@ -529,8 +581,12 @@ async def test_what_if_progress_updates_the_same_notification(hass: HomeAssistan
             return_response=True,
         )
 
-    assert [call.kwargs["notification_id"] for call in create.call_args_list] == [f"{PREFIX}_what_if"] * 3
+    assert [call.kwargs["notification_id"] for call in create.call_args_list] == [f"{PREFIX}_what_if"] * 4
     assert create.call_args_list[1].args[1] == coordinator.t(
+        "ui.what_if.loading", days=365, phase=coordinator.t("ui.what_if.phase_states"), seconds=12
+    )
+    assert "ui.what_if" not in create.call_args_list[1].args[1]
+    assert create.call_args_list[2].args[1] == coordinator.t(
         "ui.what_if.progress", percent=40, step=1, steps=2, days=10, total=25
     )
 

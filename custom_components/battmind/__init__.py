@@ -261,7 +261,7 @@ def _what_if_estimate_lines(
         return [coordinator.t("ui.what_if.estimate_unavailable", days=coverage["requested_days"])]
     currency = coordinator.t("ui.common.valuta")
     rows = (
-        ("profit", "estimate_safe", {"days": simulation["period"]["days"]}),
+        ("bill", "estimate_safe", {"days": simulation["period"]["days"]}),
         ("estimated", "estimate_missing", {"days": _format_what_if_number(estimate["estimated_hours"] / 24.0, 1)}),
         ("total", "estimate_total", {"days": estimate["days"]}),
     )
@@ -279,9 +279,10 @@ def _what_if_estimate_lines(
             for key, label_key, values in rows
         ),
         "",
-        "**{label}:** {profit} {currency}".format(
+        # like bill_difference: a lower bill in the scenario is an improvement
+        "**{label}:** {bill} {currency}".format(
             label=coordinator.t("ui.what_if.estimate_difference"),
-            profit=_format_what_if_number(estimate["difference"], 2),
+            bill=_format_what_if_number(0.0 - estimate["difference"], 2),
             currency=currency,
         ),
     ]
@@ -390,18 +391,25 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             @callback
             def _progress(info: dict, coordinator: BattMindCoordinator = coordinator, title: str = title) -> None:
                 # the same notification is updated, at most every PROGRESS_INTERVAL seconds
-                persistent_notification.async_create(
-                    hass,
-                    coordinator.t(
+                if "phase" in info:
+                    # the history is loaded before the simulation starts
+                    message = coordinator.t(
+                        "ui.what_if.loading",
+                        days=history_days,
+                        phase=coordinator.t(f"ui.what_if.phase_{info['phase']}"),
+                        seconds=info["seconds"],
+                    )
+                else:
+                    message = coordinator.t(
                         "ui.what_if.progress",
                         percent=info["percent"],
                         step=info["step"],
                         steps=info["steps"],
                         days=round(info["hours"] / 24.0),
                         total=round(info["total_hours"] / 24.0),
-                    ),
-                    title=title,
-                    notification_id=f"{coordinator.prefix}_what_if",
+                    )
+                persistent_notification.async_create(
+                    hass, message, title=title, notification_id=f"{coordinator.prefix}_what_if"
                 )
 
             try:

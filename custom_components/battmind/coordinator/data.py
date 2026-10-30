@@ -139,6 +139,21 @@ class CoordinatorData:
             combined_stats[entity_id] = sorted(combined.items())
         return combined_stats, statistical_timestamps
 
+    @classmethod
+    def _what_if_history(
+        cls,
+        entities: set[str],
+        stats: dict[str, list[dict]],
+        states: dict[str, list[State]],
+        tariff_states: dict[str, list[State]],
+        start: datetime.datetime,
+        end: datetime.datetime,
+    ) -> tuple[dict[str, list[tuple[float, float]]], dict[str, list[float]], dict[str, list[tuple[float, dict]]]]:
+        """The hourly what-if history and the tariff history (run in an executor)."""
+        recorder_hourly = cls._recorder_hourly_means(states, start, end)
+        combined_stats, statistical_timestamps = cls._combine_what_if_statistics(entities, stats, recorder_hourly)
+        return combined_stats, statistical_timestamps, cls._recorder_tariff_history(tariff_states)
+
     async def _async_snapshot(self, include_prices: bool = False, include_forecast: bool = False) -> Snapshot:
         await self._async_refresh_statistics()
         now = self._local_now()

@@ -826,8 +826,14 @@ def test_what_if_estimates_the_requested_period_apart_from_the_simulated_result(
     # the simulated (reliable) results don't change
     for column in ("current", "scenario"):
         assert simulation[column] == complete[column]
-        months = simulation[column]["months"]
-        assert months == {"2026-10": {"hours": 48, "profit": pytest.approx(simulation[column]["profit"], abs=0.02)}}
+        # the months add up to the profit and the bill with the battery
+        assert simulation[column]["months"] == {
+            "2026-10": {
+                "hours": 48,
+                "profit": pytest.approx(simulation[column]["profit"], abs=0.02),
+                "bill": pytest.approx(simulation[column]["with"]["bill"], abs=0.02),
+            }
+        }
     coverage = simulation["coverage"]
     assert coverage["requested_days"] == 3 and coverage["requested_hours"] == 72
     assert coverage["missing_hours"] == 24 and coverage["missing_before_hours"] == 24 and coverage["gap_hours"] == 0
@@ -836,11 +842,11 @@ def test_what_if_estimates_the_requested_period_apart_from_the_simulated_result(
     estimate = simulation["estimate"]
     assert estimate["estimated_hours"] == 24 and estimate["estimated_from_other_months"] == []
     for column in ("current", "scenario"):
-        profit = simulation[column]["profit"]
-        assert estimate[column]["profit"] == profit
-        # the missing day gets the average profit per hour of the same month
-        assert estimate[column]["estimated"] == pytest.approx(simulation[column]["months"]["2026-10"]["profit"] / 2, abs=0.01)
-        assert estimate[column]["total"] == pytest.approx(profit + estimate[column]["estimated"], abs=0.01)
+        bill = simulation[column]["with"]["bill"]
+        assert estimate[column]["bill"] == bill
+        # the missing day gets the average bill per hour of the same month
+        assert estimate[column]["estimated"] == pytest.approx(simulation[column]["months"]["2026-10"]["bill"] / 2, abs=0.01)
+        assert estimate[column]["total"] == pytest.approx(bill + estimate[column]["estimated"], abs=0.01)
     assert estimate["difference"] == pytest.approx(estimate["scenario"]["total"] - estimate["current"]["total"], abs=0.01)
 
     # less than half of the requested hours: the missing data is reported but not estimated
@@ -848,6 +854,23 @@ def test_what_if_estimates_the_requested_period_apart_from_the_simulated_result(
     simulation = engine.run_job(realistic_snapshot(now, 40, settings), engine.what_if, data, {}).value
     assert simulation["coverage"]["missing_hours"] == 72
     assert simulation["estimate"] is None
+
+
+def test_what_if_months_add_up_with_a_starting_level_and_a_gap() -> None:
+    now = datetime.datetime.combine(DAY, datetime.time(3, 30))
+    settings = {"optimizer_control": False}
+    engine, _ = planned(3, 40, settings, solar=True)
+    data = _what_if_data(engine, days=3)
+    consumption_id = engine.config["home"]["entity_ids"]["power_consumption_entity_id"]
+    # a 4 hour gap: the second run starts again at the minimum level
+    data["stats"][consumption_id] = [row for index, row in enumerate(data["stats"][consumption_id]) if not 30 <= index < 34]
+    result = engine.run_job(realistic_snapshot(now, 40, settings), engine.what_if, data, {"starting_level": 60})
+    assert result.error is None, result.error
+    for column in ("current", "scenario"):
+        months = result.value[column]["months"].values()
+        assert sum(month["hours"] for month in months) == 68
+        assert sum(month["profit"] for month in months) == pytest.approx(result.value[column]["profit"], abs=0.05)
+        assert sum(month["bill"] for month in months) == pytest.approx(result.value[column]["with"]["bill"], abs=0.05)
 
 
 def test_what_if_estimates_months_without_data_from_the_nearest_month() -> None:

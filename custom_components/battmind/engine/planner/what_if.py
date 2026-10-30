@@ -130,14 +130,14 @@ def _reference_months(
     return references, from_other_months
 
 
-def _estimated_profit(
+def _estimated_bill(
     requested: dict[str, int], simulated: dict[str, int], months: dict[str, dict], references: dict[str, list[int]]
 ) -> float:
-    """Profit of the missing hours: the average profit per hour of the reference months."""
+    """Bill with the battery of the missing hours: the average bill per hour of the reference months."""
     pooled: dict[int, list[float]] = {}
     for key, month in months.items():
         total = pooled.setdefault(int(key[5:]), [0.0, 0])
-        total[0] += month["profit"]
+        total[0] += month["bill"]
         total[1] += month["hours"]
     estimated = 0.0
     for key, reference in references.items():
@@ -418,7 +418,7 @@ class WhatIf:
                 "start": summaries[0]["start"].isoformat(),
                 "end": summaries[-1]["end"].isoformat(),
                 "months": {
-                    key: {"hours": month["hours"], "profit": round(month["profit"], 2)}
+                    key: {"hours": month["hours"], "profit": round(month["profit"], 2), "bill": round(month["bill"], 2)}
                     for key, month in sorted(replay["months"].items())
                 },
             }
@@ -533,11 +533,11 @@ class WhatIf:
         references, from_other_months = found
         columns = {}
         for name, column in (("current", current), ("scenario", scenario)):
-            estimated = round(_estimated_profit(requested, simulated, column["months"], references), 2)
+            estimated = round(_estimated_bill(requested, simulated, column["months"], references), 2)
             columns[name] = {
-                "profit": column["profit"],
+                "bill": column["with"]["bill"],
                 "estimated": estimated,
-                "total": round(column["profit"] + estimated, 2),
+                "total": round(column["with"]["bill"] + estimated, 2),
             }
         estimate = {
             "days": days,
