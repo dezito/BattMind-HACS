@@ -4,8 +4,10 @@ from __future__ import annotations
 import datetime
 import logging
 
-from ...const import PRICE_ADDER_DAY_BETWEEN_DIVIDER
+from ...const import HISTORY_BUFFER_HOURS, PRICE_ADDER_DAY_BETWEEN_DIVIDER
+from ...utils.efficiency import add_efficiency_measurement, measure_efficiency
 from ...utils.helpers import days_between, reset_time_to_hour
+from ...utils.power import unit_factor_to_w
 from .helpers import ANALYSIS_DAYS, FORECAST_TYPES, PRICE_FORECAST_DAYS, PRICE_HOURS_DAYS, _is_num, _num, _r, evaluate_price_day, grid_cost, hindsight_cost, hourly_prices, rules_of_entries, summarize_day
 
 _LOGGER = logging.getLogger(__name__)
@@ -21,6 +23,7 @@ class AnalysisRecording:
             self._analysis_record_prices()
             if timestamp.hour == 23:
                 self._analysis_record_plan(timestamp.date() + datetime.timedelta(days=1))
+            self._analysis_record_efficiency()
         except Exception:  # noqa: BLE001
             _LOGGER.exception("Analysis of the hour %s failed", timestamp)
         self.publish_analysis()
@@ -110,6 +113,30 @@ class AnalysisRecording:
         if optimal is None:
             return None
         return {"actual": round(actual, 3), "no_battery": round(no_battery, 3), "optimal": round(min(optimal, actual), 3)}
+
+    def _analysis_record_efficiency(self) -> None:
+        """Charging and discharging efficiency per AC power step, measured since the last time (utils/efficiency)."""
+        ids = self.config["home"]["entity_ids"]
+        flow_id, level_id = ids["powerwall_watt_flow_entity_id"], ids["powerwall_battery_level_entity_id"]
+        if self._wc is None or not flow_id or not level_id:
+            return
+        database = self.analysis_db.setdefault("efficiency", {})
+        end = self.now().replace(tzinfo=self._wc.tz).timestamp()
+        # the buffers hold the states of the last HISTORY_BUFFER_HOURS
+        start = max(_num(database.get("until")), end - (HISTORY_BUFFER_HOURS - 2) * 3600)
+        measurements, until = measure_efficiency(
+            self._wc.buffers.get(flow_id) or [],
+            self._wc.buffers.get(level_id) or [],
+            start,
+            end,
+            unit_factor_to_w(self._wc.units.get(flow_id)),
+            self.config["home"]["invert_powerwall_watt_flow_entity_id"],
+            self.config["solar"]["powerwall_battery_size"],
+        )
+        for direction, ac_kwh, battery_kwh, seconds in measurements:
+            add_efficiency_measurement(database.setdefault(direction, {}), ac_kwh, battery_kwh, seconds)
+        database["until"] = until
+        self.mark_dirty("analysis")
 
     def _analysis_record_prices(self) -> None:
         """The buy price forecast per days ahead, the real prices and the days they are all known for."""

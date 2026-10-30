@@ -2276,6 +2276,43 @@ views:
                   const range = end.getTime() - start.getTime();
                   return ((entity.attributes.efficiency_curves || {}).discharging || [])
                     .map(p => [start.getTime() + (p.power / 10000) * range, p.efficiency]);
+              - entity: sensor.battmind_analysis
+                name: '@@efficiency_measured_charging@@'
+                color: '#2a78d6'
+                stroke_width: 2
+                stroke_dash: 5
+                data_generator: |
+                  const range = end.getTime() - start.getTime();
+                  return (((entity.attributes.efficiency_curves || {}).measured || {}).charging || [])
+                    .map(p => [start.getTime() + (p.power / 10000) * range, p.efficiency]);
+              - entity: sensor.battmind_analysis
+                name: '@@efficiency_measured_discharging@@'
+                color: '#eb6834'
+                stroke_width: 2
+                stroke_dash: 5
+                data_generator: |
+                  const range = end.getTime() - start.getTime();
+                  return (((entity.attributes.efficiency_curves || {}).measured || {}).discharging || [])
+                    .map(p => [start.getTime() + (p.power / 10000) * range, p.efficiency]);
+            grid_options:
+              columns: full
+          - type: markdown
+            card_mod:
+              style: |
+                ha-card {
+                  --markdown-table-border-color: transparent
+                }
+            content: |-
+              {% set e = states.sensor.battmind_analysis.attributes.efficiency_curves or {} %}
+              {% macro status(e, direction) -%}
+              {%- set source = (e.source or {}).get(direction, 'none') -%}
+              {%- set steps = (e.measured or {}).get(direction, []) -%}
+              {%- if source == 'configured' %}@@efficiency_source_configured@@{% elif source == 'measured' %}@@efficiency_source_measured@@{% else %}@@efficiency_source_none@@{% endif %} | {{ steps | selectattr('used') | list | count }}/{{ steps | count }} @@efficiency_steps_used@@ | {{ steps | sum(attribute='kwh') | round(1) }} @@efficiency_measured_kwh@@
+              {%- endmacro %}
+              | | @@efficiency_source@@ | | |
+              |:---|:---|---:|---:|
+              | **@@efficiency_charging@@** | {{ status(e, 'charging') }} |
+              | **@@efficiency_discharging@@** | {{ status(e, 'discharging') }} |
             grid_options:
               columns: full
       # where the house got its energy from

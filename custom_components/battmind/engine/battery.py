@@ -4,7 +4,7 @@ from __future__ import annotations
 import logging
 import math
 
-from ..utils.efficiency import EfficiencyCurve, efficiency_at_power, parse_efficiency_curve
+from ..utils.efficiency import EfficiencyCurve, efficiency_at_power, learned_efficiency_curve, parse_efficiency_curve
 from ..utils.helpers import float_or_none
 
 _LOGGER = logging.getLogger(__name__)
@@ -51,17 +51,26 @@ class Battery:
     def _fallback_efficiency(self) -> float:
         return math.sqrt(1.0 - min(abs(self.get_charging_loss()), 0.9))
 
-    def charging_efficiency_curve(self) -> EfficiencyCurve:
-        """Configured charging curve, or none while enhanced efficiency is disabled."""
+    def learned_efficiency_curve(self, direction: str) -> EfficiencyCurve:
+        """The curve measured by the analysis ("charging"/"discharging"), empty until there are enough measurements."""
+        key = f"learned_efficiency_{direction}"
+        if key not in self._job_cache:
+            database = getattr(self, "analysis_db", None) or {}
+            steps = (database.get("efficiency") or {}).get(direction)
+            self._job_cache[key] = learned_efficiency_curve(steps, direction == "charging")
+        return self._job_cache[key]
+
+    def efficiency_curve(self, direction: str) -> EfficiencyCurve:
+        """The configured curve, else the measured one; none while enhanced efficiency is disabled."""
         if not self.enabled("enhance_battery_efficiency"):
             return ()
-        return parse_efficiency_curve(self.config["solar"].get("battery_charging_efficiency_curve"))
+        return parse_efficiency_curve(self.config["solar"].get(f"battery_{direction}_efficiency_curve")) or self.learned_efficiency_curve(direction)
+
+    def charging_efficiency_curve(self) -> EfficiencyCurve:
+        return self.efficiency_curve("charging")
 
     def discharging_efficiency_curve(self) -> EfficiencyCurve:
-        """Configured discharging curve, or none while enhanced efficiency is disabled."""
-        if not self.enabled("enhance_battery_efficiency"):
-            return ()
-        return parse_efficiency_curve(self.config["solar"].get("battery_discharging_efficiency_curve"))
+        return self.efficiency_curve("discharging")
 
     def charging_efficiency(self, power_kw: float | None = None) -> float:
         """Charging efficiency at AC power, falling back to half the round-trip loss."""

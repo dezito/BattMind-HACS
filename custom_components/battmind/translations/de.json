@@ -28,8 +28,8 @@
           "powerwall_discharging_power": "Heimspeicher Entladeleistung (Watt)",
           "powerwall_charge_discharge_loss": "Lade-/Entladeverlust in Prozent basierend auf Round-Trip-Effizienz (z.B. 10% Verlust = 0.1)",
           "use_charge_discharge_loss_from_history": "Verwende tatsächliche Lade- und Entladeverluste basierend auf dem Ladeverlauf anstelle des geschätzten Verlusts in der Konfiguration",
-          "battery_charging_efficiency_curve": "Map AC charging power in W to efficiency in percent, for example 1000 W = 88 %, 3000 W = 94 %, 5000 W = 96 %. BattMind interpolates between points. Leave empty to use the round-trip loss.",
-          "battery_discharging_efficiency_curve": "Map AC discharging power in W to efficiency in percent, for example 500 W = 82 %, 2000 W = 93 %, 5000 W = 96 %. BattMind interpolates between points. Leave empty to use the round-trip loss.",
+          "battery_charging_efficiency_curve": "AC-Ladeleistung in W dem Wirkungsgrad in Prozent zuordnen, z. B. 1000 W = 88 %, 3000 W = 94 %, 5000 W = 96 %. BattMind interpoliert zwischen den Punkten. Leer lassen, damit BattMind die Kurve selbst misst (bis genügend Messungen vorliegen, wird der Round-Trip-Verlust verwendet).",
+          "battery_discharging_efficiency_curve": "AC-Entladeleistung in W dem Wirkungsgrad in Prozent zuordnen, z. B. 500 W = 82 %, 2000 W = 93 %, 5000 W = 96 %. BattMind interpoliert zwischen den Punkten. Leer lassen, damit BattMind die Kurve selbst misst (bis genügend Messungen vorliegen, wird der Round-Trip-Verlust verwendet).",
           "powerwall_wear_cost_per_kwh": "Kosten pro kWh aus dem Heimspeicher basierend auf Lebensdauer und Preis"
         },
         "data": {
@@ -43,8 +43,8 @@
           "powerwall_discharging_power": "Max. Entladeleistung",
           "powerwall_wear_cost_per_kwh": "Verschleißkosten",
           "use_charge_discharge_loss_from_history": "Gemessenen Verlust nutzen",
-          "battery_charging_efficiency_curve": "Charging efficiency curve (optional)",
-          "battery_discharging_efficiency_curve": "Discharging efficiency curve (optional)"
+          "battery_charging_efficiency_curve": "Wirkungsgradkurve Laden (optional)",
+          "battery_discharging_efficiency_curve": "Wirkungsgradkurve Entladen (optional)"
         },
         "description": "Wird genutzt, um zwischen % und kWh umzurechnen, den Plan zu begrenzen und zu berechnen, was die Energie im Akku kostet.",
         "title": "Hausakku - Daten"
@@ -265,8 +265,8 @@
           "powerwall_discharging_power": "Heimspeicher Entladeleistung (Watt)",
           "powerwall_charge_discharge_loss": "Lade-/Entladeverlust in Prozent basierend auf Round-Trip-Effizienz (z.B. 10% Verlust = 0.1)",
           "use_charge_discharge_loss_from_history": "Verwende tatsächliche Lade- und Entladeverluste basierend auf dem Ladeverlauf anstelle des geschätzten Verlusts in der Konfiguration",
-          "battery_charging_efficiency_curve": "Map AC charging power in W to efficiency in percent, for example 1000 W = 88 %, 3000 W = 94 %, 5000 W = 96 %. BattMind interpolates between points. Leave empty to use the round-trip loss.",
-          "battery_discharging_efficiency_curve": "Map AC discharging power in W to efficiency in percent, for example 500 W = 82 %, 2000 W = 93 %, 5000 W = 96 %. BattMind interpolates between points. Leave empty to use the round-trip loss.",
+          "battery_charging_efficiency_curve": "AC-Ladeleistung in W dem Wirkungsgrad in Prozent zuordnen, z. B. 1000 W = 88 %, 3000 W = 94 %, 5000 W = 96 %. BattMind interpoliert zwischen den Punkten. Leer lassen, damit BattMind die Kurve selbst misst (bis genügend Messungen vorliegen, wird der Round-Trip-Verlust verwendet).",
+          "battery_discharging_efficiency_curve": "AC-Entladeleistung in W dem Wirkungsgrad in Prozent zuordnen, z. B. 500 W = 82 %, 2000 W = 93 %, 5000 W = 96 %. BattMind interpoliert zwischen den Punkten. Leer lassen, damit BattMind die Kurve selbst misst (bis genügend Messungen vorliegen, wird der Round-Trip-Verlust verwendet).",
           "powerwall_wear_cost_per_kwh": "Kosten pro kWh aus dem Heimspeicher basierend auf Lebensdauer und Preis"
         },
         "data": {
@@ -280,8 +280,8 @@
           "powerwall_discharging_power": "Max. Entladeleistung",
           "powerwall_wear_cost_per_kwh": "Verschleißkosten",
           "use_charge_discharge_loss_from_history": "Gemessenen Verlust nutzen",
-          "battery_charging_efficiency_curve": "Charging efficiency curve (optional)",
-          "battery_discharging_efficiency_curve": "Discharging efficiency curve (optional)"
+          "battery_charging_efficiency_curve": "Wirkungsgradkurve Laden (optional)",
+          "battery_discharging_efficiency_curve": "Wirkungsgradkurve Entladen (optional)"
         },
         "description": "Wird genutzt, um zwischen % und kWh umzurechnen, den Plan zu begrenzen und zu berechnen, was die Energie im Akku kostet.",
         "title": "Hausakku - Daten"
@@ -679,7 +679,7 @@
         "optimizer_control": {"name": "Batterie mit Optimierung des ganzen Zeitraums steuern", "description": "Ein: die Optimierung des ganzen Zeitraums steuert die Batterie. Aus: die Regeln steuern sie. Weglassen, um die aktuelle Einstellung zu verwenden."},
         "use_midnight_battery_level": {"name": "Mitternachts-Batteriestand verwenden", "description": "Nur bis Mitternacht planen statt bis zum Ende der bekannten Preise. Weglassen, um die aktuelle Einstellung zu verwenden."},
         "solar_charging": {"name": "Solarüberschuss-Laden", "description": "Den Solarüberschuss in die Planung einbeziehen. Weglassen, um die aktuelle Einstellung zu verwenden."},
-        "enhance_battery_efficiency": {"name": "Batterieeffizienz verbessern", "description": "Die konfigurierten leistungsabhängigen Wirkungsgradkurven verwenden. Wird ignoriert, wenn ein Gesamtladeverlust angegeben ist. Weglassen, um die aktuelle Einstellung zu verwenden."},
+        "enhance_battery_efficiency": {"name": "Batterieeffizienz verbessern", "description": "Die leistungsabhängigen Wirkungsgradkurven verwenden (konfiguriert oder gemessen). Wird ignoriert, wenn ein Gesamtladeverlust angegeben ist. Weglassen, um die aktuelle Einstellung zu verwenden."},
         "cheapest_hour_fill_planner": {"name": "Laden: Günstigste Zeiträume", "description": "Vorübergehender Zustand dieser Einstellung im Szenario. Weglassen, um die aktuelle Einstellung zu verwenden."},
         "cheapest_hour_fill_up": {"name": "Laden: In der günstigsten Zeit vollständig laden", "description": "Vorübergehender Zustand dieser Einstellung im Szenario. Weglassen, um die aktuelle Einstellung zu verwenden."},
         "most_expensive_planner": {"name": "Laden: Teuerste Zeiträume", "description": "Vorübergehender Zustand dieser Einstellung im Szenario. Weglassen, um die aktuelle Einstellung zu verwenden."},

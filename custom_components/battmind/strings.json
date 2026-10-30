@@ -70,8 +70,8 @@
           "powerwall_discharging_power": "Highest power the battery discharges with. Limits how much can be sold per hour.",
           "powerwall_charge_discharge_loss": "Round-trip loss as a fraction: 0.1 = 10 % loss. Added to the price of the energy in the battery.",
           "use_charge_discharge_loss_from_history": "Calculate the loss from the charging history instead (used after 6 full charge cycles of history).",
-          "battery_charging_efficiency_curve": "Map AC charging power in W to efficiency in percent, for example 1000 W = 88 %, 3000 W = 94 %, 5000 W = 96 %. BattMind interpolates between points. Leave empty to use the round-trip loss.",
-          "battery_discharging_efficiency_curve": "Map AC discharging power in W to efficiency in percent, for example 500 W = 82 %, 2000 W = 93 %, 5000 W = 96 %. BattMind interpolates between points. Leave empty to use the round-trip loss.",
+          "battery_charging_efficiency_curve": "Map AC charging power in W to efficiency in percent, for example 1000 W = 88 %, 3000 W = 94 %, 5000 W = 96 %. BattMind interpolates between points. Leave empty to let BattMind measure the curve itself (the round-trip loss is used until there are enough measurements).",
+          "battery_discharging_efficiency_curve": "Map AC discharging power in W to efficiency in percent, for example 500 W = 82 %, 2000 W = 93 %, 5000 W = 96 %. BattMind interpolates between points. Leave empty to let BattMind measure the curve itself (the round-trip loss is used until there are enough measurements).",
           "powerwall_wear_cost_per_kwh": "Cost of wear per kWh taken from the battery (battery price / expected lifetime in kWh). Discharging must earn more than this."
         }
       },
@@ -310,8 +310,8 @@
           "powerwall_discharging_power": "Highest power the battery discharges with. Limits how much can be sold per hour.",
           "powerwall_charge_discharge_loss": "Round-trip loss as a fraction: 0.1 = 10 % loss. Added to the price of the energy in the battery.",
           "use_charge_discharge_loss_from_history": "Calculate the loss from the charging history instead (used after 6 full charge cycles of history).",
-          "battery_charging_efficiency_curve": "Map AC charging power in W to efficiency in percent, for example 1000 W = 88 %, 3000 W = 94 %, 5000 W = 96 %. BattMind interpolates between points. Leave empty to use the round-trip loss.",
-          "battery_discharging_efficiency_curve": "Map AC discharging power in W to efficiency in percent, for example 500 W = 82 %, 2000 W = 93 %, 5000 W = 96 %. BattMind interpolates between points. Leave empty to use the round-trip loss.",
+          "battery_charging_efficiency_curve": "Map AC charging power in W to efficiency in percent, for example 1000 W = 88 %, 3000 W = 94 %, 5000 W = 96 %. BattMind interpolates between points. Leave empty to let BattMind measure the curve itself (the round-trip loss is used until there are enough measurements).",
+          "battery_discharging_efficiency_curve": "Map AC discharging power in W to efficiency in percent, for example 500 W = 82 %, 2000 W = 93 %, 5000 W = 96 %. BattMind interpolates between points. Leave empty to let BattMind measure the curve itself (the round-trip loss is used until there are enough measurements).",
           "powerwall_wear_cost_per_kwh": "Cost of wear per kWh taken from the battery (battery price / expected lifetime in kWh). Discharging must earn more than this."
         }
       },
@@ -572,7 +572,7 @@
         "optimizer_control": {"name": "Control the battery with the whole period optimisation", "description": "On: the whole period optimisation controls the battery. Off: the rules control it. Leave out to use the current setting."},
         "use_midnight_battery_level": {"name": "Use midnight battery level", "description": "Plan only until midnight instead of until the end of the known prices. Leave out to use the current setting."},
         "solar_charging": {"name": "Solar surplus charging", "description": "Include the solar surplus in the plan. Leave out to use the current setting."},
-        "enhance_battery_efficiency": {"name": "Enhance battery efficiency", "description": "Use the configured power-dependent efficiency curves. Ignored when a round-trip loss is set. Leave out to use the current setting."},
+        "enhance_battery_efficiency": {"name": "Enhance battery efficiency", "description": "Use the power-dependent efficiency curves (configured or measured). Ignored when a round-trip loss is set. Leave out to use the current setting."},
         "cheapest_hour_fill_planner": {"name": "Charging: Cheapest periods planner", "description": "Temporary state of this setting in the scenario. Leave out to use the current setting."},
         "cheapest_hour_fill_up": {"name": "Charging: Fill up during cheapest period", "description": "Temporary state of this setting in the scenario. Leave out to use the current setting."},
         "most_expensive_planner": {"name": "Charging: Most expensive periods planner", "description": "Temporary state of this setting in the scenario. Leave out to use the current setting."},

@@ -82,9 +82,30 @@ changing the loss.
 
 ### Battery efficiency
 
-When charging and discharging efficiency curves are configured, the chart plots both curves against AC
-power. BattMind interpolates linearly between their points and uses the nearest endpoint outside the
-entered range, just as the whole-period optimiser does. **Enhance battery efficiency** under **Settings → Control** decides whether the curves are used in calculations. Turning it off keeps the graph and the saved curves, but planning uses the round-trip loss.
+BattMind measures the charging and discharging efficiency at each AC power itself. Every hour it goes
+through the battery power and battery level since the last time: between two changes of the battery
+level the battery moved exactly the difference of the two levels, so the AC energy of the power sensor
+in that time is compared with it (charging: battery kWh ÷ AC kWh, discharging: AC kWh ÷ battery kWh).
+A measurement covers at least 1 % battery level and 2 minutes; it is skipped when the battery was idle
+for more than 10 % of the time, ran the other way for more than 3 % of the energy, or the power sensor
+was unavailable. The measurements are added up per 500 W step of AC power; consecutive measurements in
+the same step share their boundaries, so the rounding of the battery level cancels out. A step is used
+once it has at least 20 measurements and 2 kWh (efficiencies above 100 % are capped at 100 %, below
+50 % are not used). Beyond 100 kWh in a step the older measurements count half, so the curve follows
+an ageing battery.
+
+The solid lines are the curves BattMind plans with: a configured curve, otherwise the measured one. The
+dashed lines show every measured step, including the ones without enough measurements yet. The table
+below says per direction which curve is used, how many steps are in use and how much energy has been
+measured. Without a curve the round-trip loss is used.
+
+The configured battery size converts the battery level to kWh. If it is wrong, the charging and
+discharging efficiency move in opposite directions; their product, the round trip, stays right.
+
+BattMind interpolates linearly between the points and uses the nearest endpoint outside the range, just
+as the whole-period optimiser does. **Enhance battery efficiency** under **Settings → Control** decides
+whether the curves are used in calculations. Turning it off keeps the graph, the saved curves and the
+measurements, but planning uses the round-trip loss.
 
 ### Self-sufficiency
 

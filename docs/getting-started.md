@@ -63,7 +63,7 @@ prefix per battery. If the [PyScript version](migration.md) still runs, choose a
 | Charge / discharge power | the battery's max. power in W – limits how many kWh fit in an hour |
 | Charge/discharge loss | the **round trip** loss as a fraction: 0.1 = 10 %. A typical lithium battery with inverter loses 8–15 % |
 | Loss from history | after 6 full cycles BattMind measures the loss itself – leave it on |
-| Charging / discharging efficiency curve | optional object mapping AC power in W to efficiency in percent, e.g. 1000 W = 88 %, 3000 W = 94 %, 5000 W = 96 %. BattMind interpolates between points. Leave both empty to use the round-trip loss |
+| Charging / discharging efficiency curve | optional object mapping AC power in W to efficiency in percent, e.g. 1000 W = 88 %, 3000 W = 94 %, 5000 W = 96 %. BattMind interpolates between points. Leave empty to let BattMind measure the curve itself (the round-trip loss is used until there are enough measurements) |
 | Enhance battery efficiency | switch under **Settings → Control** that decides whether BattMind uses the configured curves. Turning it off keeps the curves and uses the round-trip loss instead |
 | Wear per kWh | battery price ÷ expected lifetime in kWh, e.g. 40 000 kr ÷ (10 kWh × 6000 cycles) ≈ 0.67 kr/kWh. Default is 0.10. A higher value makes BattMind more careful |
 | Min. / max. safe temperature | limits in °C from the battery manufacturer; defaults are 0 to 50 °C |

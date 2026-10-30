@@ -14,6 +14,7 @@ from custom_components.battmind.engine.analysis.helpers import (
     summarize_day,
 )
 
+from .test_efficiency import _battery
 from .test_engine import DAY, TZ, _price_rows, snapshot, started_engine
 
 CHARGE_HOURS = (1, 2, 3)
@@ -139,7 +140,67 @@ def test_efficiency_curves_are_published_for_the_analysis_chart() -> None:
         "enabled": True,
         "charging": [{"power": 1000, "efficiency": 80.0}, {"power": 5000, "efficiency": 96.0}],
         "discharging": [{"power": 500, "efficiency": 82.0}, {"power": 3000, "efficiency": 94.0}],
+        "source": {"charging": "configured", "discharging": "configured"},
+        "measured": {"charging": [], "discharging": []},
     }
+
+
+def _measured_engine():
+    """Engine after an hour end with a night of charging at 3 kW (90 %) and discharging at 2 kW (95 %)
+    in the buffers (sensor.battery_power: + = discharging)."""
+    start = datetime.datetime.combine(DAY, datetime.time(1, 0), tzinfo=TZ).timestamp()
+    flow, levels = _battery([(3 * 3600, 3000, 0.9), (600, 0, 1.0), (3 * 3600, -2000, 0.95)], level=10.0, sign=-1.0, start=start)
+    now = datetime.datetime.combine(DAY, datetime.time(8, 59))
+    engine = started_engine(now, levels[-1][1])
+    snap = snapshot(now, levels[-1][1])
+    snap.buffers = {"sensor.battery_power": flow, "sensor.battery_level": levels}
+    snap.units["sensor.battery_level"] = "%"
+    result = engine.run_job(snap, engine.hour_end, now.replace(minute=0))
+    assert result.error is None, result.error
+    return engine, now, result, snap.buffers
+
+
+def test_efficiency_is_measured_every_hour_and_used_without_a_configured_curve() -> None:
+    engine, now, result, buffers = _measured_engine()
+
+    curves = result.attributes["analysis"]["efficiency_curves"]
+    assert curves["source"] == {"charging": "measured", "discharging": "measured"}
+    assert curves["charging"] == [{"power": 3250, "efficiency": 90.0}]
+    assert curves["discharging"] == [{"power": 2250, "efficiency": 95.0}]
+    assert curves["measured"]["charging"][0]["used"] is True
+    assert engine.analysis_db["efficiency"]["until"] > 0
+    snap = snapshot(now, 50)
+    assert engine.run_job(snap, engine.charging_efficiency, 1.0).value == pytest.approx(0.9, abs=1e-4)
+    assert engine.run_job(snap, engine.discharging_efficiency, 5.0).value == pytest.approx(0.95, abs=1e-4)
+
+    # the next hour continues where the last one stopped: nothing is counted twice
+    before = {direction: dict(engine.analysis_db["efficiency"][direction]) for direction in ("charging", "discharging")}
+    later = now.replace(hour=9)
+    snap = snapshot(later, 50)
+    snap.buffers = buffers
+    assert engine.run_job(snap, engine._analysis_record_efficiency).error is None
+    assert {direction: engine.analysis_db["efficiency"][direction] for direction in before} == before
+
+
+def test_configured_curve_takes_precedence_over_the_measured_one() -> None:
+    engine, now, _, _ = _measured_engine()
+    engine.config["solar"]["battery_charging_efficiency_curve"] = {"1000": 80, "5000": 96}
+    snap = snapshot(now, 50)
+
+    assert engine.run_job(snap, engine.charging_efficiency, 1.0).value == pytest.approx(0.8)
+    assert engine.run_job(snap, engine.discharging_efficiency, 5.0).value == pytest.approx(0.95, abs=1e-4)
+    snap.settings["enhance_battery_efficiency"] = False
+    assert engine.run_job(snap, engine.discharging_efficiency, 5.0).value == pytest.approx(0.9**0.5)
+
+
+def test_what_if_uses_the_measured_curves_as_configured() -> None:
+    engine, now, _, _ = _measured_engine()
+
+    config, _settings = engine.run_job(snapshot(now, 50), engine._what_if_setup, {}).value
+
+    assert config["solar"]["battery_charging_efficiency_curve"] == {"3250": 90.0}
+    assert config["solar"]["battery_discharging_efficiency_curve"] == {"2250": 95.0}
+    assert engine.config["solar"]["battery_charging_efficiency_curve"] == {}
 
 
 
