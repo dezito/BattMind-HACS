@@ -143,14 +143,16 @@ hours each provider supplied. The
 simulator does not use BattMind's offline price database or assume that the buy price was earned when
 selling.
 
-Historical sell prices use BattMind's normal sell-price formula, including the configured sell fee and
-the recorded tax/tariff components. Energi Data Service tariff schedules are read from timestamped
+Historical sell prices use BattMind's normal sell-price formula (the tariffs in the price, and the
+selling costs: sell fee plus Energinet's net and system tariff), with the recorded tax/tariff
+components. Energi Data Service tariff schedules are read from timestamped
 Recorder attributes; Strømligning tariff sensors use the nearest recorded hourly value. When a
 tariff sample is missing at the exact simulation hour, the closest available sample is used and the
 notification reports the number of estimated hours. Energi Data Service does not save its tariff
 attribute in the Recorder, so a schedule is only available if another Recorder setup kept it. A sell
 sensor without a tariff attribute (tariffs disabled in Energi Data Service, a raw price) needs no
-tariffs, the same as in the live plan; BattMind checks this from the sensor's current state. If the
+tariffs, the same as in the live plan; BattMind checks this from the sensor's current state. Its
+selling costs use the net and system tariff of the buy sensor's current state for every hour. If the
 tariffs of an hour are still unknown, the hour uses the next price provider with prices and tariffs.
 If no provider has them, the hour is left out like missing data: there are no purchases or sales in
 that hour, rather than purchases without the matching sales.

@@ -31,6 +31,7 @@ from ..engine.planner.what_if import PROGRESS_INTERVAL
 from ..utils.formatting import translate
 from ..management.debug_export import DebugRecorder
 from ..management.storage import BattMindStorage
+from ..prices.energidataservice import eds_sell_costs
 from .data import CoordinatorData
 from .events import CoordinatorEvents
 from .lifecycle import CoordinatorLifecycle
@@ -250,8 +251,10 @@ class BattMindCoordinator(CoordinatorLifecycle, CoordinatorEvents, CoordinatorDa
                     provider["sell_tariff_entity_ids"] = {
                         tariff: price_ids[key]
                         for tariff, key in (
+                            ("transmissions_nettarif", "stromligning_sell_nettariff"),
+                            ("systemtarif", "stromligning_sell_systemtariff"),
                             ("elafgift", "stromligning_sell_electricity_tax"),
-                            ("tariffs", "stromligning_sell_nettariff"),
+                            ("tariffs", "stromligning_sell_distribution"),
                             ("surcharge", "stromligning_sell_surcharge"),
                         )
                         if price_ids[key]
@@ -266,6 +269,12 @@ class BattMindCoordinator(CoordinatorLifecycle, CoordinatorEvents, CoordinatorDa
                         or sell_state.state in (STATE_UNAVAILABLE, STATE_UNKNOWN)
                         or bool(sell_state.attributes.get("tariffs"))
                     )
+                    if not provider["sell_includes_tariffs"]:
+                        # selling still costs Energinet's net and system tariff: from the buy sensor
+                        buy_state = self.hass.states.get(buy_id)
+                        sell_costs = eds_sell_costs(buy_state.attributes if buy_state else None)
+                        if sell_costs:
+                            provider["sell_costs"] = sell_costs
                 price_providers.append(
                     provider
                 )

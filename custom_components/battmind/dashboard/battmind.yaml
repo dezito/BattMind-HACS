@@ -447,10 +447,21 @@ views:
                         stroke_width: 0
                         data_generator: |
                           const buy = hass.states['sensor.energi_data_service']?.attributes || {};
-                          const sell = hass.states['sensor.energi_data_service_salg']?.attributes || {};
+                          // the planner's sell price: the sell sensor (else the buy sensor) minus the
+                          // tariffs in it, the configured sell fee and Energinet's net and system
+                          // tariff (from the buy sensor when the sell sensor has no tariffs)
+                          const sell = hass.states['sensor.energi_data_service_salg']?.attributes || buy;
+                          const sellFee = Number('@@sell_fee_value@@') || 0;
+                          const tariff = (source, key) => Number(source.tariffs?.additional_tariffs?.[key]) || 0;
+                          const costSource = sell.tariffs ? sell : buy;
+                          const sellingCosts = sellFee + tariff(costSource, 'transmissions_nettarif') + tariff(costSource, 'systemtarif');
+                          const includedTariffs = time => sell.tariffs
+                            ? tariff(sell, 'transmissions_nettarif') + tariff(sell, 'systemtarif') + tariff(sell, 'elafgift') + (Number(sell.tariffs.tariffs?.[String(new Date(time).getHours())]) || 0)
+                            : 0;
+                          const sellCosts = time => includedTariffs(time) + sellingCosts;
                           const buyRows = [...(buy.raw_today || []), ...(buy.forecast || []), ...(buy.tomorrow_valid ? buy.raw_tomorrow || [] : [])];
                           const sellRows = [...(sell.raw_today || []), ...(sell.forecast || []), ...(sell.tomorrow_valid ? sell.raw_tomorrow || [] : [])];
-                          const values = new Map(sellRows.map(row => [new Date(row.hour).getTime(), Number(row.price)]));
+                          const values = new Map(sellRows.map(row => [new Date(row.hour).getTime(), Number(row.price) - sellCosts(row.hour)]));
                           const times = [...new Set([...buyRows, ...sellRows].map(row => new Date(row.hour).getTime()).filter(Number.isFinite))].sort((a, b) => a - b);
                           return times.map(time => [time, values.has(time) && Number.isFinite(values.get(time)) ? values.get(time) : null]);
                         float_precision: 2
@@ -782,11 +793,14 @@ views:
                     - sensor.stromligning_current_price_vat
                     - binary_sensor.stromligning_tomorrow_available_vat
                     - sensor.stromligning_forecasts_vat
-                    - sensor.stromligning_15min_spotprice_ex_vat
+                    - sensor.stromligning_15min_current_price_ex_vat
                     - binary_sensor.stromligning_15min_tomorrow_available_ex_vat
                     - sensor.stromligning_15min_forecasts_ex_vat
-                    - sensor.stromligning_nettariff_vat
-                    - sensor.stromligning_systemtariff_vat
+                    - sensor.stromligning_15min_distribution_ex_vat
+                    - sensor.stromligning_15min_electricity_tax_ex_vat
+                    - sensor.stromligning_15min_nettariff_ex_vat
+                    - sensor.stromligning_15min_systemtariff_ex_vat
+                    - sensor.stromligning_15min_surcharge_ex_vat
                     - sensor.solcast_pv_forecast_forecast_today
                     - sensor.solcast_pv_forecast_forecast_tomorrow
                     - sensor.solcast_pv_forecast_forecast_day_3
@@ -1033,7 +1047,7 @@ views:
 
 
                           const sellRows = [
-                            ...(hass.states['sensor.stromligning_15min_spotprice_ex_vat']?.attributes?.prices || []),
+                            ...(hass.states['sensor.stromligning_15min_current_price_ex_vat']?.attributes?.prices || []),
                             ...(hass.states['binary_sensor.stromligning_15min_tomorrow_available_ex_vat']?.attributes?.prices || []),
                             ...(hass.states['sensor.stromligning_15min_forecasts_ex_vat']?.attributes?.prices || [])
                           ];
@@ -1085,24 +1099,48 @@ views:
                         data_generator: |
                           const data = [];
 
-                          const sellFee = 0.025;
-
-                          const nettariff = Number(
-                            hass.states[
-                              'sensor.stromligning_nettariff_vat'
-                            ]?.state
-                          ) || 0;
-
-                          const systemtariff = Number(
-                            hass.states[
-                              'sensor.stromligning_systemtariff_vat'
-                            ]?.state
-                          ) || 0;
-
-                          const sellCosts =
+                          // The planner's sell price: Strømligning's sell price minus every tariff
+                          // in it (distribution per period), and minus what selling costs: the
+                          // configured sell fee plus Energinet's net and system tariff.
+                          const sellFee = Number('@@sell_fee_value@@') || 0;
+                          const tariff = id => Number(hass.states[id]?.state) || 0;
+                          const nettariff = tariff('sensor.stromligning_15min_nettariff_ex_vat');
+                          const systemtariff = tariff('sensor.stromligning_15min_systemtariff_ex_vat');
+                          const flatTariffs =
+                            tariff('sensor.stromligning_15min_electricity_tax_ex_vat') +
                             nettariff +
                             systemtariff +
-                            sellFee;
+                            tariff('sensor.stromligning_15min_surcharge_ex_vat') +
+                            sellFee + nettariff + systemtariff;
+
+                          // The distribution sensor only has today's periods: other days use
+                          // the same time of day from the latest known day.
+                          const minuteOfDay = d => d.getHours() * 60 + d.getMinutes();
+                          const distributionAt = new Map();
+                          const distributionByMinute = new Map();
+                          (hass.states['sensor.stromligning_15min_distribution_ex_vat']?.attributes?.prices || [])
+                            .map(p => [new Date(p.start), Number(p.price)])
+                            .filter(([d, value]) => !isNaN(d.getTime()) && Number.isFinite(value))
+                            .sort((a, b) => a[0] - b[0])
+                            .forEach(([d, value]) => {
+                              distributionAt.set(d.getTime(), value);
+                              distributionByMinute.set(minuteOfDay(d), value);
+                            });
+                          const distribution = start => {
+                            const d = new Date(start);
+                            if (distributionAt.has(d.getTime())) return distributionAt.get(d.getTime());
+                            let value = 0;
+                            let best = -1;
+                            distributionByMinute.forEach((price, minute) => {
+                              if (minute <= minuteOfDay(d) && minute > best) {
+                                value = price;
+                                best = minute;
+                              }
+                            });
+                            return value;
+                          };
+
+                          const sellCosts = start => distribution(start) + flatTariffs;
 
 
                           // ------------------------------------------
@@ -1111,16 +1149,16 @@ views:
 
                           const today =
                             hass.states[
-                              'sensor.stromligning_15min_spotprice_ex_vat'
+                              'sensor.stromligning_15min_current_price_ex_vat'
                             ]?.attributes?.prices || [];
 
                           today.forEach(p => {
-                            const spotprice = Number(p.price);
+                            const price = Number(p.price);
 
-                            if (Number.isFinite(spotprice)) {
+                            if (Number.isFinite(price)) {
                               data.push([
                                 new Date(p.start),
-                                spotprice - sellCosts
+                                price - sellCosts(p.start)
                               ]);
                             }
                           });
@@ -1139,12 +1177,12 @@ views:
                             tomorrowEntity?.attributes?.prices || [];
 
                           tomorrowPrices.forEach(p => {
-                            const spotprice = Number(p.price);
+                            const price = Number(p.price);
 
-                            if (Number.isFinite(spotprice)) {
+                            if (Number.isFinite(price)) {
                               data.push([
                                 new Date(p.start),
-                                spotprice - sellCosts
+                                price - sellCosts(p.start)
                               ]);
                             }
                           });
@@ -1182,16 +1220,16 @@ views:
                             const start =
                               new Date(p.start).getTime();
 
-                            const spotprice =
+                            const price =
                               Number(p.price);
 
                             if (
                               start >= availableEnd &&
-                              Number.isFinite(spotprice)
+                              Number.isFinite(price)
                             ) {
                               data.push([
                                 new Date(p.start),
-                                spotprice - sellCosts
+                                price - sellCosts(p.start)
                               ]);
                             }
                           });
@@ -1225,7 +1263,7 @@ views:
                             ...(hass.states['sensor.stromligning_current_price_vat']?.attributes?.prices || []),
                             ...(hass.states['binary_sensor.stromligning_tomorrow_available_vat']?.attributes?.prices || []),
                             ...(hass.states['sensor.stromligning_forecasts_vat']?.attributes?.prices || []),
-                            ...(hass.states['sensor.stromligning_15min_spotprice_ex_vat']?.attributes?.prices || []),
+                            ...(hass.states['sensor.stromligning_15min_current_price_ex_vat']?.attributes?.prices || []),
                             ...(hass.states['binary_sensor.stromligning_15min_tomorrow_available_ex_vat']?.attributes?.prices || []),
                             ...(hass.states['sensor.stromligning_15min_forecasts_ex_vat']?.attributes?.prices || [])
                           ];
@@ -1470,7 +1508,7 @@ views:
                             ...(hass.states['sensor.stromligning_current_price_vat']?.attributes?.prices || []),
                             ...(hass.states['binary_sensor.stromligning_tomorrow_available_vat']?.attributes?.prices || []),
                             ...(hass.states['sensor.stromligning_forecasts_vat']?.attributes?.prices || []),
-                            ...(hass.states['sensor.stromligning_15min_spotprice_ex_vat']?.attributes?.prices || []),
+                            ...(hass.states['sensor.stromligning_15min_current_price_ex_vat']?.attributes?.prices || []),
                             ...(hass.states['binary_sensor.stromligning_15min_tomorrow_available_ex_vat']?.attributes?.prices || []),
                             ...(hass.states['sensor.stromligning_15min_forecasts_ex_vat']?.attributes?.prices || [])
                           ];
@@ -1499,7 +1537,7 @@ views:
                             ...(hass.states['sensor.stromligning_current_price_vat']?.attributes?.prices || []),
                             ...(hass.states['binary_sensor.stromligning_tomorrow_available_vat']?.attributes?.prices || []),
                             ...(hass.states['sensor.stromligning_forecasts_vat']?.attributes?.prices || []),
-                            ...(hass.states['sensor.stromligning_15min_spotprice_ex_vat']?.attributes?.prices || []),
+                            ...(hass.states['sensor.stromligning_15min_current_price_ex_vat']?.attributes?.prices || []),
                             ...(hass.states['binary_sensor.stromligning_15min_tomorrow_available_ex_vat']?.attributes?.prices || []),
                             ...(hass.states['sensor.stromligning_15min_forecasts_ex_vat']?.attributes?.prices || [])
                           ];

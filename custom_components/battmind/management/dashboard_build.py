@@ -7,8 +7,8 @@ author's price/solar entities. At setup it is rewritten for this config entry:
 * external entities (Energi Data Service, Strømligning, Solcast) -> the configured ones
 * cards bound to an external entity that is not configured are removed
 * ``@@key@@`` placeholders -> ``dashboard.key`` of texts/<language>.json (BattMind's language),
-  ``@@forecast_span@@`` -> days_to_predict - 0.5 days, ``@@valuta@@`` / ``@@valuta_kwh@@`` -> the
-  currency of Home Assistant
+  ``@@forecast_span@@`` -> days_to_predict - 0.5 days, ``@@sell_fee_value@@`` -> the sell fee,
+  ``@@valuta@@`` / ``@@valuta_kwh@@`` -> the currency of Home Assistant
 
 The result is written to .storage and served as a Lovelace dashboard that can be edited in
 the UI: once the user saves it, the saved copy is shown instead of the generated one until
@@ -106,15 +106,10 @@ class BattMindDashboard(lovelace_dashboard.LovelaceYAML):
         self._config_updated()
 
 
-def _derive(entity_id: str, old: str, new: str) -> str:
-    return entity_id.replace(old, new) if old in entity_id else ""
-
-
 def external_entities(config: dict[str, Any]) -> dict[str, str]:
     """Template entity id -> configured entity id ("" = not configured)."""
     prices = config["prices"]["entity_ids"]
     sl_buy = prices["stromligning_buy_current_price"]
-    sl_sell = prices["stromligning_sell_current_price"]
     home = config["home"]["entity_ids"]
     production = config["solar"]["entity_ids"]["production_entity_id"]
     mapping = {
@@ -130,11 +125,15 @@ def external_entities(config: dict[str, Any]) -> dict[str, str]:
         "sensor.stromligning_current_price_vat": sl_buy,
         "sensor.stromligning_forecasts_vat": prices["stromligning_buy_forecasts"],
         "binary_sensor.stromligning_tomorrow_available_vat": prices["stromligning_buy_tomorrow_available"],
-        "sensor.stromligning_nettariff_vat": _derive(sl_buy, "current_price", "nettariff"),
-        "sensor.stromligning_systemtariff_vat": _derive(sl_buy, "current_price", "systemtariff"),
-        "sensor.stromligning_15min_spotprice_ex_vat": _derive(sl_sell, "current_price", "spotprice"),
+        # the sell price chart uses the configured sell sensors and tariffs, like the planner
+        "sensor.stromligning_15min_current_price_ex_vat": prices["stromligning_sell_current_price"],
         "sensor.stromligning_15min_forecasts_ex_vat": prices["stromligning_sell_forecasts"],
         "binary_sensor.stromligning_15min_tomorrow_available_ex_vat": prices["stromligning_sell_tomorrow_available"],
+        "sensor.stromligning_15min_distribution_ex_vat": prices["stromligning_sell_distribution"],
+        "sensor.stromligning_15min_electricity_tax_ex_vat": prices["stromligning_sell_electricity_tax"],
+        "sensor.stromligning_15min_nettariff_ex_vat": prices["stromligning_sell_nettariff"],
+        "sensor.stromligning_15min_systemtariff_ex_vat": prices["stromligning_sell_systemtariff"],
+        "sensor.stromligning_15min_surcharge_ex_vat": prices["stromligning_sell_surcharge"],
     }
     if sl_buy:
         # one price chart: Strømligning is preferred, the Energi Data Service chart is removed
@@ -217,6 +216,8 @@ def render_dashboard(
     texts = load_texts(normalize_language(config.get("language")), currency)
     # the charts show the forecast period: days_to_predict minus the half day already passed
     texts["dashboard.forecast_span"] = f"{max(float(config['days_to_predict']) - 0.5, 0.5):g}d"
+    # the sell price charts subtract the same sell fee as the planner
+    texts["dashboard.sell_fee_value"] = f"{abs(float(config['prices'].get('sell_fee', 0.0))):g}"
     template = _translate(template, texts)
     missing = {source for source, target in mapping.items() if not target}
     if existing is not None and DEBUG_BUTTON_SWITCH not in existing:

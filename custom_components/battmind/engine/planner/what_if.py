@@ -337,6 +337,8 @@ class WhatIf:
                         "surcharge": tariffs.get("surcharge", 0.0),
                     },
                     float(hour_provider.get("sell_fee", 0.0)),
+                    # a raw sell price has no tariffs: the selling costs come from the buy sensor
+                    None if tariffs else hour_provider.get("sell_costs"),
                 )
                 sell_value = self.sell_value(sell_price)
             else:

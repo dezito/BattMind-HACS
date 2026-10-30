@@ -201,6 +201,15 @@ def test_full_battery_does_not_charge_today() -> None:
     assert not [ts for ts in charge_hours(engine) if ts.date() == DAY]
 
 
+def test_new_sell_prices_alone_trigger_a_new_plan() -> None:
+    now = datetime.datetime.combine(DAY, datetime.time(5, 30))
+    engine = started_engine(now, 50)
+    snap = snapshot(now, 50)
+    before = engine.run_job(snap, engine.plan_inputs_hash).value
+    engine.sell_price_cache = {**engine.sell_price_cache, "prices": {datetime.datetime.combine(DAY, datetime.time(18)): 9.99}}
+    assert engine.run_job(snap, engine.plan_inputs_hash).value != before
+
+
 def test_full_battery_is_not_charged_now_with_the_default_rules() -> None:
     """Later top ups for the expensive evening are fine, but there is no room right now."""
     now = datetime.datetime.combine(DAY, datetime.time(5, 30))

@@ -233,6 +233,33 @@ Keep these invariants when touching any planner rule:
 - The test harness has no sell entity (sell = buy price); use the
   `solar_engine()` helper in `tests/test_engine.py` for realistic scenarios.
 
+### Sell price (`calculate_sell_price()` in `prices/base.py`)
+
+Decided with the user: selling a kWh costs the **sell fee + Energinet's net
+tariff (`transmissions_nettarif`) + system tariff (`systemtarif`)**, which the
+electricity supplier charges for selling. Formula:
+
+`sell price = price − every tariff/tax/surcharge in the price − (sell_fee + transmissions_nettarif + systemtarif)`
+
+- Strømligning's sell sensor is a consumer price: it includes the
+  distribution tariff (`tariffs`, per period), net tariff, system tariff,
+  electricity tax and surcharge, so all are subtracted, and the net and
+  system tariff once more as selling costs. Key mapping as Energi Data
+  Service: distribution -> `tariffs`, nettariff -> `transmissions_nettarif`.
+  The distribution sensor only has today's periods; other days use the same
+  time of day from the latest known day (never 0 = too high a sell price).
+- Energi Data Service: a sell sensor with a `tariffs` attribute includes
+  them. A sell sensor without it is a raw price (tariffs in the price = 0); the
+  selling costs (net and system tariff) then come from the buy sensor's
+  `tariffs` attribute (`get_sell_costs()` / `eds_sell_costs()`, what-if:
+  provider `sell_costs`).
+- `sell_fee` is stored positive (`abs()`) and is always subtracted.
+- The dashboard's sell price series (Strømligning and Energi Data Service
+  charts) must use the same formula and the configured sell entities
+  (`@@sell_fee_value@@` is the configured fee). Keep it in sync with
+  `calculate_sell_price()`.
+- `plan_inputs_hash()` includes the sell prices, so new sell prices replan.
+
 ### Debug export
 
 - `management/debug_export.py`, service `battmind.export_debug`, diagnostic
