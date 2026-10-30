@@ -14,6 +14,8 @@ from custom_components.battmind.engine.analysis.helpers import (
     summarize_day,
 )
 
+from custom_components.battmind.utils.power import merge_rows
+
 from .test_efficiency import _battery
 from .test_engine import DAY, TZ, _price_rows, snapshot, started_engine
 
@@ -201,6 +203,73 @@ def test_what_if_uses_the_measured_curves_as_configured() -> None:
     assert config["solar"]["battery_charging_efficiency_curve"] == {"3250": 90.0}
     assert config["solar"]["battery_discharging_efficiency_curve"] == {"2250": 95.0}
     assert engine.config["solar"]["battery_charging_efficiency_curve"] == {}
+
+
+def _history(day: datetime.date) -> tuple[list, list]:
+    """The recorder's battery power and level of the same night as _measured_engine() on day."""
+    start = datetime.datetime.combine(day, datetime.time(1, 0), tzinfo=TZ).timestamp()
+    return _battery([(3 * 3600, 3000, 0.9), (600, 0, 1.0), (3 * 3600, -2000, 0.95)], level=10.0, sign=-1.0, start=start)
+
+
+def _counts(engine) -> dict:
+    return {direction: sum(step["n"] for step in engine.analysis_db["efficiency"][direction].values()) for direction in ("charging", "discharging")}
+
+
+def test_efficiency_backfill_reads_the_recorder_history_the_first_time() -> None:
+    now = datetime.datetime.combine(DAY, datetime.time(8, 59))
+    engine = started_engine(now, 50.0)
+    assert not engine.efficiency_backfilled()
+    flow, levels = _history(DAY - datetime.timedelta(days=3))
+
+    result = engine.run_job(snapshot(now, 50.0), engine.analysis_efficiency_backfill, {"flow": flow, "level": levels})
+
+    assert result.error is None, result.error
+    assert engine.efficiency_backfilled()
+    curves = result.attributes["analysis"]["efficiency_curves"]
+    assert curves["source"] == {"charging": "measured", "discharging": "measured"}
+    assert curves["charging"] == [{"power": 3250, "efficiency": 90.0}]
+    assert engine.analysis_db["efficiency"]["until"] == levels[-1][0]
+    # the hourly measuring continues after the history
+    counts = _counts(engine)
+    snap = snapshot(now, 50.0)
+    snap.buffers = {"sensor.battery_power": flow, "sensor.battery_level": levels}
+    assert engine.run_job(snap, engine._analysis_record_efficiency).error is None
+    assert _counts(engine) == counts
+
+
+def test_efficiency_backfill_only_adds_the_history_before_the_hourly_measuring() -> None:
+    engine, now, _, buffers = _measured_engine()
+    live = _counts(engine)
+    old_flow, old_levels = _history(DAY - datetime.timedelta(days=3))
+    flow = merge_rows(old_flow, buffers["sensor.battery_power"])
+    levels = merge_rows(old_levels, buffers["sensor.battery_level"])
+
+    result = engine.run_job(snapshot(now, 50.0), engine.analysis_efficiency_backfill, {"flow": flow, "level": levels})
+
+    assert result.error is None, result.error
+    assert _counts(engine) == {direction: 2 * count for direction, count in live.items()}
+
+
+def test_efficiency_backfill_measures_again_without_a_known_start() -> None:
+    engine, now, _, buffers = _measured_engine()
+    live = _counts(engine)
+    del engine.analysis_db["efficiency"]["from"]
+
+    data = {"flow": buffers["sensor.battery_power"], "level": buffers["sensor.battery_level"]}
+    assert engine.run_job(snapshot(now, 50.0), engine.analysis_efficiency_backfill, data).error is None
+
+    assert _counts(engine) == live
+
+
+def test_efficiency_backfill_without_history_is_done() -> None:
+    now = datetime.datetime.combine(DAY, datetime.time(8, 59))
+    engine = started_engine(now, 50.0)
+
+    result = engine.run_job(snapshot(now, 50.0), engine.analysis_efficiency_backfill, {"flow": [], "level": []})
+
+    assert result.error is None, result.error
+    assert engine.efficiency_backfilled()
+    assert result.attributes["analysis"]["efficiency_curves"]["source"] == {"charging": "none", "discharging": "none"}
 
 
 

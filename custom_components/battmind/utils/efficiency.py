@@ -25,6 +25,8 @@ EFFICIENCY_MIN_KWH = 2.0           # AC and battery kWh before a power step is u
 EFFICIENCY_MIN_MEASUREMENTS = 20   # measurements before a power step is used
 EFFICIENCY_MAX_KWH = 100.0         # beyond this AC kWh the older measurements of a step count half
 EFFICIENCY_MIN_USED = 0.5          # measured efficiencies below this are not used
+EFFICIENCY_BACKFILL_DAYS = 30      # recorder history read the first time (as far as the recorder keeps it)
+EFFICIENCY_BACKFILL_VERSION = 1
 
 
 def efficiency_curve_mapping(curve: EfficiencyCurve) -> dict[str, float]:

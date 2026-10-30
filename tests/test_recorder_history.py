@@ -92,3 +92,46 @@ def test_recorder_tariff_history_preserves_sorted_timestamped_attributes() -> No
         (start.timestamp(), earlier_tariffs),
         ((start + datetime.timedelta(hours=2)).timestamp(), later_tariffs),
     ]
+
+
+async def test_efficiency_backfill_reads_the_battery_history_a_day_at_a_time(monkeypatch) -> None:
+    import homeassistant.components.recorder as recorder
+    from homeassistant.components.recorder import history
+
+    from custom_components.battmind.utils.efficiency import EFFICIENCY_BACKFILL_DAYS
+
+    calls = []
+
+    def significant_states(hass, start, end, entities, _filters, include_start_time_state, **_kwargs):
+        calls.append((start, end, include_start_time_state))
+        return {
+            "sensor.battery_power": [SimpleNamespace(last_updated=start, state="-3000"), {"state": "minimal"}],
+            "sensor.battery_level": [SimpleNamespace(last_updated=start, state="50")],
+        }
+
+    class Instance:
+        async def async_add_executor_job(self, job):
+            return job()
+
+    monkeypatch.setattr(recorder, "get_instance", lambda hass: Instance())
+    monkeypatch.setattr(history, "get_significant_states", significant_states)
+    jobs = []
+
+    async def run_job(name, data):
+        jobs.append((name, data))
+
+    coordinator = SimpleNamespace(
+        hass=SimpleNamespace(config=SimpleNamespace(components={"recorder"})),
+        config={"home": {"entity_ids": {"powerwall_watt_flow_entity_id": "sensor.battery_power", "powerwall_battery_level_entity_id": "sensor.battery_level"}}},
+        async_run_job=run_job,
+    )
+
+    await CoordinatorData._async_efficiency_backfill(coordinator)
+
+    assert len(calls) in (EFFICIENCY_BACKFILL_DAYS, EFFICIENCY_BACKFILL_DAYS + 1)
+    assert [call[2] for call in calls[:2]] == [True, False]
+    assert all(earlier[1] == later[0] for earlier, later in zip(calls, calls[1:]))
+    [(name, data)] = jobs
+    assert name == "analysis_efficiency_backfill"
+    assert len(data["flow"]) == len(calls) and data["flow"][0] == (calls[0][0].timestamp(), -3000.0)
+    assert data["level"] == sorted(data["level"])

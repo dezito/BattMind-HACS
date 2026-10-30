@@ -176,6 +176,10 @@ class CoordinatorLifecycle:
                 self.entry.async_create_background_task(
                     self.hass, self._async_analysis_backfill(), name=f"battmind_{self.prefix}_analysis_backfill"
                 )
+            if not self.engine.efficiency_backfilled():
+                self.entry.async_create_background_task(
+                    self.hass, self._async_efficiency_backfill(), name=f"battmind_{self.prefix}_efficiency_backfill"
+                )
             if self.last_job.get("worker_thread"):
                 log_lines.append(f"📟Worker: {self.last_job['worker_thread']}")
         except Exception as err:  # noqa: BLE001

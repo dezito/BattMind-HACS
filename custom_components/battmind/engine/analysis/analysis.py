@@ -19,7 +19,8 @@ charging history:
 - price_days: when all real prices of a day are known, the forecast error per days ahead and
   how well the forecast found the day's cheapest and most expensive hours.
 - efficiency: AC and battery kWh per AC power step for charging and discharging, measured between
-  changes of the battery level (utils/efficiency); the measured efficiency curves.
+  changes of the battery level (utils/efficiency); the measured efficiency curves. The first time
+  the recorder history of the battery power and level is measured too (coordinator).
 
 The first time the energy per hour of the last year is read from the recorder's long-term
 statistics (coordinator); forecasts, plans and scores only exist from now on. Everything is
