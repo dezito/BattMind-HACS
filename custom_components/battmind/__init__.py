@@ -188,7 +188,27 @@ def _what_if_notification(coordinator: BattMindCoordinator, simulation: dict, ov
         f"| **{coordinator.t('ui.what_if.scenario')}** "
         "| |"
     )
-    lines = [period, data_sources]
+    lines = [period]
+    coverage = simulation.get("coverage")
+    if coverage:
+        lines.append(
+            coordinator.t(
+                "ui.what_if.missing_data",
+                missing=_format_what_if_number(coverage["missing_hours"] / 24.0, 1),
+                requested=coverage["requested_days"],
+            )
+        )
+        if coverage.get("limited_by"):
+            lines.append(
+                coordinator.t(
+                    "ui.what_if.limited_by",
+                    entity=coverage["limited_by"]["entity_id"],
+                    date=coverage["limited_by"]["first"][:10],
+                )
+            )
+        if coverage.get("gap_hours"):
+            lines.append(coordinator.t("ui.what_if.gap_hours", hours=coverage["gap_hours"]))
+    lines.append(data_sources)
     if price_provider:
         lines.append(coordinator.t("ui.what_if.price_provider", provider=price_provider))
     if tariff_estimated_hours:
@@ -226,8 +246,53 @@ def _what_if_notification(coordinator: BattMindCoordinator, simulation: dict, ov
                 currency=currency,
             )
         )
+    if coverage:
+        lines.extend(("", *_what_if_estimate_lines(coordinator, simulation, coverage, result_heading)))
     lines.extend(("", coordinator.t("ui.what_if.note")))
     return "\n".join(lines)
+
+
+def _what_if_estimate_lines(
+    coordinator: BattMindCoordinator, simulation: dict, coverage: dict, heading: str
+) -> list[str]:
+    """The estimate of the whole requested period, kept apart from the simulated results."""
+    estimate = simulation.get("estimate")
+    if not estimate:
+        return [coordinator.t("ui.what_if.estimate_unavailable", days=coverage["requested_days"])]
+    currency = coordinator.t("ui.common.valuta")
+    rows = (
+        ("profit", "estimate_safe", {"days": simulation["period"]["days"]}),
+        ("estimated", "estimate_missing", {"days": _format_what_if_number(estimate["estimated_hours"] / 24.0, 1)}),
+        ("total", "estimate_total", {"days": estimate["days"]}),
+    )
+    lines = [
+        f"**{coordinator.t('ui.what_if.estimate_title', days=estimate['days'])}**",
+        heading,
+        "|---|---|---|---|",
+        *(
+            "| **{label}** | {current} | {scenario} | {unit} |".format(
+                label=coordinator.t(f"ui.what_if.{label_key}", **values),
+                current=_format_what_if_number(estimate["current"][key], 2),
+                scenario=_format_what_if_number(estimate["scenario"][key], 2),
+                unit=currency,
+            )
+            for key, label_key, values in rows
+        ),
+        "",
+        "**{label}:** {profit} {currency}".format(
+            label=coordinator.t("ui.what_if.estimate_difference"),
+            profit=_format_what_if_number(estimate["difference"], 2),
+            currency=currency,
+        ),
+    ]
+    if estimate["estimated_from_other_months"]:
+        lines.append(
+            coordinator.t(
+                "ui.what_if.estimate_other_months", months=", ".join(estimate["estimated_from_other_months"])
+            )
+        )
+    lines.append(coordinator.t("ui.what_if.estimate_note"))
+    return lines
 
 
 SERVICE_SCHEMA = vol.Schema({vol.Optional("config_entry_id"): cv.string})

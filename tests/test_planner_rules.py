@@ -18,7 +18,7 @@ from custom_components.battmind.engine.optimizer import (
 )
 from custom_components.battmind.engine.planner.replay import _known_until, _next_planning
 from custom_components.battmind.engine.planner import what_if as what_if_module
-from custom_components.battmind.engine.planner.what_if import _nearest_eds_tariffs
+from custom_components.battmind.engine.planner.what_if import _nearest_eds_tariffs, _reference_months
 from custom_components.battmind.prices.base import calculate_sell_price
 
 from .test_engine import DAY, OPTIONS, SOLAR_SURPLUS, TEXTS, TZ, _power_values_db, charge_hours, snapshot
@@ -798,6 +798,70 @@ def test_what_if_reports_the_progress_at_most_every_interval(monkeypatch: pytest
     assert result.error is None, result.error
     # only the first plan: the simulation has started
     assert len(reports) == 1 and reports[0]["step"] == 1 and reports[0]["steps"] == 1
+
+
+def _requested_period(days_before: int, days: int) -> dict:
+    """A requested period ending with the history of _what_if_data() and starting days_before days earlier."""
+    end = datetime.datetime.combine(DAY, datetime.time(), tzinfo=TZ)
+    return {"start": (end - datetime.timedelta(days=days_before)).timestamp(), "end": end.timestamp(), "days": days}
+
+
+def test_what_if_estimates_the_requested_period_apart_from_the_simulated_result() -> None:
+    now = datetime.datetime.combine(DAY, datetime.time(3, 30))
+    settings = {"optimizer_control": False}
+    engine, _ = planned(3, 40, settings, solar=True)
+    data = _what_if_data(engine)  # 2 days of history
+    complete = engine.run_job(realistic_snapshot(now, 40, settings), engine.what_if, data, {"battery_size": 20}).value
+
+    # the whole requested period has data: nothing is missing, nothing is estimated
+    data["requested_period"] = _requested_period(2, 2)
+    result = engine.run_job(realistic_snapshot(now, 40, settings), engine.what_if, data, {"battery_size": 20})
+    assert result.error is None, result.error
+    assert result.value["coverage"] is None and result.value["estimate"] is None
+
+    data["requested_period"] = _requested_period(3, 3)
+    result = engine.run_job(realistic_snapshot(now, 40, settings), engine.what_if, data, {"battery_size": 20})
+    assert result.error is None, result.error
+    simulation = result.value
+    # the simulated (reliable) results don't change
+    for column in ("current", "scenario"):
+        assert simulation[column] == complete[column]
+        months = simulation[column]["months"]
+        assert months == {"2026-10": {"hours": 48, "profit": pytest.approx(simulation[column]["profit"], abs=0.02)}}
+    coverage = simulation["coverage"]
+    assert coverage["requested_days"] == 3 and coverage["requested_hours"] == 72
+    assert coverage["missing_hours"] == 24 and coverage["missing_before_hours"] == 24 and coverage["gap_hours"] == 0
+    assert coverage["limited_by"]["first"] == "2026-10-20T00:00:00"
+    assert coverage["months"] == {"2026-10": {"requested_hours": 72, "simulated_hours": 48}}
+    estimate = simulation["estimate"]
+    assert estimate["estimated_hours"] == 24 and estimate["estimated_from_other_months"] == []
+    for column in ("current", "scenario"):
+        profit = simulation[column]["profit"]
+        assert estimate[column]["profit"] == profit
+        # the missing day gets the average profit per hour of the same month
+        assert estimate[column]["estimated"] == pytest.approx(simulation[column]["months"]["2026-10"]["profit"] / 2, abs=0.01)
+        assert estimate[column]["total"] == pytest.approx(profit + estimate[column]["estimated"], abs=0.01)
+    assert estimate["difference"] == pytest.approx(estimate["scenario"]["total"] - estimate["current"]["total"], abs=0.01)
+
+    # less than half of the requested hours: the missing data is reported but not estimated
+    data["requested_period"] = _requested_period(5, 5)
+    simulation = engine.run_job(realistic_snapshot(now, 40, settings), engine.what_if, data, {}).value
+    assert simulation["coverage"]["missing_hours"] == 72
+    assert simulation["estimate"] is None
+
+
+def test_what_if_estimates_months_without_data_from_the_nearest_month() -> None:
+    requested = {"2025-11": 720, "2025-12": 744, "2026-01": 744, "2026-02": 672}
+    simulated = {"2025-11": 720, "2026-02": 600}
+    references, from_other_months = _reference_months(requested, simulated, 168)
+    # December is nearest to November, January to February; February has enough data of its own
+    assert references == {"2025-12": [11], "2026-01": [2], "2026-02": [2]}
+    assert from_other_months == ["2025-12", "2026-01"]
+    # a tie uses both months
+    references, _ = _reference_months({"2026-01": 744}, {"2025-11": 720, "2026-03": 744}, 168)
+    assert references == {"2026-01": [3, 11]}
+    # a month with too little data is no reference
+    assert _reference_months({"2026-01": 744}, {"2025-12": 100}, 168) is None
 
 
 def test_replay_plans_when_the_prices_of_the_next_day_are_published() -> None:

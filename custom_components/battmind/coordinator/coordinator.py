@@ -351,6 +351,7 @@ class BattMindCoordinator(CoordinatorLifecycle, CoordinatorEvents, CoordinatorDa
             "price_providers": price_providers,
             "stats": combined_stats,
             "long_term_statistics_timestamps": statistical_timestamps,
+            "requested_period": {"start": start.timestamp(), "end": end.timestamp(), "days": history_days},
         }
         def report(info: dict) -> None:
             # called in the worker thread

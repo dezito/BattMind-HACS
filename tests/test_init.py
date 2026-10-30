@@ -435,6 +435,48 @@ async def test_what_if_service_returns_simulation_without_changing_options(
     # An override equal to the configured value is not a change.
     assert f"**{coordinator.t('ui.what_if.minimum_level')}**" not in same_improvement
     assert coordinator.t("ui.what_if.bill_difference") not in same_improvement
+    # all requested data found: no missing data or estimate
+    assert coordinator.t("ui.what_if.estimate_note") not in notification
+    assert "ui.what_if" not in notification
+
+    coverage = {
+        "requested_days": 100,
+        "requested_hours": 2400,
+        "missing_hours": 840,
+        "missing_before_hours": 816,
+        "gap_hours": 24,
+        "limited_by": {"entity_id": "sensor.historical_sell", "first": "2026-08-26T00:00:00"},
+        "months": {},
+    }
+    estimate = {
+        "days": 100,
+        "estimated_hours": 840,
+        "reference_months": {"2026-07": [8], "2026-08": [8]},
+        "estimated_from_other_months": ["2026-07"],
+        "current": {"profit": 100, "estimated": 50.5, "total": 150.5},
+        "scenario": {"profit": 125, "estimated": 60, "total": 185},
+        "difference": 34.5,
+    }
+    partial = _what_if_notification(
+        coordinator, {**simulation, "period": {"days": 65.0, "hours": 1560}, "coverage": coverage, "estimate": estimate}, {}
+    )
+    assert coordinator.t("ui.what_if.missing_data", missing="35,0", requested=100) in partial
+    assert coordinator.t("ui.what_if.limited_by", entity="sensor.historical_sell", date="2026-08-26") in partial
+    assert coordinator.t("ui.what_if.gap_hours", hours=24) in partial
+    # the reliable results come first, the estimate is a separate section after them
+    estimate_title = f"**{coordinator.t('ui.what_if.estimate_title', days=100)}**"
+    assert partial.index(estimate_title) > partial.index(profit_difference)
+    assert f"| **{coordinator.t('ui.what_if.estimate_safe', days=65.0)}** | 100,00 | 125,00 | {valuta} |" in partial
+    assert f"| **{coordinator.t('ui.what_if.estimate_missing', days='35,0')}** | 50,50 | 60,00 | {valuta} |" in partial
+    assert f"| **{coordinator.t('ui.what_if.estimate_total', days=100)}** | 150,50 | 185,00 | {valuta} |" in partial
+    assert f"**{coordinator.t('ui.what_if.estimate_difference')}:** 34,50 {valuta}" in partial
+    assert coordinator.t("ui.what_if.estimate_other_months", months="2026-07") in partial
+    assert coordinator.t("ui.what_if.estimate_note") in partial
+    assert "ui.what_if" not in partial
+
+    too_little = _what_if_notification(coordinator, {**simulation, "coverage": coverage, "estimate": None}, {})
+    assert coordinator.t("ui.what_if.estimate_unavailable", days=100) in too_little
+    assert estimate_title not in too_little
     assert simulation["assumptions"]["battery_size"] == 20
     assert simulation["assumptions"]["round_trip_loss"] == 5
     assert simulation["period"]["days"] == 365

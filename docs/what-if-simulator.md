@@ -96,9 +96,30 @@ the current value beside the scenario value for each setting you changed.
 | **scenario** | economy with the changed values |
 | **difference.profit** | scenario profit minus current profit; positive is better |
 | **difference.bill** | scenario bill minus current bill; negative is better |
+| **coverage** | only when at least 24 hours of the requested period have no data: requested and missing hours, the hours missing before the first simulated hour and inside the period (**gap_hours**), the entity whose history starts last (**limited_by**) and the requested/simulated hours per month |
+| **estimate** | the rough estimate of the whole requested period (see below), or empty when there is too little data |
 
 Both **current** and **scenario** contain the net result with and without the battery, expected profit,
-charged grid/solar energy, energy delivered to the house, sales, wear and the final battery level.
+charged grid/solar energy, energy delivered to the house, sales, wear, the final battery level and the
+profit and simulated hours per calendar month (**months**). The change of the battery level within a
+month is valued like the energy left at the end, so the months add up to the profit.
+
+## Less history than requested
+
+When less history than requested is available, for example 65 of 100 days or 200 of 365 days, the
+results above are always only the reliable figures: they are calculated from the simulated hours
+alone. The notification then also says how many days are missing, which entity has no history
+further back (and from which date its data starts), and how many hours inside the period are missing
+because of gaps or missing tariffs.
+
+Below the reliable results, a separate, clearly marked section estimates the profit of the whole
+requested period for both columns: the reliable profit, an estimate for the missing days and the
+total. Each missing hour gets the average profit per hour of the same calendar month (any year) when
+that month has at least 7 days of simulated data (or a quarter of a shorter requested period); otherwise
+it gets the average of the nearest calendar month with enough data, and the notification lists those
+months. The estimate is only shown when at least half of the requested hours were simulated; otherwise
+the notification says that there is too little data. Season, prices and consumption of the missing days
+are unknown, so the estimate is a rough approximation and not an expected saving.
 A negative net result is not necessarily a cash credit: the calculation includes an estimated value for
 energy remaining in the battery, but excludes the battery purchase price and any fixed fees.
 
@@ -136,4 +157,5 @@ replay). A year of history means a few hundred planner runs per column, so the s
 few minutes; the progress notification is shown meanwhile.
 The displayed day count is based on hourly samples, not calendar dates. Without a configured historical
 sell-price entity, variable export revenue is treated as zero (a fixed configured solar sell price is
-still used). Home Assistant may provide fewer days than requested if older statistics are unavailable.
+still used). Home Assistant may provide fewer days than requested if older statistics are unavailable;
+see [Less history than requested](#less-history-than-requested).

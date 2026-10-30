@@ -26,6 +26,12 @@ from .replay import replay_history
 
 # seconds between two progress reports of a running simulation
 PROGRESS_INTERVAL = 10.0
+# missing hours of the requested period that are reported (and estimated)
+MIN_MISSING_HOURS = 24
+# the estimate of the requested period needs simulated data for this share of its hours
+MIN_ESTIMATE_COVERAGE = 0.5
+# a calendar month estimates missing hours with this many simulated hours (or a quarter of a short period)
+MIN_REFERENCE_HOURS = 7 * 24
 
 # what-if input -> battery configuration (config["solar"])
 _CONFIG_OVERRIDES = {
@@ -78,6 +84,66 @@ def _nearest_eds_tariffs(
     if not all(math.isfinite(value) for value in tariffs.values()):
         return None
     return tariffs, nearest_timestamp == timestamp
+
+
+def _requested_hours_per_month(start: float, end: float, tz) -> dict[str, int]:
+    """Hours of the requested period per local calendar month ("YYYY-MM")."""
+    months: dict[str, int] = {}
+    timestamp = start
+    while timestamp < end:
+        key = datetime.datetime.fromtimestamp(timestamp, tz).strftime("%Y-%m")
+        months[key] = months.get(key, 0) + 1
+        timestamp += 3600
+    return months
+
+
+def _reference_months(
+    requested: dict[str, int], simulated: dict[str, int], minimum_hours: float
+) -> tuple[dict[str, list[int]], list[str]] | None:
+    """Calendar months (1-12) that estimate the missing hours of each requested month.
+
+    A month uses its own simulated hours of the same calendar month (any year) when they are
+    enough, else the nearest calendar months with enough data (both on a tie). Returns the
+    references and the months estimated from other months, or None without any reference.
+    """
+    pooled: dict[int, int] = {}
+    for key, hours in simulated.items():
+        pooled[int(key[5:])] = pooled.get(int(key[5:]), 0) + hours
+    candidates = [month for month, hours in pooled.items() if hours >= minimum_hours]
+    if not candidates:
+        return None
+    references, from_other_months = {}, []
+    for key, hours in requested.items():
+        if hours - simulated.get(key, 0) <= 0:
+            continue
+        month = int(key[5:])
+        if month in candidates:
+            references[key] = [month]
+            continue
+
+        def distance(candidate: int) -> int:
+            return min((candidate - month) % 12, (month - candidate) % 12)
+
+        nearest = min(distance(candidate) for candidate in candidates)
+        references[key] = sorted(candidate for candidate in candidates if distance(candidate) == nearest)
+        from_other_months.append(key)
+    return references, from_other_months
+
+
+def _estimated_profit(
+    requested: dict[str, int], simulated: dict[str, int], months: dict[str, dict], references: dict[str, list[int]]
+) -> float:
+    """Profit of the missing hours: the average profit per hour of the reference months."""
+    pooled: dict[int, list[float]] = {}
+    for key, month in months.items():
+        total = pooled.setdefault(int(key[5:]), [0.0, 0])
+        total[0] += month["profit"]
+        total[1] += month["hours"]
+    estimated = 0.0
+    for key, reference in references.items():
+        per_hour = sum(pooled[month][0] / pooled[month][1] for month in reference) / len(reference)
+        estimated += (requested[key] - simulated.get(key, 0)) * per_hour
+    return estimated
 
 
 class WhatIf:
@@ -351,11 +417,18 @@ class WhatIf:
                 "end_level": summaries[-1]["end_level"],
                 "start": summaries[0]["start"].isoformat(),
                 "end": summaries[-1]["end"].isoformat(),
+                "months": {
+                    key: {"hours": month["hours"], "profit": round(month["profit"], 2)}
+                    for key, month in sorted(replay["months"].items())
+                },
             }
 
         current = calculate(current_config, current_settings, current_start_level, 1)
         summary = deepcopy(current) if unchanged else calculate(scenario_config, scenario_settings, start_level, 2)
         current_cfg, cfg = current.pop("config"), summary.pop("config")
+        coverage, estimate = self._what_if_coverage(
+            data.get("requested_period"), tz, timestamps, hours, required, price_sources, current, summary
+        )
         return {
             "price_provider": ", ".join(
                 source["provider"]["name"] for source in used_sources if source["provider"].get("name")
@@ -373,6 +446,8 @@ class WhatIf:
                 "hours": len(hours),
                 "days": round(len(hours) / 24.0, 1),
             },
+            "coverage": coverage,
+            "estimate": estimate,
             "assumptions": {
                 **self._what_if_assumptions(cfg, scenario_settings, start_level),
                 "sell_price_history_available": sell_price_history_available,
@@ -386,6 +461,93 @@ class WhatIf:
                 "bill": round(summary["with"]["bill"] - current["with"]["bill"], 2),
             },
         }
+
+    @staticmethod
+    def _what_if_coverage(
+        requested_period: dict | None,
+        tz,
+        timestamps: list[float],
+        hours: list[OptimizerHour],
+        required: dict[str, dict[float, float]],
+        price_sources: list[dict],
+        current: dict,
+        scenario: dict,
+    ) -> tuple[dict | None, dict | None]:
+        """The simulated part of the requested period and an estimate of the whole period.
+
+        (None, None) without a requested period or when less than MIN_MISSING_HOURS are missing.
+        The estimate is None with too little data (MIN_ESTIMATE_COVERAGE, MIN_REFERENCE_HOURS).
+        """
+        if not requested_period:
+            return None, None
+        start, end = float(requested_period["start"]), float(requested_period["end"])
+        requested = _requested_hours_per_month(start, end, tz)
+        requested_hours = sum(requested.values())
+        missing_hours = max(requested_hours - len(timestamps), 0)
+        if missing_hours < MIN_MISSING_HOURS:
+            return None, None
+        simulated: dict[str, int] = {}
+        for hour in hours:
+            key = hour.timestamp.strftime("%Y-%m")
+            simulated[key] = simulated.get(key, 0) + 1
+
+        # the data starts with the entity that starts last; the prices with the provider that starts first
+        firsts = {entity_id: min(values) for entity_id, values in required.items()}
+        price_first = None
+        for source in price_sources:
+            if not source["timestamps"]:
+                continue
+            series = dict(zip(source["entity_ids"], (source["buy"], source["sell"])))
+            entity_id = max(series, key=lambda key: min(series[key]))
+            first = min(source["timestamps"])
+            if price_first is None or first < price_first[1]:
+                price_first = (entity_id, first)
+        if price_first is not None:
+            firsts[price_first[0]] = price_first[1]
+        limited_by = None
+        entity_id, first = max(firsts.items(), key=lambda item: item[1])
+        if first - start >= MIN_MISSING_HOURS * 3600:
+            limited_by = {
+                "entity_id": entity_id,
+                "first": datetime.datetime.fromtimestamp(first, tz).replace(tzinfo=None).isoformat(),
+            }
+        before = min(max(int((timestamps[0] - start) // 3600), 0), missing_hours)
+        days = requested_period.get("days", round(requested_hours / 24.0, 1))
+        coverage = {
+            "requested_days": days,
+            "requested_hours": requested_hours,
+            "missing_hours": missing_hours,
+            "missing_before_hours": before,
+            "gap_hours": missing_hours - before,
+            "limited_by": limited_by,
+            "months": {
+                key: {"requested_hours": month_hours, "simulated_hours": simulated.get(key, 0)}
+                for key, month_hours in requested.items()
+            },
+        }
+        if len(timestamps) < MIN_ESTIMATE_COVERAGE * requested_hours:
+            return coverage, None
+        found = _reference_months(requested, simulated, min(MIN_REFERENCE_HOURS, requested_hours / 4.0))
+        if found is None:
+            return coverage, None
+        references, from_other_months = found
+        columns = {}
+        for name, column in (("current", current), ("scenario", scenario)):
+            estimated = round(_estimated_profit(requested, simulated, column["months"], references), 2)
+            columns[name] = {
+                "profit": column["profit"],
+                "estimated": estimated,
+                "total": round(column["profit"] + estimated, 2),
+            }
+        estimate = {
+            "days": days,
+            "estimated_hours": sum(max(requested[key] - simulated.get(key, 0), 0) for key in references),
+            "reference_months": references,
+            "estimated_from_other_months": from_other_months,
+            **columns,
+            "difference": round(columns["scenario"]["total"] - columns["current"]["total"], 2),
+        }
+        return coverage, estimate
 
     def _what_if_setup(self, overrides: dict) -> tuple[dict, dict]:
         """Configuration and settings of a replay: the current ones with the what-if values."""
