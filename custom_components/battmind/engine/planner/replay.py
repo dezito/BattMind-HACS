@@ -141,6 +141,8 @@ def replay_history(
     hours: the actual hours (consumption and solar surplus in kWh, buy price, sell value);
     sell: the sell price per hour the planner sees (hours without a sell price can't sell);
     progress: called with the number of executed hours after every plan.
+    months: the profit and hours per calendar month ("YYYY-MM"); the change of the battery level
+    in a month is valued like the energy left at the end, so the months add up to the profit.
     """
     replay_class = type("ReplayEngine", (ReplayInputs, engine_class), {})
     engine = replay_class(config, prefix, texts)
@@ -162,6 +164,7 @@ def replay_history(
     end_value = cfg.efficiency * max(average([hour.buy for hour in hours]) - cfg.wear - cfg.min_profit_per_kwh, 0.0)
     to_kwh = cfg.battery_size / 100.0
     summaries = []
+    months: dict[str, dict[str, float]] = {}
     done = 0
     for index, segment in enumerate(_segments(hours)):
         segment_start = start_level if index == 0 else cfg.level_min
@@ -175,7 +178,14 @@ def replay_history(
             execute = sum(hour.timestamp < next_planning for hour in window)
             for hour, (action, limit) in zip(window[:execute], run(now, level, engine.replay_plan, window, sell, execute)):
                 details: dict = {}
-                level, _, _, _ = step_hour(hour, level, action, cfg, limit, details)
+                previous_level = level
+                level, cost, _, _ = step_hour(hour, level, action, cfg, limit, details)
+                month = months.setdefault(hour.timestamp.strftime("%Y-%m"), {"hours": 0, "profit": 0.0})
+                month["hours"] += 1
+                month["profit"] += (
+                    hour.consumption * hour.buy - hour.solar * hour.sell - cost
+                    + (level - previous_level) * to_kwh * end_value
+                )
                 actions.append(action)
                 limits.append(limit)
                 charged = details["solar_in"] + details["grid"]
@@ -197,4 +207,4 @@ def replay_history(
             for key in [key for key in engine.charging_history_db if key < oldest]:
                 del engine.charging_history_db[key]
         summaries.append(breakdown(segment, segment_start, cfg, actions, end_value, limits))
-    return {"config": cfg, "summaries": summaries}
+    return {"config": cfg, "summaries": summaries, "months": months}
