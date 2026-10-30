@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import datetime
+import re
+import sys
 from copy import deepcopy
 
 import pytest
@@ -574,6 +576,37 @@ def test_a_charge_is_not_explained_by_a_sale_after_the_battery_was_empty(emptied
     else:
         assert explanation["rule"] == "grid_charge_to_sell"
         assert explanation["target"] == 3
+
+
+def test_a_target_on_another_day_shows_its_date_in_the_title(monkeypatch: pytest.MonkeyPatch) -> None:
+    """"Dyreste timer prioriteret (17:00)" at 21:00 reads as today's (past) 17:00 when it is tomorrow's."""
+    original = realistic_snapshot
+
+    def pricier_tomorrow(*args, **kwargs) -> Snapshot:
+        # no cheap night to charge in: the battery is kept from this evening for tomorrow
+        snap = original(*args, **kwargs)
+        for entity_id in ("sensor.price", "sensor.sell"):
+            for row in snap.price_data["attributes"][entity_id]["raw_tomorrow"]:
+                row["price"] = round(row["price"] + 1.0, 3)
+        return snap
+
+    monkeypatch.setattr(sys.modules[__name__], "realistic_snapshot", pricier_tomorrow)
+    no_grid_charging = {"cheapest_hour_fill_planner": False, "most_expensive_planner": False, "needed_before_max_level_planner": False, "grid_charge_to_sell": False}
+    seen_other_day = False
+    for hour in (21, 22):
+        engine, _ = planned(hour, 40, no_grid_charging)
+        for day in (day for day in engine.plan if isinstance(day, int)):
+            for ts, reason in engine.plan[day]["blocked_discharge_timestamps"].items():
+                title = re.search(r"<summary>.*?\(([^()]*)\)</summary>", reason)
+                target = re.search(r"\*\*(\d{2}/\d{2}) \d{2}:\d{2}\*\*", reason)
+                if not title or not target:
+                    continue
+                if target.group(1) == ts.strftime("%d/%m"):
+                    assert re.fullmatch(r"\d{2}:\d{2}", title.group(1)), reason
+                else:
+                    assert title.group(1).startswith(target.group(1)), reason
+                    seen_other_day = True
+    assert seen_other_day
 
 
 def test_hour_rules_group_consecutive_hours_with_the_same_rule() -> None:
