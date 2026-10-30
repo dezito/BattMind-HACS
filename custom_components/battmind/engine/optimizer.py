@@ -252,7 +252,10 @@ def explain(hours: list[OptimizerHour], result: OptimizerResult, cfg: OptimizerC
             # until the next charge block the charged kWh are sold, used before the sun fills the battery, or used
             block_end = next((j for j in range(i + 1, count) if not charging(j)), count)
             end = next((j for j in range(block_end, count) if charging(j)), count)
-            window = range(block_end, end)
+            # the charged kWh are gone once the battery is empty or the sun has filled it (as for a
+            # sale's source below): later sales or uses are not this charge's
+            gone = next((j for j in range(block_end, end) if levels[j] <= empty or (hours[j].solar > 0.0 and levels[j] >= full)), None)
+            window = range(block_end, end if gone is None else gone + 1)
             sales = [j for j in window if selling(j)]
             uses = [j for j in window if actions[j] in ("discharge_allowed", "force_discharge") and hours[j].consumption > 0.0]
             solar_full = next((j for j in window if hours[j].solar > 0.0 and levels[j] >= full), None)

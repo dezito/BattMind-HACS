@@ -175,6 +175,45 @@ def test_one_price_chart_stromligning_preferred() -> None:
     assert _price_charts(stromligning_buy_current_price="sensor.sl_price") == ["sensor.sl_price"]
 
 
+def _sell_series(**options) -> str:
+    content = yaml.safe_load(render_dashboard(build_config({**OPTIONS, **options}), "battmind"))
+    sell_name = load_texts("en")["dashboard.sell_price"]
+    return next(
+        node["data_generator"] for node in walk(content)
+        if node.get("yaxis_id") == "price" and node.get("name") == sell_name and "data_generator" in node
+    )
+
+
+def test_stromligning_sell_price_chart_uses_the_configured_sell_sensors() -> None:
+    """Same sell price as the planner: the sell sensor minus every configured tariff and the sell fee."""
+    generator = _sell_series(
+        language="en",
+        sell_fee=0.04,
+        stromligning_buy_current_price="sensor.sl_buy",
+        stromligning_sell_current_price="sensor.sl_sell",
+        stromligning_sell_tomorrow_available="binary_sensor.sl_sell_tomorrow",
+        stromligning_sell_forecasts="sensor.sl_sell_forecasts",
+        stromligning_sell_distribution="sensor.sl_distribution",
+        stromligning_sell_electricity_tax="sensor.sl_tax",
+        stromligning_sell_nettariff="sensor.sl_nettariff",
+        stromligning_sell_systemtariff="sensor.sl_systemtariff",
+        stromligning_sell_surcharge="sensor.sl_surcharge",
+    )
+    for entity_id in (
+        "sensor.sl_sell", "binary_sensor.sl_sell_tomorrow", "sensor.sl_sell_forecasts", "sensor.sl_distribution",
+        "sensor.sl_tax", "sensor.sl_nettariff", "sensor.sl_systemtariff", "sensor.sl_surcharge",
+    ):
+        assert f"'{entity_id}'" in generator
+    assert "Number('0.04')" in generator
+    assert "nettariff_vat" not in generator and "0.025" not in generator
+
+
+def test_energi_data_service_sell_price_chart_subtracts_the_sell_fee() -> None:
+    generator = _sell_series(language="en", sell_fee=0.03)
+    assert "Number('0.03')" in generator
+    assert "sellCosts(row.hour)" in generator
+
+
 def test_every_chart_has_a_shared_non_intersecting_tooltip() -> None:
     content = yaml.safe_load(rendered("en"))
     charts = [node for node in walk(content) if node.get("type") == "custom:apexcharts-card"]

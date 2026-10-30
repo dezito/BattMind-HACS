@@ -134,10 +134,10 @@
           "stromligning_sell_surcharge": "Tillæg til spotpris"
         },
         "data_description": {
-          "stromligning_sell_distribution": "Sensor med transporttariffen til netselskabet. Lægges til salgsprisen.",
+          "stromligning_sell_distribution": "Sensor med netselskabets transporttarif pr. periode. Trækkes fra når salgsprisen beregnes (dage uden tarif bruger samme tidspunkt fra seneste kendte dag).",
           "stromligning_sell_electricity_tax": "Sensor med elafgiften. Trækkes fra når salgsprisen beregnes.",
-          "stromligning_sell_nettariff": "Sensor med nettariffen. Trækkes fra når salgsprisen beregnes.",
-          "stromligning_sell_systemtariff": "Sensor med systemtariffen. Lægges til salgsprisen.",
+          "stromligning_sell_nettariff": "Sensor med Energinets nettarif. Trækkes fra salgsprisen og igen som omkostning ved salg.",
+          "stromligning_sell_systemtariff": "Sensor med systemtariffen. Trækkes fra salgsprisen og igen som omkostning ved salg.",
           "stromligning_sell_surcharge": "Elselskabets tillæg til spotprisen. Trækkes fra når salgsprisen beregnes."
         }
       },
@@ -150,7 +150,7 @@
         },
         "data_description": {
           "refund": "Refusion pr. kWh fra stat/netselskab/leverandør, trækkes fra købsprisen i prishistorikken. 0 hvis ingen.",
-          "sell_fee": "Gebyr pr. kWh ved salg til nettet. Indgår i den beregnede salgspris."
+          "sell_fee": "Gebyr pr. kWh ved salg til nettet. Trækkes fra salgsprisen sammen med Energinets nettarif og systemtarif, som også koster ved salg."
         }
       },
       "solar": {
@@ -374,10 +374,10 @@
           "stromligning_sell_surcharge": "Tillæg til spotpris"
         },
         "data_description": {
-          "stromligning_sell_distribution": "Sensor med transporttariffen til netselskabet. Lægges til salgsprisen.",
+          "stromligning_sell_distribution": "Sensor med netselskabets transporttarif pr. periode. Trækkes fra når salgsprisen beregnes (dage uden tarif bruger samme tidspunkt fra seneste kendte dag).",
           "stromligning_sell_electricity_tax": "Sensor med elafgiften. Trækkes fra når salgsprisen beregnes.",
-          "stromligning_sell_nettariff": "Sensor med nettariffen. Trækkes fra når salgsprisen beregnes.",
-          "stromligning_sell_systemtariff": "Sensor med systemtariffen. Lægges til salgsprisen.",
+          "stromligning_sell_nettariff": "Sensor med Energinets nettarif. Trækkes fra salgsprisen og igen som omkostning ved salg.",
+          "stromligning_sell_systemtariff": "Sensor med systemtariffen. Trækkes fra salgsprisen og igen som omkostning ved salg.",
           "stromligning_sell_surcharge": "Elselskabets tillæg til spotprisen. Trækkes fra når salgsprisen beregnes."
         }
       },
@@ -390,7 +390,7 @@
         },
         "data_description": {
           "refund": "Refusion pr. kWh fra stat/netselskab/leverandør, trækkes fra købsprisen i prishistorikken. 0 hvis ingen.",
-          "sell_fee": "Gebyr pr. kWh ved salg til nettet. Indgår i den beregnede salgspris."
+          "sell_fee": "Gebyr pr. kWh ved salg til nettet. Trækkes fra salgsprisen sammen med Energinets nettarif og systemtarif, som også koster ved salg."
         }
       },
       "solar": {

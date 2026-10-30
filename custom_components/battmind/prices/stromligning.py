@@ -95,12 +95,22 @@ class StromligningPriceProvider(BasePriceProvider):
         value = self.values.get(entity_id, 0.0) if self._has(entity_id) else 0.0
         return value if isinstance(value, (int, float)) else 0.0
 
+    def _distribution(self, timestamp: datetime.datetime) -> float:
+        found = price_at(self._distribution_prices, timestamp)
+        if found is None and self._distribution_prices:
+            # The sensor only has today's tariffs, but tomorrow's and the forecast prices include
+            # them too. The tariff follows the time of day: use the latest known day's period.
+            latest = max(self._distribution_prices).date()
+            found = price_at(self._distribution_prices, datetime.datetime.combine(latest, timestamp.time()))
+        return found[1] if found else 0.0
+
     def get_tariffs(self, timestamp):
-        distribution = price_at(self._distribution_prices, timestamp)
+        # Same keys as Energi Data Service: "tariffs" is the grid company's tariff of the
+        # period (distribution), "transmissions_nettarif" Energinet's net tariff.
         return {
-            "transmissions_nettarif": distribution[1] if distribution else 0.0,
+            "transmissions_nettarif": self._state(self.sell_nettariff),
             "systemtarif": self._state(self.sell_systemtariff),
             "elafgift": self._state(self.sell_electricity_tax),
-            "tariffs": self._state(self.sell_nettariff),
+            "tariffs": self._distribution(timestamp),
             "surcharge": self._state(self.sell_surcharge),
         }

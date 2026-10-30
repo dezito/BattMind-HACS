@@ -25,6 +25,7 @@ class Planning:
             self.forecast_type,
             cache.get("using_offline_prices"),
             tuple(cache.get("prices", {}).items()),
+            tuple(self.sell_price_cache.get("prices", {}).items()),
             self.get_battery_level(),
             tuple(self.battery_expenses.items()),
             tuple(sorted(settings.items())),

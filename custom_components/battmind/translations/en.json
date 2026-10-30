@@ -134,10 +134,10 @@
           "stromligning_sell_surcharge": "Supplier surcharge"
         },
         "data_description": {
-          "stromligning_sell_distribution": "Distribution (transport) tariff sensor. Added back to the sell price.",
+          "stromligning_sell_distribution": "The grid company's distribution (transport) tariff per period. Subtracted when the sell price is calculated (days without a tariff use the same time of the latest known day).",
           "stromligning_sell_electricity_tax": "Electricity tax sensor. Subtracted when the sell price is calculated.",
-          "stromligning_sell_nettariff": "Net tariff sensor. Subtracted when the sell price is calculated.",
-          "stromligning_sell_systemtariff": "System tariff sensor. Added back to the sell price.",
+          "stromligning_sell_nettariff": "Energinet's net tariff sensor. Subtracted from the sell price, and again as a selling cost.",
+          "stromligning_sell_systemtariff": "System tariff sensor. Subtracted from the sell price, and again as a selling cost.",
           "stromligning_sell_surcharge": "The supplier surcharge on the spot price. Subtracted when the sell price is calculated."
         }
       },
@@ -150,7 +150,7 @@
         },
         "data_description": {
           "refund": "Refund per kWh from state/grid company/supplier, subtracted from the buy price in the price history. 0 if none.",
-          "sell_fee": "Fee per kWh when selling to the grid. Included in the calculated sell price."
+          "sell_fee": "Fee per kWh when selling to the grid. Subtracted from the sell price together with Energinet's net and system tariff, which selling also costs."
         }
       },
       "solar": {
@@ -374,10 +374,10 @@
           "stromligning_sell_surcharge": "Supplier surcharge"
         },
         "data_description": {
-          "stromligning_sell_distribution": "Distribution (transport) tariff sensor. Added back to the sell price.",
+          "stromligning_sell_distribution": "The grid company's distribution (transport) tariff per period. Subtracted when the sell price is calculated (days without a tariff use the same time of the latest known day).",
           "stromligning_sell_electricity_tax": "Electricity tax sensor. Subtracted when the sell price is calculated.",
-          "stromligning_sell_nettariff": "Net tariff sensor. Subtracted when the sell price is calculated.",
-          "stromligning_sell_systemtariff": "System tariff sensor. Added back to the sell price.",
+          "stromligning_sell_nettariff": "Energinet's net tariff sensor. Subtracted from the sell price, and again as a selling cost.",
+          "stromligning_sell_systemtariff": "System tariff sensor. Subtracted from the sell price, and again as a selling cost.",
           "stromligning_sell_surcharge": "The supplier surcharge on the spot price. Subtracted when the sell price is calculated."
         }
       },
@@ -390,7 +390,7 @@
         },
         "data_description": {
           "refund": "Refund per kWh from state/grid company/supplier, subtracted from the buy price in the price history. 0 if none.",
-          "sell_fee": "Fee per kWh when selling to the grid. Included in the calculated sell price."
+          "sell_fee": "Fee per kWh when selling to the grid. Subtracted from the sell price together with Energinet's net and system tariff, which selling also costs."
         }
       },
       "solar": {

@@ -84,10 +84,17 @@ Choose Energi Data Service and/or Strømligning. With both, the first one with a
 and the other fills the gaps.
 
 - **Energi Data Service:** enable *Carnot* in Energi Data Service to plan beyond the published prices.
-  Without a separate sell sensor, the buy price minus tariffs is used as sell price.
+  Without a separate sell sensor, the buy price minus tariffs is used as sell price. A sell sensor
+  without tariffs is used as the spot price; the net and system tariff paid when selling then come
+  from the buy sensor.
 - **Strømligning:** the buy sensors are required. The sell sensors and the tariff page give an accurate
-  sell price.
-- **Refund** is subtracted from the buy price, **sell fee** is included in the sell price.
+  sell price: Strømligning's sell price includes every tariff, so the distribution (transport) tariff,
+  net tariff, system tariff, electricity tax and surcharge are all subtracted. The distribution sensor
+  only has today's tariffs; other days use the same time of day from the latest known day.
+- **Refund** is subtracted from the buy price. Selling costs the **sell fee** plus Energinet's net
+  and system tariff:
+  sell price = price − the tariffs and taxes in it − (sell fee + net tariff + system tariff).
+  The price charts on the dashboard show the same sell price.
 
 ### Solar panels and weather (optional)
 

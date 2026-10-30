@@ -74,3 +74,22 @@ class EnergiDataServicePriceProvider(BasePriceProvider):
         except (KeyError, TypeError, ValueError) as err:
             _LOGGER.debug("No Energi Data Service tariffs for %s: %s", timestamp, err)
             return dict(_ZERO_TARIFFS)
+
+    def get_sell_costs(self, timestamp):
+        """A raw sell sensor (no tariffs attribute) includes no tariffs, but selling still costs
+        Energinet's net and system tariff: those of the buy sensor."""
+        if self._attr(self.sell_entity_id).get("tariffs"):
+            return None
+        return eds_sell_costs(self.attributes.get(self.buy_entity_id))
+
+
+def eds_sell_costs(attributes: dict | None) -> dict[str, float] | None:
+    """Energinet's net and system tariff from an Energi Data Service tariffs attribute, else None."""
+    try:
+        additional = (attributes or {})["tariffs"]["additional_tariffs"]
+        return {
+            "transmissions_nettarif": float(additional["transmissions_nettarif"]),
+            "systemtarif": float(additional["systemtarif"]),
+        }
+    except (KeyError, TypeError, ValueError):
+        return None

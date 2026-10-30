@@ -4,9 +4,11 @@ from __future__ import annotations
 import shutil
 from pathlib import Path
 
+import pytest
+
 from homeassistant import config_entries
 from homeassistant.core import HomeAssistant
-from homeassistant.data_entry_flow import FlowResultType
+from homeassistant.data_entry_flow import FlowResultType, InvalidData
 
 from custom_components.battmind.const import CONF_ENTITY_PREFIX, DOMAIN
 
@@ -93,6 +95,21 @@ async def test_stromligning_pages(hass: HomeAssistant) -> None:
     # the tariff page is only shown with a sell price
     result = await _configure(hass, result, "prices_stromligning_tariffs", {})
     assert result["step_id"] == "price_fees"
+
+
+@pytest.mark.parametrize(
+    ("provider", "step", "sell"),
+    [
+        ("energidataservice", "prices_energidataservice", {"energidataservice_sell_entity_id": "sensor.eds_sell"}),
+        ("stromligning", "prices_stromligning", {"stromligning_sell_current_price": "sensor.stromligning_sell"}),
+    ],
+)
+async def test_a_sell_entity_alone_is_rejected(hass: HomeAssistant, provider: str, step: str, sell: dict) -> None:
+    """The planner, what-if and dashboard need the buy entity of every chosen provider."""
+    result = await _to_price_provider(hass)
+    result = await _configure(hass, result, "price_provider", {"price_providers": [provider]})
+    with pytest.raises(InvalidData):
+        await _configure(hass, result, step, sell)
 
 
 async def test_weather_page_skipped_without_solar(hass: HomeAssistant) -> None:

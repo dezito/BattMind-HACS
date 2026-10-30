@@ -26,15 +26,22 @@ _ZERO_TARIFFS = {
 }
 
 
-def calculate_sell_price(price: float, tariffs: dict[str, float], sell_fee: float) -> float:
-    """Apply the shared BattMind sell-price formula to a raw price and tariff values."""
-    tariff_sum = sum(tariffs.values())
+def calculate_sell_price(
+    price: float, tariffs: dict[str, float], sell_fee: float, sell_costs: dict[str, float] | None = None
+) -> float:
+    """Sell price: the tariffs, taxes and surcharge in the price are subtracted (spot price), and
+    then what selling a kWh costs: the sell fee plus Energinet's net and system tariff.
+
+    tariffs: the tariffs included in price. sell_costs: the net and system tariff paid when
+    selling (default: those in tariffs), for a raw sell price that includes no tariffs.
+    """
+    costs = tariffs if sell_costs is None else sell_costs
     return round(
         price
-        - tariff_sum
-        + sell_fee
-        + tariffs.get("transmissions_nettarif", 0.0)
-        + tariffs.get("systemtarif", 0.0),
+        - sum(tariffs.values())
+        - abs(sell_fee)
+        - costs.get("transmissions_nettarif", 0.0)
+        - costs.get("systemtarif", 0.0),
         2,
     )
 
@@ -103,13 +110,18 @@ class BasePriceProvider:
 
     def calculate_sell_price(self, timestamp: datetime.datetime, price: float) -> float:
         tariff = self.get_tariffs(timestamp)
-        return calculate_sell_price(price, tariff, self.sell_fee)
+        return calculate_sell_price(price, tariff, self.sell_fee, self.get_sell_costs(timestamp))
 
     def buy_price_entity_id(self) -> str:
         return ""
 
     def get_tariffs(self, timestamp: datetime.datetime) -> dict:
+        """The tariffs included in the sell price."""
         return dict(_ZERO_TARIFFS)
+
+    def get_sell_costs(self, timestamp: datetime.datetime) -> dict | None:
+        """Net and system tariff paid when selling, None = those of get_tariffs()."""
+        return None
 
     def _load_buy_real_prices(self) -> dict:
         raise NotImplementedError

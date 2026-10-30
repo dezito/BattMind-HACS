@@ -12,6 +12,8 @@ from custom_components.battmind.engine.optimizer import (
     RULE_SWITCHES,
     OptimizerConfig,
     OptimizerHour,
+    OptimizerResult,
+    explain,
     optimize,
     simulate,
     step_hour,
@@ -71,7 +73,7 @@ def test_what_if_uses_nearest_historical_eds_tariff_and_live_sell_formula() -> N
         },
         False,
     )
-    assert calculate_sell_price(0.8, nearest[0], 0.03) == pytest.approx(0.13)
+    assert calculate_sell_price(0.8, nearest[0], 0.03) == pytest.approx(-0.33)
 
 
 def realistic_snapshot(now: datetime.datetime, battery_level: float, settings: dict | None = None, negative: bool = False) -> Snapshot:
@@ -542,6 +544,36 @@ def test_optimizer_actions_are_explained_as_rules() -> None:
         assert any(title in reason for title in ("Billigste timer", "Dyreste timer", "Brug for", "Negativ pris", "Køb for at sælge"))
     titles = {sale["title"] for sale in sales(engine).values()}
     assert titles <= {"Sælger strøm købt billigt", "Sælger før billig opladning", "Sælger før solen fylder batteriet", "Sælger i stedet for at bruge"}
+
+
+@pytest.mark.parametrize("emptied", [True, False])
+def test_a_charge_is_not_explained_by_a_sale_after_the_battery_was_empty(emptied: bool) -> None:
+    """Charge at 2.0 used at 3.8, the battery empties, the sun fills it and that energy is sold:
+    the sale is not the charge's ("Køb for at sælge" with a loss), unless the charge is still there."""
+    hours = [
+        OptimizerHour(datetime.datetime.combine(DAY, datetime.time(hour)), buy, sell, consumption, solar)
+        for hour, buy, sell, consumption, solar in (
+            (12, 2.0, 1.5, 0.5, 0.0),
+            (17, 3.8, 2.4, 4.0, 0.0),
+            (12, 2.1, 1.6, 0.0, 9.0),
+            (18, 3.9, 2.4, 0.5, 0.0),
+        )
+    ]
+    hours[2].timestamp += datetime.timedelta(days=1)
+    hours[3].timestamp += datetime.timedelta(days=1)
+    result = OptimizerResult(
+        actions=["grid_charging", "discharge_allowed", "discharge_allowed", "force_discharge"],
+        grid_kwh=[4.8, 0.0, 0.0, 0.0],
+        sold_kwh=[0.0, 0.0, 0.0, 1.2],
+        levels=[50.0, 5.0 if emptied else 30.0, 100.0 if emptied else 60.0, 80.0 if emptied else 40.0],
+    )
+    explanation = explain(hours, result, CFG)[0]
+    if emptied:
+        assert explanation["rule"] in ("cheapest_hour_fill_planner", "most_expensive_planner")
+        assert explanation["target"] == 1
+    else:
+        assert explanation["rule"] == "grid_charge_to_sell"
+        assert explanation["target"] == 3
 
 
 def test_hour_rules_group_consecutive_hours_with_the_same_rule() -> None:
