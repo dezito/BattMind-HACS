@@ -76,7 +76,7 @@ in kWh, and battery levels and round-trip loss are percentages.
 | Discharging and selling rules | **only_discharge_on_profit**, **prioritize_discharge_hours_by_energy_cost**, **discharge_before_solar**, **most_profit**, **sell_excess_kwh_available**, **force_powerwall_max_hours_old_discharge**, **powerwall_max_hours_old** |
 | Solar | **optimize_solar_charging** |
 
-Setting **round_trip_loss** temporarily replaces the configured efficiency curves (as if
+Setting **round_trip_loss** temporarily replaces the configured or measured efficiency curves (as if
 **enhance_battery_efficiency** were off). The rule thresholds (cheap price periods, rise thresholds,
 maximum kWh age) only change the result when the rules control the battery. The notification shows
 the current value beside the scenario value for each setting you changed.

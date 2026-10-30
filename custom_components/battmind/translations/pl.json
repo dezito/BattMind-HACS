@@ -28,8 +28,8 @@
           "powerwall_discharging_power": "Moc rozładowania magazynu (W)",
           "powerwall_charge_discharge_loss": "Straty ładowania/rozładowania (%)",
           "use_charge_discharge_loss_from_history": "Używaj rzeczywistych strat ładowania i rozładowania na podstawie historii ładowania zamiast szacowanych strat w konfiguracji",
-          "battery_charging_efficiency_curve": "Map AC charging power in W to efficiency in percent, for example 1000 W = 88 %, 3000 W = 94 %, 5000 W = 96 %. BattMind interpolates between points. Leave empty to use the round-trip loss.",
-          "battery_discharging_efficiency_curve": "Map AC discharging power in W to efficiency in percent, for example 500 W = 82 %, 2000 W = 93 %, 5000 W = 96 %. BattMind interpolates between points. Leave empty to use the round-trip loss.",
+          "battery_charging_efficiency_curve": "Przypisz moc ładowania AC w W do sprawności w procentach, np. 1000 W = 88 %, 3000 W = 94 %, 5000 W = 96 %. BattMind interpoluje między punktami. Pozostaw puste, aby BattMind sam zmierzył krzywą (do czasu zebrania wystarczającej liczby pomiarów używana jest strata cyklu).",
+          "battery_discharging_efficiency_curve": "Przypisz moc rozładowania AC w W do sprawności w procentach, np. 500 W = 82 %, 2000 W = 93 %, 5000 W = 96 %. BattMind interpoluje między punktami. Pozostaw puste, aby BattMind sam zmierzył krzywą (do czasu zebrania wystarczającej liczby pomiarów używana jest strata cyklu).",
           "powerwall_wear_cost_per_kwh": "Koszt zużycia magazynu na kWh"
         },
         "data": {
@@ -43,8 +43,8 @@
           "powerwall_discharging_power": "Maks. moc rozładowania",
           "powerwall_wear_cost_per_kwh": "Koszt zużycia",
           "use_charge_discharge_loss_from_history": "Użyj zmierzonej straty",
-          "battery_charging_efficiency_curve": "Charging efficiency curve (optional)",
-          "battery_discharging_efficiency_curve": "Discharging efficiency curve (optional)"
+          "battery_charging_efficiency_curve": "Krzywa sprawności ładowania (opcjonalnie)",
+          "battery_discharging_efficiency_curve": "Krzywa sprawności rozładowania (opcjonalnie)"
         },
         "description": "Służy do przeliczania między % a kWh, ograniczania planu i obliczania kosztu energii w baterii.",
         "title": "Bateria domowa - specyfikacja"
@@ -265,8 +265,8 @@
           "powerwall_discharging_power": "Moc rozładowania magazynu (W)",
           "powerwall_charge_discharge_loss": "Straty ładowania/rozładowania (%)",
           "use_charge_discharge_loss_from_history": "Używaj rzeczywistych strat ładowania i rozładowania na podstawie historii ładowania zamiast szacowanych strat w konfiguracji",
-          "battery_charging_efficiency_curve": "Map AC charging power in W to efficiency in percent, for example 1000 W = 88 %, 3000 W = 94 %, 5000 W = 96 %. BattMind interpolates between points. Leave empty to use the round-trip loss.",
-          "battery_discharging_efficiency_curve": "Map AC discharging power in W to efficiency in percent, for example 500 W = 82 %, 2000 W = 93 %, 5000 W = 96 %. BattMind interpolates between points. Leave empty to use the round-trip loss.",
+          "battery_charging_efficiency_curve": "Przypisz moc ładowania AC w W do sprawności w procentach, np. 1000 W = 88 %, 3000 W = 94 %, 5000 W = 96 %. BattMind interpoluje między punktami. Pozostaw puste, aby BattMind sam zmierzył krzywą (do czasu zebrania wystarczającej liczby pomiarów używana jest strata cyklu).",
+          "battery_discharging_efficiency_curve": "Przypisz moc rozładowania AC w W do sprawności w procentach, np. 500 W = 82 %, 2000 W = 93 %, 5000 W = 96 %. BattMind interpoluje między punktami. Pozostaw puste, aby BattMind sam zmierzył krzywą (do czasu zebrania wystarczającej liczby pomiarów używana jest strata cyklu).",
           "powerwall_wear_cost_per_kwh": "Koszt zużycia magazynu na kWh"
         },
         "data": {
@@ -280,8 +280,8 @@
           "powerwall_discharging_power": "Maks. moc rozładowania",
           "powerwall_wear_cost_per_kwh": "Koszt zużycia",
           "use_charge_discharge_loss_from_history": "Użyj zmierzonej straty",
-          "battery_charging_efficiency_curve": "Charging efficiency curve (optional)",
-          "battery_discharging_efficiency_curve": "Discharging efficiency curve (optional)"
+          "battery_charging_efficiency_curve": "Krzywa sprawności ładowania (opcjonalnie)",
+          "battery_discharging_efficiency_curve": "Krzywa sprawności rozładowania (opcjonalnie)"
         },
         "description": "Służy do przeliczania między % a kWh, ograniczania planu i obliczania kosztu energii w baterii.",
         "title": "Bateria domowa - specyfikacja"
@@ -679,7 +679,7 @@
         "optimizer_control": {"name": "Steruj baterią optymalizacją całego okresu", "description": "Wł.: baterią steruje optymalizacja całego okresu. Wył.: sterują nią reguły. Pomiń, aby użyć bieżącego ustawienia."},
         "use_midnight_battery_level": {"name": "Użyj poziomu baterii o północy", "description": "Planuj tylko do północy zamiast do końca znanych cen. Pomiń, aby użyć bieżącego ustawienia."},
         "solar_charging": {"name": "Ładowanie z nadwyżki solarnej", "description": "Uwzględnij nadwyżkę solarną w planie. Pomiń, aby użyć bieżącego ustawienia."},
-        "enhance_battery_efficiency": {"name": "Zwiększ wydajność baterii", "description": "Użyj skonfigurowanych krzywych sprawności zależnych od mocy. Ignorowane, gdy podano całkowitą stratę ładowania. Pomiń, aby użyć bieżącego ustawienia."},
+        "enhance_battery_efficiency": {"name": "Zwiększ wydajność baterii", "description": "Użyj krzywych sprawności zależnych od mocy (skonfigurowanych lub zmierzonych). Ignorowane, gdy podano całkowitą stratę ładowania. Pomiń, aby użyć bieżącego ustawienia."},
         "cheapest_hour_fill_planner": {"name": "Ładowanie: Najtańsze okresy", "description": "Tymczasowy stan tego ustawienia w scenariuszu. Pomiń, aby użyć bieżącego ustawienia."},
         "cheapest_hour_fill_up": {"name": "Ładowanie: Doładuj w najtańszym okresie", "description": "Tymczasowy stan tego ustawienia w scenariuszu. Pomiń, aby użyć bieżącego ustawienia."},
         "most_expensive_planner": {"name": "Ładowanie: Najdroższe okresy", "description": "Tymczasowy stan tego ustawienia w scenariuszu. Pomiń, aby użyć bieżącego ustawienia."},

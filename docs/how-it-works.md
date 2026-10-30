@@ -86,11 +86,14 @@ All decisions compare a price now with what a kWh from the battery costs. It is 
    `price ÷ (1 − loss)`. The loss is split evenly between charging and discharging: with 10 % loss,
    5 kWh from the grid become 4.74 kWh in the battery and 4.5 kWh back out.
 
-   Optionally, separate charging and discharging efficiency curves can replace that split. Each curve
-   maps AC power in W to efficiency in percent. BattMind interpolates linearly between points and uses
-   the nearest endpoint outside the entered range. The whole-period optimiser evaluates the efficiency
-   at its actual planned power; the rule planner and cost calculation use the efficiency at the configured
-   maximum power. Empty curves keep the round-trip model above.
+   Separate charging and discharging efficiency curves can replace that split. Each curve maps AC power
+   in W to efficiency in percent. BattMind measures them itself from the battery power and the changes
+   of the battery level (see [Battery efficiency](dashboard-analysis.md#battery-efficiency)); a curve
+   entered in the setup takes precedence over the measured one. BattMind interpolates linearly between
+   points and uses the nearest endpoint outside the range. The whole-period optimiser evaluates the
+   efficiency at its actual planned power; the rule planner and cost calculation use the efficiency at
+   the configured maximum power. Until a power step has enough measurements, the round-trip model above
+   is used.
 3. **Wear** per kWh taken out.
 
 **Example** with 10 % loss and 0.10 kr/kWh wear:

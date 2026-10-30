@@ -28,8 +28,8 @@
           "powerwall_discharging_power": "Потужність розряджання батареї (Вт)",
           "powerwall_charge_discharge_loss": "Втрати заряджання/розряджання (%)",
           "use_charge_discharge_loss_from_history": "Використовувати фактичні втрати заряджання та розряджання на основі історії заряджання замість оцінених втрат у конфігурації",
-          "battery_charging_efficiency_curve": "Map AC charging power in W to efficiency in percent, for example 1000 W = 88 %, 3000 W = 94 %, 5000 W = 96 %. BattMind interpolates between points. Leave empty to use the round-trip loss.",
-          "battery_discharging_efficiency_curve": "Map AC discharging power in W to efficiency in percent, for example 500 W = 82 %, 2000 W = 93 %, 5000 W = 96 %. BattMind interpolates between points. Leave empty to use the round-trip loss.",
+          "battery_charging_efficiency_curve": "Зіставте потужність заряджання AC у W з ефективністю у відсотках, наприклад 1000 W = 88 %, 3000 W = 94 %, 5000 W = 96 %. BattMind інтерполює між точками. Залиште порожнім, щоб BattMind сам виміряв криву (доки вимірювань недостатньо, використовуються втрати повного циклу).",
+          "battery_discharging_efficiency_curve": "Зіставте потужність розряджання AC у W з ефективністю у відсотках, наприклад 500 W = 82 %, 2000 W = 93 %, 5000 W = 96 %. BattMind інтерполює між точками. Залиште порожнім, щоб BattMind сам виміряв криву (доки вимірювань недостатньо, використовуються втрати повного циклу).",
           "powerwall_wear_cost_per_kwh": "Вартість зносу батареї за кВт·год"
         },
         "data": {
@@ -43,8 +43,8 @@
           "powerwall_discharging_power": "Макс. потужність розряду",
           "powerwall_wear_cost_per_kwh": "Вартість зношування",
           "use_charge_discharge_loss_from_history": "Використовувати виміряні втрати",
-          "battery_charging_efficiency_curve": "Charging efficiency curve (optional)",
-          "battery_discharging_efficiency_curve": "Discharging efficiency curve (optional)"
+          "battery_charging_efficiency_curve": "Крива ефективності заряджання (необов'язково)",
+          "battery_discharging_efficiency_curve": "Крива ефективності розряджання (необов'язково)"
         },
         "description": "Використовується для перерахунку між % і кВт·год, обмеження плану та розрахунку вартості енергії в батареї.",
         "title": "Домашня батарея - характеристики"
@@ -265,8 +265,8 @@
           "powerwall_discharging_power": "Потужність розряджання батареї (Вт)",
           "powerwall_charge_discharge_loss": "Втрати заряджання/розряджання (%)",
           "use_charge_discharge_loss_from_history": "Використовувати фактичні втрати заряджання та розряджання на основі історії заряджання замість оцінених втрат у конфігурації",
-          "battery_charging_efficiency_curve": "Map AC charging power in W to efficiency in percent, for example 1000 W = 88 %, 3000 W = 94 %, 5000 W = 96 %. BattMind interpolates between points. Leave empty to use the round-trip loss.",
-          "battery_discharging_efficiency_curve": "Map AC discharging power in W to efficiency in percent, for example 500 W = 82 %, 2000 W = 93 %, 5000 W = 96 %. BattMind interpolates between points. Leave empty to use the round-trip loss.",
+          "battery_charging_efficiency_curve": "Зіставте потужність заряджання AC у W з ефективністю у відсотках, наприклад 1000 W = 88 %, 3000 W = 94 %, 5000 W = 96 %. BattMind інтерполює між точками. Залиште порожнім, щоб BattMind сам виміряв криву (доки вимірювань недостатньо, використовуються втрати повного циклу).",
+          "battery_discharging_efficiency_curve": "Зіставте потужність розряджання AC у W з ефективністю у відсотках, наприклад 500 W = 82 %, 2000 W = 93 %, 5000 W = 96 %. BattMind інтерполює між точками. Залиште порожнім, щоб BattMind сам виміряв криву (доки вимірювань недостатньо, використовуються втрати повного циклу).",
           "powerwall_wear_cost_per_kwh": "Вартість зносу батареї за кВт·год"
         },
         "data": {
@@ -280,8 +280,8 @@
           "powerwall_discharging_power": "Макс. потужність розряду",
           "powerwall_wear_cost_per_kwh": "Вартість зношування",
           "use_charge_discharge_loss_from_history": "Використовувати виміряні втрати",
-          "battery_charging_efficiency_curve": "Charging efficiency curve (optional)",
-          "battery_discharging_efficiency_curve": "Discharging efficiency curve (optional)"
+          "battery_charging_efficiency_curve": "Крива ефективності заряджання (необов'язково)",
+          "battery_discharging_efficiency_curve": "Крива ефективності розряджання (необов'язково)"
         },
         "description": "Використовується для перерахунку між % і кВт·год, обмеження плану та розрахунку вартості енергії в батареї.",
         "title": "Домашня батарея - характеристики"
@@ -679,7 +679,7 @@
         "optimizer_control": {"name": "Керувати батареєю оптимізацією всього періоду", "description": "Увімкнено: батареєю керує оптимізація всього періоду. Вимкнено: нею керують правила. Пропустіть, щоб використати поточне налаштування."},
         "use_midnight_battery_level": {"name": "Використовувати рівень батареї опівночі", "description": "Планувати лише до опівночі замість до кінця відомих цін. Пропустіть, щоб використати поточне налаштування."},
         "solar_charging": {"name": "Заряджання надлишком сонця", "description": "Враховувати надлишок сонячної енергії в плані. Пропустіть, щоб використати поточне налаштування."},
-        "enhance_battery_efficiency": {"name": "Підвищити ефективність акумулятора", "description": "Використовувати налаштовані криві ККД залежно від потужності. Ігнорується, якщо задано загальні втрати заряджання. Пропустіть, щоб використати поточне налаштування."},
+        "enhance_battery_efficiency": {"name": "Підвищити ефективність акумулятора", "description": "Використовувати криві ККД залежно від потужності (налаштовані або виміряні). Ігнорується, якщо задано загальні втрати заряджання. Пропустіть, щоб використати поточне налаштування."},
         "cheapest_hour_fill_planner": {"name": "Заряджання: Найдешевші періоди", "description": "Тимчасовий стан цього налаштування у сценарії. Пропустіть, щоб використати поточне налаштування."},
         "cheapest_hour_fill_up": {"name": "Заряджання: Повністю зарядити у найдешевший період", "description": "Тимчасовий стан цього налаштування у сценарії. Пропустіть, щоб використати поточне налаштування."},
         "most_expensive_planner": {"name": "Заряджання: Найдорожчі періоди", "description": "Тимчасовий стан цього налаштування у сценарії. Пропустіть, щоб використати поточне налаштування."},

@@ -5,7 +5,7 @@ import datetime
 import logging
 
 from ...const import CHARGING_TYPES
-from ...utils.efficiency import parse_efficiency_curve
+from ...utils.efficiency import learned_efficiency_curve, measured_efficiency_steps, parse_efficiency_curve
 from .helpers import ANALYSIS_LIST_DAYS, ANALYSIS_MONTHS, ANALYSIS_TABLE_DAYS, DAY_SUMS, FORECAST_TYPES, MONTH_NAMES, PRICE_CHART_DAYS, PRICE_CHART_LEADS, PRICE_CORRECTION_DAYS, PRICE_CORRECTION_MIN_DAYS, PRICE_FORECAST_DAYS, PRICE_RANK_HOURS, _is_num, _num
 
 _LOGGER = logging.getLogger(__name__)
@@ -17,6 +17,23 @@ class AnalysisPublishing:
     def _month_label(self, month: str) -> str:
         name = MONTH_NAMES[int(month[5:7]) - 1]
         return f"{self.t(f'ui.calendar.month_names.{name}', default=name.capitalize())[:3]} {month[2:4]}"
+
+    def _efficiency_curves(self) -> dict:
+        """Per direction the curve BattMind uses (configured, else measured), where it comes from and every measured power step."""
+        result: dict = {"enabled": self.enabled("enhance_battery_efficiency"), "source": {}, "measured": {}}
+        measured_db = self.analysis_db.get("efficiency") or {}
+        for direction in ("charging", "discharging"):
+            configured = parse_efficiency_curve(self.config["solar"].get(f"battery_{direction}_efficiency_curve"))
+            measured = measured_efficiency_steps(measured_db.get(direction), direction == "charging")
+            # fresh, the hour's measurements may be newer than the job's cache
+            curve = configured or learned_efficiency_curve(measured_db.get(direction), direction == "charging")
+            result[direction] = [{"power": round(power), "efficiency": round(efficiency * 100, 2)} for power, efficiency in curve]
+            result["source"][direction] = "configured" if configured else "measured" if curve else "none"
+            result["measured"][direction] = [
+                {**row, "power": round(row["power"]), "efficiency": round(row["efficiency"] * 100, 2), "kwh": round(row["kwh"], 2)}
+                for row in measured
+            ]
+        return result
 
     def publish_analysis(self) -> None:
         try:
@@ -326,17 +343,7 @@ class AnalysisPublishing:
             },
             "self_sufficiency": {"last_7": sufficiency(last_7), "last_30": sufficiency(last_30), "all": sufficiency(all_days)},
             "forecast": forecast,
-            "efficiency_curves": {
-                "enabled": self.enabled("enhance_battery_efficiency"),
-                "charging": [
-                    {"power": round(power), "efficiency": round(efficiency * 100, 2)}
-                    for power, efficiency in parse_efficiency_curve(solar_cfg.get("battery_charging_efficiency_curve"))
-                ],
-                "discharging": [
-                    {"power": round(power), "efficiency": round(efficiency * 100, 2)}
-                    for power, efficiency in parse_efficiency_curve(solar_cfg.get("battery_discharging_efficiency_curve"))
-                ],
-            },
+            "efficiency_curves": self._efficiency_curves(),
             "plans": plans,
             "price_forecast": price_forecast,
             "solar_forecast": {key: solar_errors(source) for key, source in (("plan", "plan_solar"), ("database", "solar_database"), ("forecast", "solar_forecast"))},

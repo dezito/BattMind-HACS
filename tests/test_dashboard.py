@@ -273,13 +273,28 @@ def test_efficiency_curve_chart_keeps_points_inside_its_time_window() -> None:
     )
     assert chart["graph_span"] == "24h"
     assert chart["span"] == {"end": "minute"}
-    assert len(chart["series"]) == 2
+    # the curves BattMind uses, and dashed every measured power step
+    assert [series["name"] for series in chart["series"]] == ["Charging", "Discharging", "Charging, measured", "Discharging, measured"]
+    assert [series.get("stroke_dash") for series in chart["series"]] == [None, None, 5, 5]
     assert "function(value, timestamp)" in chart["apex_config"]["xaxis"]["labels"]["formatter"]
     for series in chart["series"]:
         generator = series["data_generator"]
         assert "const range = end.getTime() - start.getTime();" in generator
         assert "start.getTime() + (p.power / 10000) * range" in generator
         assert "entity.attributes.efficiency_curves" in generator
+    assert ".measured || {}).charging" in chart["series"][2]["data_generator"]
+
+
+def test_efficiency_status_table_follows_the_published_sources() -> None:
+    content = yaml.safe_load(rendered("en"))
+    table = next(
+        node["content"] for node in walk(content)
+        if node.get("type") == "markdown" and "efficiency_curves" in str(node.get("content", ""))
+    )
+    assert "| | Curve used | | |" in table
+    assert "configured{% elif source == 'measured' %}measured{% else %}none yet: round-trip loss" in table
+    assert "power steps in use" in table and "kWh measured" in table
+    assert "@@" not in table
 
 def test_solar_forecast_chart_series_share_the_same_days() -> None:
     content = yaml.safe_load(rendered("en"))

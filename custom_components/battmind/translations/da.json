@@ -70,8 +70,8 @@
           "powerwall_discharging_power": "Den højeste effekt batteriet aflader med. Begrænser hvor meget der kan sælges pr. time.",
           "powerwall_charge_discharge_loss": "Tab for en hel op- og afladning som brøkdel: 0,1 = 10 % tab. Lægges oven i prisen på strømmen i batteriet.",
           "use_charge_discharge_loss_from_history": "Beregn tabet ud fra ladehistorikken i stedet (bruges når der er historik for 6 fulde ladecyklusser).",
-          "battery_charging_efficiency_curve": "Knyt AC-ladeeffekt i W til virkningsgrad i procent, f.eks. 1000 W = 88 %, 3000 W = 94 %, 5000 W = 96 %. BattMind interpolerer mellem punkterne. Lad feltet staa tomt for at bruge round-trip-tabet.",
-          "battery_discharging_efficiency_curve": "Knyt AC-afladeeffekt i W til virkningsgrad i procent, f.eks. 500 W = 82 %, 2000 W = 93 %, 5000 W = 96 %. BattMind interpolerer mellem punkterne. Lad feltet staa tomt for at bruge round-trip-tabet.",
+          "battery_charging_efficiency_curve": "Knyt AC-ladeeffekt i W til virkningsgrad i procent, f.eks. 1000 W = 88 %, 3000 W = 94 %, 5000 W = 96 %. BattMind interpolerer mellem punkterne. Lad feltet stå tomt, så måler BattMind selv kurven (round-trip-tabet bruges, indtil der er nok målinger).",
+          "battery_discharging_efficiency_curve": "Knyt AC-afladeeffekt i W til virkningsgrad i procent, f.eks. 500 W = 82 %, 2000 W = 93 %, 5000 W = 96 %. BattMind interpolerer mellem punkterne. Lad feltet stå tomt, så måler BattMind selv kurven (round-trip-tabet bruges, indtil der er nok målinger).",
           "powerwall_wear_cost_per_kwh": "Slitage pr. kWh der tages fra batteriet (batteriets pris / forventet levetid i kWh). Afladning skal tjene mere end dette."
         }
       },
@@ -310,8 +310,8 @@
           "powerwall_discharging_power": "Den højeste effekt batteriet aflader med. Begrænser hvor meget der kan sælges pr. time.",
           "powerwall_charge_discharge_loss": "Tab for en hel op- og afladning som brøkdel: 0,1 = 10 % tab. Lægges oven i prisen på strømmen i batteriet.",
           "use_charge_discharge_loss_from_history": "Beregn tabet ud fra ladehistorikken i stedet (bruges når der er historik for 6 fulde ladecyklusser).",
-          "battery_charging_efficiency_curve": "Knyt AC-ladeeffekt i W til virkningsgrad i procent, f.eks. 1000 W = 88 %, 3000 W = 94 %, 5000 W = 96 %. BattMind interpolerer mellem punkterne. Lad feltet staa tomt for at bruge round-trip-tabet.",
-          "battery_discharging_efficiency_curve": "Knyt AC-afladeeffekt i W til virkningsgrad i procent, f.eks. 500 W = 82 %, 2000 W = 93 %, 5000 W = 96 %. BattMind interpolerer mellem punkterne. Lad feltet staa tomt for at bruge round-trip-tabet.",
+          "battery_charging_efficiency_curve": "Knyt AC-ladeeffekt i W til virkningsgrad i procent, f.eks. 1000 W = 88 %, 3000 W = 94 %, 5000 W = 96 %. BattMind interpolerer mellem punkterne. Lad feltet stå tomt, så måler BattMind selv kurven (round-trip-tabet bruges, indtil der er nok målinger).",
+          "battery_discharging_efficiency_curve": "Knyt AC-afladeeffekt i W til virkningsgrad i procent, f.eks. 500 W = 82 %, 2000 W = 93 %, 5000 W = 96 %. BattMind interpolerer mellem punkterne. Lad feltet stå tomt, så måler BattMind selv kurven (round-trip-tabet bruges, indtil der er nok målinger).",
           "powerwall_wear_cost_per_kwh": "Slitage pr. kWh der tages fra batteriet (batteriets pris / forventet levetid i kWh). Afladning skal tjene mere end dette."
         }
       },
@@ -572,7 +572,7 @@
         "optimizer_control": {"name": "Styr batteriet med optimering af hele perioden", "description": "Til: optimeringen af hele perioden styrer batteriet. Fra: reglerne styrer det. Udelad feltet for at bruge den nuværende indstilling."},
         "use_midnight_battery_level": {"name": "Brug midnat batteriniveau", "description": "Planlæg kun til midnat i stedet for til slutningen af de kendte priser. Udelad feltet for at bruge den nuværende indstilling."},
         "solar_charging": {"name": "Solcelleoverskud til opladning", "description": "Medtag soloverskuddet i planen. Udelad feltet for at bruge den nuværende indstilling."},
-        "enhance_battery_efficiency": {"name": "Forbedr batteriets virkningsgrad", "description": "Brug de konfigurerede effektafhængige virkningsgradskurver. Ignoreres, når et samlet ladetab er angivet. Udelad feltet for at bruge den nuværende indstilling."},
+        "enhance_battery_efficiency": {"name": "Forbedr batteriets virkningsgrad", "description": "Brug de effektafhængige virkningsgradskurver (indstillede eller målte). Ignoreres, når et samlet ladetab er angivet. Udelad feltet for at bruge den nuværende indstilling."},
         "cheapest_hour_fill_planner": {"name": "Ladning: Billigste perioder planlægger", "description": "Midlertidig indstilling i scenariet. Udelad feltet for at bruge den nuværende indstilling."},
         "cheapest_hour_fill_up": {"name": "Ladning: Fyld op i billigste periode", "description": "Midlertidig indstilling i scenariet. Udelad feltet for at bruge den nuværende indstilling."},
         "most_expensive_planner": {"name": "Ladning: Dyreste perioder planlægger", "description": "Midlertidig indstilling i scenariet. Udelad feltet for at bruge den nuværende indstilling."},

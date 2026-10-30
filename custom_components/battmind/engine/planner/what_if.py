@@ -19,6 +19,7 @@ from ...const import (
 from ..optimizer import OptimizerConfig, OptimizerHour
 from ..energy.energy import derive_power_values
 from ...prices.base import calculate_sell_price
+from ...utils.efficiency import efficiency_curve_mapping, parse_efficiency_curve
 from ...utils.power import unit_factor_to_w
 from ...utils.helpers import float_or_none
 from .replay import replay_history
@@ -393,6 +394,11 @@ class WhatIf:
         # the replay has no charging history: the measured round trip loss is used as configured
         solar["powerwall_charge_discharge_loss"] = self.get_charging_loss()
         solar["use_charge_discharge_loss_from_history"] = False
+        # nor the analysis: measured efficiency curves are used as configured
+        for direction in ("charging", "discharging"):
+            key = f"battery_{direction}_efficiency_curve"
+            if not parse_efficiency_curve(solar.get(key)):
+                solar[key] = efficiency_curve_mapping(self.learned_efficiency_curve(direction))
         settings = {key: self.setting(key) for key in (*SWITCH_SETTINGS, *NUMBER_SETTINGS, *SELECT_SETTINGS, *TEXT_SETTINGS)}
         for input_key, config_key in _CONFIG_OVERRIDES.items():
             if input_key in overrides:
