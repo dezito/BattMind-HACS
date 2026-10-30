@@ -174,6 +174,11 @@ class FutureOptimizer:
         def when(index):
             return hours[index].timestamp.strftime("%d/%m %H:%M")
 
+        def clock(index, timestamp):
+            """The target's time in a title, with the date when it is another day than the hour."""
+            target = hours[index].timestamp
+            return target.strftime("%H:%M") if target.date() == timestamp.date() else when(index)
+
         new_charge_hours = {}
         new_plan = {
             day: {
@@ -261,7 +266,7 @@ class FutureOptimizer:
                 plan_day["discharge_timestamps"].append(timestamp)
             elif action == "blocked_solar_charge":
                 later = f"{ctx.r('charged_instead_at', time=when(target))}<br>" if target is not None else ""
-                charged_at = f" ({hours[target].timestamp.strftime('%H:%M')})" if target is not None else ""
+                charged_at = f" ({clock(target, timestamp)})" if target is not None else ""
                 plan_day["blocked_solar_charge_timestamps"][timestamp] = {
                     "reason": (
                         f"<details><summary>{emoji_parse({'blocked_solar_charge': True})}{ctx.r('title.blocked_solar')}{charged_at}</summary>"
@@ -274,7 +279,7 @@ class FutureOptimizer:
                     f"{ctx.r('used_instead_at', time=when(target), price=f'{hours[target].buy:.2f} {ctx.valuta_kwh}')}<br>"
                     if target is not None else f"{ctx.r('worth_more_later')}<br>"
                 )
-                title = ctx.r("title.most_expensive_prioritized") + (f" ({hours[target].timestamp.strftime('%H:%M')})" if target is not None else "")
+                title = ctx.r("title.most_expensive_prioritized") + (f" ({clock(target, timestamp)})" if target is not None else "")
                 plan_day["blocked_discharge_timestamps"][timestamp] = (
                     f"<details><summary>{emoji_parse({'prioritize_discharge_hours_by_energy_cost': True})}{title}</summary>"
                     f"{ctx.r('price_now')}: **{hour.buy:.2f} {ctx.valuta_kwh}**<br>{later}{level_text}"
