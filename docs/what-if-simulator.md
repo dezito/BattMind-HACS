@@ -43,9 +43,11 @@ entry and fill only the values you want to replace. Run the action to receive a 
 with a two-column comparison of the configured values and the what-if scenario; only values and rule
 switches that differ from the current setup are listed. The action also keeps
 returning the full simulation response for automations and scripts. A progress notification is shown
-while history is loaded and the simulation runs; it is updated when the simulation starts and then at
-most every 10 seconds with the percentage done and the simulated days, and the finished result (or an
-error) replaces that same notification.
+while history is loaded and the simulation runs. While the history is loaded it shows the current step
+(long-term statistics, raw Recorder history, Energi Data Service tariffs, hourly values, preparing the
+simulation) and the elapsed seconds, updated when the step changes and at least every 10 seconds. When
+the simulation starts it is updated at most every 10 seconds with the percentage done and the simulated
+days, and the finished result (or an error) replaces that same notification.
 
 Example action:
 
@@ -101,8 +103,9 @@ the current value beside the scenario value for each setting you changed.
 
 Both **current** and **scenario** contain the net result with and without the battery, expected profit,
 charged grid/solar energy, energy delivered to the house, sales, wear, the final battery level and the
-profit and simulated hours per calendar month (**months**). The change of the battery level within a
-month is valued like the energy left at the end, so the months add up to the profit.
+profit, net result with the battery (**bill**) and simulated hours per calendar month (**months**). The
+change of the battery level within a month is valued like the energy left at the end, so the months add
+up to the profit and the net result.
 
 ## Less history than requested
 
@@ -112,9 +115,10 @@ alone. The notification then also says how many days are missing, which entity h
 further back (and from which date its data starts), and how many hours inside the period are missing
 because of gaps or missing tariffs.
 
-Below the reliable results, a separate, clearly marked section estimates the profit of the whole
-requested period for both columns: the reliable profit, an estimate for the missing days and the
-total. Each missing hour gets the average profit per hour of the same calendar month (any year) when
+Below the reliable results, a separate, clearly marked section estimates the net result after purchases
+and sales (with the battery) of the whole requested period for both columns: the reliable net result,
+an estimate for the missing days and the total, and the improvement of the scenario (a lower net result
+is better). Each missing hour gets the average net result per hour of the same calendar month (any year) when
 that month has at least 7 days of simulated data (or a quarter of a shorter requested period); otherwise
 it gets the average of the nearest calendar month with enough data, and the notification lists those
 months. The estimate is only shown when at least half of the requested hours were simulated; otherwise

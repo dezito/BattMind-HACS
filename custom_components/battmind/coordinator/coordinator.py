@@ -10,6 +10,7 @@ from __future__ import annotations
 import asyncio
 import datetime
 import logging
+import time
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 from logging.handlers import QueueHandler, QueueListener
@@ -18,13 +19,15 @@ from typing import Any, Callable
 from homeassistant.components import persistent_notification
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import STATE_UNAVAILABLE, STATE_UNKNOWN
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.dispatcher import async_dispatcher_send
+from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.util import dt as dt_util
 
 from ..const import CONF_ENTITY_PREFIX, PRICE_PROVIDER_PRIORITY, SIGNAL_UPDATE, build_config, default_options
 from ..engine import BattMindEngine, JobResult
+from ..engine.planner.what_if import PROGRESS_INTERVAL
 from ..utils.formatting import translate
 from ..management.debug_export import DebugRecorder
 from ..management.storage import BattMindStorage
@@ -218,13 +221,11 @@ class BattMindCoordinator(CoordinatorLifecycle, CoordinatorEvents, CoordinatorDa
     ) -> JobResult:
         """Load hourly recorder statistics and run an economic historical comparison.
 
-        progress (optional) is called on the event loop while the simulation runs.
+        progress (optional) is called on the event loop while the history is loaded, with
+        {"phase", "seconds"}, and then while the simulation runs (see WhatIf.what_if()).
         """
         if "recorder" not in self.hass.config.components:
             raise HomeAssistantError("Recorder is required for the historical what-if comparison")
-        from homeassistant.components.recorder import get_instance, history
-        from homeassistant.components.recorder.statistics import statistics_during_period
-
         price_ids = self.config["prices"]["entity_ids"]
         price_providers = []
         # PRICE_PROVIDER_PRIORITY order: the what-if uses the first provider with price
@@ -288,8 +289,59 @@ class BattMindCoordinator(CoordinatorLifecycle, CoordinatorEvents, CoordinatorDa
         }
         end = dt_util.utcnow().replace(minute=0, second=0, microsecond=0)
         start = end - datetime.timedelta(days=history_days)
+        # the loading phase is reported when it changes and then every PROGRESS_INTERVAL seconds,
+        # until the simulation reports its own progress
+        started = time.monotonic()
+        phase: list[str | None] = [None]
+
+        @callback
+        def report_phase(name: str | None = None) -> None:
+            if name is not None:
+                phase[0] = name
+            if progress is not None and phase[0] is not None:
+                progress({"phase": phase[0], "seconds": int(time.monotonic() - started)})
+
+        @callback
+        def tick(_now: datetime.datetime) -> None:
+            report_phase()
+
+        @callback
+        def simulation_progress(info: dict) -> None:
+            # the simulation reports its own progress from now on
+            phase[0] = None
+            progress(info)
+
+        def report(info: dict) -> None:
+            # called in the worker thread
+            self.hass.loop.call_soon_threadsafe(simulation_progress, info)
+
+        cancel_ticker = async_track_time_interval(self.hass, tick, datetime.timedelta(seconds=PROGRESS_INTERVAL))
+        try:
+            return await self._async_what_if_run(
+                overrides, history_days, start, end, entities, price_providers, report_phase,
+                report if progress else None,
+            )
+        finally:
+            cancel_ticker()
+
+    async def _async_what_if_run(
+        self,
+        overrides: dict,
+        history_days: int,
+        start: datetime.datetime,
+        end: datetime.datetime,
+        entities: set[str],
+        price_providers: list[dict],
+        report_phase: Callable[[str], None],
+        report: Callable[[dict], None] | None,
+    ) -> JobResult:
+        """Read the Recorder history of the what-if comparison and run it in the worker."""
+        from homeassistant.components.recorder import get_instance, history
+        from homeassistant.components.recorder.statistics import statistics_during_period
+
         try:
             recorder = get_instance(self.hass)
+            report_phase("statistics")
             stats = await recorder.async_add_executor_job(
                 statistics_during_period,
                 self.hass,
@@ -300,6 +352,7 @@ class BattMindCoordinator(CoordinatorLifecycle, CoordinatorEvents, CoordinatorDa
                 None,
                 {"mean", "state"},
             )
+            report_phase("states")
             states = await recorder.async_add_executor_job(
                 partial(
                     history.get_significant_states,
@@ -321,6 +374,8 @@ class BattMindCoordinator(CoordinatorLifecycle, CoordinatorEvents, CoordinatorDa
                 and provider["sell_entity_id"]
                 and provider["sell_includes_tariffs"]
             }
+            if eds_sell_entities:
+                report_phase("tariffs")
             tariff_states = (
                 await recorder.async_add_executor_job(
                     partial(
@@ -341,9 +396,11 @@ class BattMindCoordinator(CoordinatorLifecycle, CoordinatorEvents, CoordinatorDa
             )
         except Exception as err:  # noqa: BLE001
             raise HomeAssistantError(f"Could not read Recorder history and long-term statistics: {err}") from err
-        recorder_hourly = self._recorder_hourly_means(states, start, end)
-        combined_stats, statistical_timestamps = self._combine_what_if_statistics(entities, stats, recorder_hourly)
-        tariff_history = self._recorder_tariff_history(tariff_states)
+        # the raw history of a year can be large: it is converted outside the event loop
+        report_phase("hourly")
+        combined_stats, statistical_timestamps, tariff_history = await self.hass.async_add_executor_job(
+            self._what_if_history, entities, stats, states, tariff_states, start, end
+        )
         for provider in price_providers:
             if provider["name"] == "Energi Data Service" and provider["sell_entity_id"]:
                 provider["sell_tariff_history"] = tariff_history.get(provider["sell_entity_id"], [])
@@ -353,11 +410,8 @@ class BattMindCoordinator(CoordinatorLifecycle, CoordinatorEvents, CoordinatorDa
             "long_term_statistics_timestamps": statistical_timestamps,
             "requested_period": {"start": start.timestamp(), "end": end.timestamp(), "days": history_days},
         }
-        def report(info: dict) -> None:
-            # called in the worker thread
-            self.hass.loop.call_soon_threadsafe(progress, info)
-
-        return await self.async_run_job("what_if", data, overrides, progress=report if progress else None)
+        report_phase("preparing")
+        return await self.async_run_job("what_if", data, overrides, progress=report)
 
     async def async_debug_info(self) -> str:
         extra = {
