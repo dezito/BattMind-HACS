@@ -5,7 +5,7 @@ import datetime
 import logging
 
 from ...const import HISTORY_BUFFER_HOURS, PRICE_ADDER_DAY_BETWEEN_DIVIDER
-from ...utils.efficiency import add_efficiency_measurement, measure_efficiency
+from ...utils.efficiency import EFFICIENCY_BACKFILL_VERSION, add_efficiency_measurement, measure_efficiency
 from ...utils.helpers import days_between, reset_time_to_hour
 from ...utils.power import unit_factor_to_w
 from .helpers import ANALYSIS_DAYS, FORECAST_TYPES, PRICE_FORECAST_DAYS, PRICE_HOURS_DAYS, _is_num, _num, _r, evaluate_price_day, grid_cost, hindsight_cost, hourly_prices, rules_of_entries, summarize_day
@@ -114,6 +114,23 @@ class AnalysisRecording:
             return None
         return {"actual": round(actual, 3), "no_battery": round(no_battery, 3), "optimal": round(min(optimal, actual), 3)}
 
+    def _efficiency_measure(self, flow: list, levels: list, start: float, end: float) -> float:
+        """Add the measurements of the battery power and level rows between start and end; returns the time measured until."""
+        database = self.analysis_db.setdefault("efficiency", {})
+        measurements, until = measure_efficiency(
+            flow,
+            levels,
+            start,
+            end,
+            unit_factor_to_w(self._wc.units.get(self.config["home"]["entity_ids"]["powerwall_watt_flow_entity_id"])),
+            self.config["home"]["invert_powerwall_watt_flow_entity_id"],
+            self.config["solar"]["powerwall_battery_size"],
+        )
+        for direction, ac_kwh, battery_kwh, seconds in measurements:
+            add_efficiency_measurement(database.setdefault(direction, {}), ac_kwh, battery_kwh, seconds)
+        self.mark_dirty("analysis")
+        return until
+
     def _analysis_record_efficiency(self) -> None:
         """Charging and discharging efficiency per AC power step, measured since the last time (utils/efficiency)."""
         ids = self.config["home"]["entity_ids"]
@@ -124,19 +141,34 @@ class AnalysisRecording:
         end = self.now().replace(tzinfo=self._wc.tz).timestamp()
         # the buffers hold the states of the last HISTORY_BUFFER_HOURS
         start = max(_num(database.get("until")), end - (HISTORY_BUFFER_HOURS - 2) * 3600)
-        measurements, until = measure_efficiency(
-            self._wc.buffers.get(flow_id) or [],
-            self._wc.buffers.get(level_id) or [],
-            start,
-            end,
-            unit_factor_to_w(self._wc.units.get(flow_id)),
-            self.config["home"]["invert_powerwall_watt_flow_entity_id"],
-            self.config["solar"]["powerwall_battery_size"],
-        )
-        for direction, ac_kwh, battery_kwh, seconds in measurements:
-            add_efficiency_measurement(database.setdefault(direction, {}), ac_kwh, battery_kwh, seconds)
-        database["until"] = until
+        # the recorder history before this is read by analysis_efficiency_backfill()
+        database.setdefault("from", start)
+        database["until"] = self._efficiency_measure(self._wc.buffers.get(flow_id) or [], self._wc.buffers.get(level_id) or [], start, end)
+
+    def efficiency_backfilled(self) -> bool:
+        return (self.analysis_db.get("efficiency") or {}).get("backfilled") == EFFICIENCY_BACKFILL_VERSION
+
+    def analysis_efficiency_backfill(self, data: dict) -> None:
+        """The first time: the measurements of the recorder history {"flow": rows, "level": rows} (coordinator).
+
+        Only before the time the hourly measuring started, so nothing is counted twice.
+        """
+        database = self.analysis_db.setdefault("efficiency", {})
+        flow, levels = data.get("flow") or [], data.get("level") or []
+        if flow and levels and self._wc is not None:
+            start = min(flow[0][0], levels[0][0])
+            if "from" in database:
+                self._efficiency_measure(flow, levels, start, _num(database["from"]))
+            else:
+                # measured without knowing where it started: measured again from the history
+                database.pop("charging", None)
+                database.pop("discharging", None)
+                database["until"] = self._efficiency_measure(flow, levels, start, self.now().replace(tzinfo=self._wc.tz).timestamp())
+                database["from"] = start
+        _LOGGER.info("Efficiency: %s battery power and %s battery level states read from the recorder", len(flow), len(levels))
+        database["backfilled"] = EFFICIENCY_BACKFILL_VERSION
         self.mark_dirty("analysis")
+        self.publish_analysis()
 
     def _analysis_record_prices(self) -> None:
         """The buy price forecast per days ahead, the real prices and the days they are all known for."""

@@ -94,6 +94,13 @@ once it has at least 20 measurements and 2 kWh (efficiencies above 100 % are cap
 50 % are not used). Beyond 100 kWh in a step the older measurements count half, so the curve follows
 an ageing battery.
 
+The first time, BattMind reads the battery power and level from the Home Assistant recorder history
+(up to 30 days, as far as the recorder keeps it; one day at a time in the background), so the curve
+does not have to wait for new data. Only the history before the hourly measuring started is added,
+so nothing is counted twice. BattMind's own charging history cannot be used for this: it stores the
+energy per hour, and its battery percentages are calculated from that energy, not measured. The
+long-term statistics only have hourly means, which cannot show when the battery level changed.
+
 The solid lines are the curves BattMind plans with: a configured curve, otherwise the measured one. The
 dashed lines show every measured step, including the ones without enough measurements yet. The table
 below says per direction which curve is used, how many steps are in use and how much energy has been

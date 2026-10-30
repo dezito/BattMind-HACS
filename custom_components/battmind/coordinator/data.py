@@ -20,6 +20,7 @@ from homeassistant.util import dt as dt_util
 from ..const import HISTORY_BUFFER_HOURS
 from ..engine import Snapshot
 from ..engine.analysis.helpers import ANALYSIS_DAYS
+from ..utils.efficiency import EFFICIENCY_BACKFILL_DAYS
 from ..utils.helpers import float_or_none
 from ..utils.power import merge_rows
 from ..prices import TARIFF_STATE_KEYS
@@ -354,6 +355,52 @@ class CoordinatorData:
                 del rows[: index - 1]
         for rows in self._statistics.values():
             del rows[: bisect.bisect_left(rows, (cutoff - 3600,))]
+
+    async def _async_efficiency_backfill(self) -> None:
+        """The first time: the battery power and level of the recorder history for the measured efficiency (engine/analysis)."""
+        if "recorder" not in self.hass.config.components:
+            return
+        from homeassistant.components.recorder import get_instance, history
+
+        home = self.config["home"]["entity_ids"]
+        entities = [home["powerwall_watt_flow_entity_id"], home["powerwall_battery_level_entity_id"]]
+        if not all(entities):
+            return
+        rows: dict[str, list] = {entity_id: [] for entity_id in entities}
+        end = dt_util.utcnow()
+        first = end - datetime.timedelta(days=EFFICIENCY_BACKFILL_DAYS)
+        start = first
+        try:
+            # a day at a time: a power sensor can have thousands of states a day
+            while start < end:
+                stop = min(start + datetime.timedelta(days=1), end)
+                states = await get_instance(self.hass).async_add_executor_job(
+                    partial(
+                        history.get_significant_states,
+                        self.hass,
+                        start,
+                        stop,
+                        entities,
+                        None,
+                        include_start_time_state=start == first,
+                        significant_changes_only=False,
+                        minimal_response=False,
+                        no_attributes=True,
+                    )
+                )
+                for entity_id in entities:
+                    for state in states.get(entity_id, []):
+                        try:
+                            rows[entity_id].append((state.last_updated.timestamp(), float_or_none(state.state)))
+                        except AttributeError:
+                            continue
+                start = stop
+        except Exception as err:  # noqa: BLE001
+            _LOGGER.warning("Efficiency: could not read the recorder history: %s", err)
+            return
+        await self.async_run_job(
+            "analysis_efficiency_backfill", {"flow": merge_rows([], rows[entities[0]]), "level": merge_rows([], rows[entities[1]])}
+        )
 
     async def _async_analysis_backfill(self) -> None:
         """The first time: the energy per hour of the last year from the long-term statistics (engine/analysis)."""
