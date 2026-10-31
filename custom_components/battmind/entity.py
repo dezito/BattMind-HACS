@@ -7,6 +7,7 @@ from homeassistant.core import State, callback
 from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity import Entity
+from homeassistant.helpers.typing import UndefinedType
 
 from .const import DOMAIN, MANUFACTURER
 from .coordinator import BattMindCoordinator
@@ -34,7 +35,8 @@ class BattMindEntity(Entity):
         prefix = coordinator.prefix
         self.entity_id = f"{platform}.{prefix}_{key}"
         self._attr_unique_id = f"{coordinator.entry.entry_id}_{key}"
-        # name from translations/<language>.json and icon from icons.json (entity.<platform>.<key>)
+        # name from translations/<language>.json of the entry's language (see name) and icon from
+        # icons.json (entity.<platform>.<key>)
         self._attr_translation_key = key
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, coordinator.entry.entry_id)},
@@ -43,6 +45,17 @@ class BattMindEntity(Entity):
             model="BattMind",
             entry_type=DeviceEntryType.SERVICE,
         )
+
+    @property
+    def name(self) -> str | UndefinedType | None:
+        """Name in the language chosen for the entry, HA's translation_key uses its own UI language."""
+        name = self.coordinator.entity_names.get(f"{self._platform_domain}.{self._key}")
+        if name is None:
+            return super().name
+        try:
+            return name.format(**self.translation_placeholders)
+        except (KeyError, IndexError, ValueError):
+            return name
 
     def legacy_state(self) -> State | None:
         """State of the matching PyScript helper (input_boolean.battmind_x, ...)."""

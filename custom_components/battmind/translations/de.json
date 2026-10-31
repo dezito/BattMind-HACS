@@ -217,7 +217,7 @@
         },
         "data_description": {
           "entity_prefix": "z. B. battmind, battmind_ha oder garage_battery",
-          "language": "Sprache der Übersicht, des Ladeverlaufs, der Laderegel und der Benachrichtigungen."
+          "language": "Sprache der Entitätsnamen, der Übersicht, des Ladeverlaufs, der Laderegel und der Benachrichtigungen."
         },
         "description": "BattMind plant, wann der Hausakku aus dem Netz laden, entladen oder verkaufen soll, anhand von Preisen, Verbrauch und Solarprognose. Der Plan wird als Sensoren veröffentlicht, die du in eigenen Automationen nutzt.\n\n**Entitäts-Präfix** wird in jeder Entity-ID genutzt, z. B. `sensor.PREFIX_powerwall_action`. Nutze für jede Instanz ein anderes Präfix (und ein anderes als die PyScript-Version, wenn beide laufen). Es kann später nicht geändert werden.",
         "title": "BattMind hinzufügen"
@@ -455,7 +455,7 @@
           "language": "Sprache"
         },
         "data_description": {
-          "language": "Sprache der Übersicht, des Ladeverlaufs, der Laderegel und der Benachrichtigungen."
+          "language": "Sprache der Entitätsnamen, der Übersicht, des Ladeverlaufs, der Laderegel und der Benachrichtigungen."
         },
         "title": "Allgemein"
       },

@@ -45,6 +45,10 @@ The prefix starts every entity id: with `battmind` you get `sensor.battmind_powe
 prefix per battery. If the [PyScript version](migration.md) still runs, choose another prefix (e.g.
 `battmind_ha`).
 
+The language is used for the entity names, the dashboard, the charging rule and notifications. It can be
+changed later under **Configure → General**; the entry reloads and the entity names follow (names you
+renamed yourself are kept).
+
 ### Home battery – sensors
 
 - **Battery power:** BattMind expects **positive while discharging, negative while charging**. If your

@@ -646,6 +646,23 @@ async def test_settings_and_databases_survive_reload(hass: HomeAssistant, loaded
     assert coordinator.settings["cheap_price_periods"] == 4
 
 
+async def test_entity_names_follow_the_language_of_the_entry(hass: HomeAssistant, loaded_entry) -> None:
+    """HA names translation_key entities in its UI language (en), BattMind in the entry's (da, then en)."""
+    assert hass.config.language == "en"
+    entity_id = f"switch.{PREFIX}_solar_charging"
+    assert er.async_get(hass).async_get(entity_id).original_name == "Solcelleoverskud til opladning"
+    assert hass.states.get(entity_id).attributes["friendly_name"].endswith("Solcelleoverskud til opladning")
+
+    old_coordinator = loaded_entry.runtime_data
+    hass.config_entries.async_update_entry(loaded_entry, options={**loaded_entry.options, "language": "en"})
+    await hass.async_block_till_done(wait_background_tasks=True)
+    await hass.async_add_executor_job(old_coordinator._executor.shutdown, True)
+
+    assert loaded_entry.runtime_data is not old_coordinator
+    assert er.async_get(hass).async_get(entity_id).original_name == "Solar surplus charging"
+    assert hass.states.get(entity_id).attributes["friendly_name"].endswith("Solar surplus charging")
+
+
 async def test_missing_entity_waits_and_notifies(hass: HomeAssistant, mock_entry) -> None:
     """A configured entity that does not exist: retry after 2 minutes, then a persistent notification."""
     set_source_states(hass)

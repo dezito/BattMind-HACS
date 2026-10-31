@@ -10,7 +10,7 @@
         },
         "data_description": {
           "entity_prefix": "e.g. battmind, battmind_ha or garage_battery",
-          "language": "Language used in the overview, charging history, charging rule and notifications."
+          "language": "Language used for entity names, the overview, charging history, charging rule and notifications."
         }
       },
       "import_legacy": {
@@ -264,7 +264,7 @@
           "language": "Language"
         },
         "data_description": {
-          "language": "Language used in the overview, charging history, charging rule and notifications."
+          "language": "Language used for entity names, the overview, charging history, charging rule and notifications."
         }
       },
       "battery_entities": {

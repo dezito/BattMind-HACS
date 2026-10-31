@@ -217,7 +217,7 @@
         },
         "data_description": {
           "entity_prefix": "np. battmind, battmind_ha lub garage_battery",
-          "language": "Język przeglądu, historii ładowania, reguły ładowania i powiadomień."
+          "language": "Język nazw encji, przeglądu, historii ładowania, reguły ładowania i powiadomień."
         },
         "description": "BattMind planuje, kiedy bateria domowa ma ładować się z sieci, rozładowywać lub sprzedawać, na podstawie cen, zużycia i prognozy słonecznej. Plan jest publikowany jako czujniki, których używasz we własnych automatyzacjach.\n\n**Prefiks encji** jest używany w każdym identyfikatorze encji, np. `sensor.PREFIX_powerwall_action`. Użyj innego prefiksu dla każdej instancji (i innego niż wersja PyScript, jeśli działają obie). Nie można go później zmienić.",
         "title": "Dodaj BattMind"
@@ -455,7 +455,7 @@
           "language": "Język"
         },
         "data_description": {
-          "language": "Język przeglądu, historii ładowania, reguły ładowania i powiadomień."
+          "language": "Język nazw encji, przeglądu, historii ładowania, reguły ładowania i powiadomień."
         },
         "title": "Ogólne"
       },
