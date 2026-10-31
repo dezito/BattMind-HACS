@@ -123,6 +123,34 @@ async def test_post_setup_work_waits_until_home_assistant_started(hass: HomeAssi
     action.assert_awaited_once_with()
 
 
+async def test_unload_removes_the_startup_listener_only_once(hass: HomeAssistant, mock_entry, caplog) -> None:
+    """A reload after startup must not remove the fired one-time listener again (HA logs an error)."""
+    action = AsyncMock()
+    hass.set_state(CoreState.starting)
+    with patch.object(mock_entry, "async_on_unload") as on_unload:
+        await _async_run_after_home_assistant_started(hass, mock_entry, action, "battmind_test_startup")
+    hass.set_state(CoreState.running)
+    hass.bus.async_fire(EVENT_HOMEASSISTANT_STARTED)
+    await hass.async_block_till_done()
+    action.assert_awaited_once_with()
+
+    on_unload.call_args.args[0]()
+    assert "Unable to remove unknown job listener" not in caplog.text
+
+
+async def test_unload_before_startup_cancels_the_work(hass: HomeAssistant, mock_entry) -> None:
+    action = AsyncMock()
+    hass.set_state(CoreState.starting)
+    with patch.object(mock_entry, "async_on_unload") as on_unload:
+        await _async_run_after_home_assistant_started(hass, mock_entry, action, "battmind_test_startup")
+    on_unload.call_args.args[0]()
+
+    hass.set_state(CoreState.running)
+    hass.bus.async_fire(EVENT_HOMEASSISTANT_STARTED)
+    await hass.async_block_till_done()
+    action.assert_not_awaited()
+
+
 async def test_setup_creates_entities(hass: HomeAssistant, loaded_entry) -> None:
     assert loaded_entry.state is ConfigEntryState.LOADED
     coordinator = loaded_entry.runtime_data

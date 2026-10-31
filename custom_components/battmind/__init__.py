@@ -506,11 +506,22 @@ async def _async_run_after_home_assistant_started(
         await asyncio.sleep(0)
         await action()
 
+    unsub: Callable[[], None] | None = None
+
     @callback
     def _started(_event: Event) -> None:
+        # HA removed the fired one-time listener, removing it again on unload logs an error
+        nonlocal unsub
+        unsub = None
         entry.async_create_task(hass, _async_run(), name=name)
 
-    entry.async_on_unload(hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STARTED, _started))
+    @callback
+    def _cancel() -> None:
+        if unsub is not None:
+            unsub()
+
+    unsub = hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STARTED, _started)
+    entry.async_on_unload(_cancel)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: BattMindConfigEntry) -> bool:
