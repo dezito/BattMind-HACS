@@ -123,6 +123,34 @@ async def test_post_setup_work_waits_until_home_assistant_started(hass: HomeAssi
     action.assert_awaited_once_with()
 
 
+async def test_unload_removes_the_startup_listener_only_once(hass: HomeAssistant, mock_entry, caplog) -> None:
+    """A reload after startup must not remove the fired one-time listener again (HA logs an error)."""
+    action = AsyncMock()
+    hass.set_state(CoreState.starting)
+    with patch.object(mock_entry, "async_on_unload") as on_unload:
+        await _async_run_after_home_assistant_started(hass, mock_entry, action, "battmind_test_startup")
+    hass.set_state(CoreState.running)
+    hass.bus.async_fire(EVENT_HOMEASSISTANT_STARTED)
+    await hass.async_block_till_done()
+    action.assert_awaited_once_with()
+
+    on_unload.call_args.args[0]()
+    assert "Unable to remove unknown job listener" not in caplog.text
+
+
+async def test_unload_before_startup_cancels_the_work(hass: HomeAssistant, mock_entry) -> None:
+    action = AsyncMock()
+    hass.set_state(CoreState.starting)
+    with patch.object(mock_entry, "async_on_unload") as on_unload:
+        await _async_run_after_home_assistant_started(hass, mock_entry, action, "battmind_test_startup")
+    on_unload.call_args.args[0]()
+
+    hass.set_state(CoreState.running)
+    hass.bus.async_fire(EVENT_HOMEASSISTANT_STARTED)
+    await hass.async_block_till_done()
+    action.assert_not_awaited()
+
+
 async def test_setup_creates_entities(hass: HomeAssistant, loaded_entry) -> None:
     assert loaded_entry.state is ConfigEntryState.LOADED
     coordinator = loaded_entry.runtime_data
@@ -644,6 +672,23 @@ async def test_settings_and_databases_survive_reload(hass: HomeAssistant, loaded
     assert hass.states.get(f"switch.{PREFIX}_cheapest_hour_fill_up").state == "on"
     assert float(hass.states.get(f"number.{PREFIX}_cheap_price_periods").state) == 4
     assert coordinator.settings["cheap_price_periods"] == 4
+
+
+async def test_entity_names_follow_the_language_of_the_entry(hass: HomeAssistant, loaded_entry) -> None:
+    """HA names translation_key entities in its UI language (en), BattMind in the entry's (da, then en)."""
+    assert hass.config.language == "en"
+    entity_id = f"switch.{PREFIX}_solar_charging"
+    assert er.async_get(hass).async_get(entity_id).original_name == "Solcelleoverskud til opladning"
+    assert hass.states.get(entity_id).attributes["friendly_name"].endswith("Solcelleoverskud til opladning")
+
+    old_coordinator = loaded_entry.runtime_data
+    hass.config_entries.async_update_entry(loaded_entry, options={**loaded_entry.options, "language": "en"})
+    await hass.async_block_till_done(wait_background_tasks=True)
+    await hass.async_add_executor_job(old_coordinator._executor.shutdown, True)
+
+    assert loaded_entry.runtime_data is not old_coordinator
+    assert er.async_get(hass).async_get(entity_id).original_name == "Solar surplus charging"
+    assert hass.states.get(entity_id).attributes["friendly_name"].endswith("Solar surplus charging")
 
 
 async def test_missing_entity_waits_and_notifies(hass: HomeAssistant, mock_entry) -> None:

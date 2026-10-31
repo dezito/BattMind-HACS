@@ -10,7 +10,7 @@
         },
         "data_description": {
           "entity_prefix": "f.eks. battmind, battmind_ha eller garage_batteri",
-          "language": "Sprog i oversigten, ladehistorikken, ladereglen og notifikationer."
+          "language": "Sprog i entitetsnavne, oversigten, ladehistorikken, ladereglen og notifikationer."
         }
       },
       "import_legacy": {
@@ -264,7 +264,7 @@
           "language": "Sprog"
         },
         "data_description": {
-          "language": "Sprog i oversigten, ladehistorikken, ladereglen og notifikationer."
+          "language": "Sprog i entitetsnavne, oversigten, ladehistorikken, ladereglen og notifikationer."
         }
       },
       "battery_entities": {

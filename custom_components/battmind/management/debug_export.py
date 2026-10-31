@@ -308,7 +308,7 @@ def _log_file_tail(path: str) -> list[str] | None:
 
 def _write(folder: str, name: str, prefix: str, data: dict[str, Any], redactor: Redactor) -> int:
     """Anonymise and write the export, remove the oldest files of the instance (blocking)."""
-    content = json.dumps(redactor.value(data), ensure_ascii=False, separators=(",", ":"), default=str).encode("utf-8")
+    content = json.dumps(redactor.value(data), ensure_ascii=False, separators=(",", ":"), indent=4, sort_keys=True, default=str).encode("utf-8")
     os.makedirs(folder, exist_ok=True)
     path = os.path.join(folder, name)
     with gzip.open(f"{path}.tmp", "wb") as file:
