@@ -8,6 +8,9 @@
     "sun",
     "weather"
   ],
+  "categories": [
+    "energy.solar_batteries"
+  ],
   "codeowners": [
     "@dezito"
   ],
