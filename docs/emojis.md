@@ -17,6 +17,13 @@ emoji always means the same rule.
 
 In testing mode (setup → *Advanced*), the current rule is wrapped in 🧪, so a test instance can be told apart.
 
+<details>
+<summary>Screenshot of the emoji explanation</summary>
+
+<p align="center"><img src="../images/emoji-description.png" alt="The emoji explanation on the dashboard" width="380"></p>
+
+</details>
+
 ## Charging
 
 | Emoji | Meaning | Rule |

@@ -114,6 +114,10 @@ the latest calculations, the inputs they ran with and the latest log messages.
 3. Describe what happened, when it happened and what you expected, and drag the `.json.gz` file into the
    field *Debug file*.
 
+<p align="center">
+  <img src="../images/problem-or-error.png" alt="The Problem or error? section with the Export debug info button" width="380">
+</p>
+
 ### What is in the debug file
 
 What's in the file is there so the problem can be found and the calculation replayed:

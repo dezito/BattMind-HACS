@@ -61,6 +61,10 @@ charging with solar surplus is not included. A car whose plan is not available i
 and the total and the bill incl. the cars are then left out. Right after a restart this can happen until
 CJP has published its plan; the next planning picks it up.
 
+<p align="center">
+  <img src="../images/plan-electric-cars-and-solar-surplus.png" alt="Electric cars in the period and the electricity bill incl. the cars" width="380">
+</p>
+
 ## Careful: fewer cycles, more margin
 
 For a new battery, or when you don't trust the price forecast yet:

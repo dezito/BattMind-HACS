@@ -7,6 +7,10 @@ period.
 See also [Buy to sell](charging.md#-buy-to-sell) (charge only to sell) and [Before the sun](discharging.md#-before-the-sun)
 (sell before the sun fills the battery).
 
+<p align="center">
+  <img src="../../images/settings-selling.png" alt="The Selling settings" width="380">
+</p>
+
 ---
 
 ## Profit requirements
@@ -17,6 +21,10 @@ Normal self-consumption may still use this reserve down to the battery's minimum
 **Numbers:** *Min. profit per kWh*, *Min. total profit*, *Minimum excess kWh for export* · **Text:** *Exclude selling hours*
 
 They apply to **every** charge, discharge and sale rule, and to the [whole period optimisation](optimizer.md).
+
+<p align="center">
+  <img src="../../images/settings-profit-requirements.png" alt="The Profit requirements settings" width="380">
+</p>
 
 | Setting | Default | Meaning |
 |---|---|---|

@@ -34,6 +34,10 @@ The forecast is then corrected by how the last 48 hours went: if the house used 
 the forecast is raised 10 %. The [analysis](dashboard-analysis.md#forecast-accuracy) shows which type
 would have been most accurate for your house.
 
+<p align="center">
+  <img src="../images/consumption-forecast.png" alt="Consumption forecast per hour with the average, EMA and trend forecast types" width="100%">
+</p>
+
 ### Solar forecast
 
 The plan uses the **solar surplus**: solar production minus the house's consumption. Two sources are combined:
@@ -105,6 +109,12 @@ All decisions compare a price now with what a kWh from the battery costs. It is 
 
 So charging from the grid at 0.80 only pays when the energy is used in hours that cost more than 0.99 kr –
 plus the **min. profit per kWh** you have set.
+
+The overview shows what the energy in the battery has cost right now, split into energy, charging loss and wear:
+
+<p align="center">
+  <img src="../images/battery-level-costs-and-plan.png" alt="Battery level costs and the charge/discharge plan in the overview" width="380">
+</p>
 
 ## The rules of thumb BattMind always keeps
 

@@ -49,6 +49,10 @@ simulation) and the elapsed seconds, updated when the step changes and at least 
 the simulation starts it is updated at most every 10 seconds with the percentage done and the simulated
 days, and the finished result (or an error) replaces that same notification.
 
+<p align="center">
+  <img src="../images/what-if-result-notification.png" alt="The what-if action in Developer tools and the result notification comparing current and what-if" width="100%">
+</p>
+
 Example action:
 
     action: battmind.what_if

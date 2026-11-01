@@ -3,6 +3,10 @@
 Only with solar panels configured. See [How BattMind plans](../how-it-works.md#solar-forecast) for how the
 solar surplus is forecast.
 
+<p align="center">
+  <img src="../../images/settings-solar.png" alt="The Solar settings" width="380">
+</p>
+
 ---
 
 ## ☀️ Solar surplus charging
