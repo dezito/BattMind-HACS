@@ -151,6 +151,9 @@ inverters: you add what your inverter should do for each action, and optionally 
 an EV is charging. See [Actions and battery control](docs/actions.md) and the complete
 [Huawei Solar example](docs/inverters/huawei.md).
 
+Find a ready-made setup for your inverter, or share your own, under
+[Blueprint setups](https://github.com/dezito/BattMind-HACS/discussions/categories/blueprint-setups).
+
 The blueprint file is never overwritten on its own. If a new version arrives with a HACS update (or you
 have edited the file yourself), a repair shows up after restart under *Settings → System → Repairs*. If
 you choose to update, the file is replaced with the bundled version, and automations using it are
