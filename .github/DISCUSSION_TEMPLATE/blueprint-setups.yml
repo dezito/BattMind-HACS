@@ -1,0 +1,73 @@
+title: "Setup: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Share how you control your inverter with the **BattMind - control the home battery** blueprint, so
+        others with the same battery can copy it. Write the brand and model in the title, e.g.
+        *Setup: Sonnen eco 10 (sonnenbatterie)*.
+
+        **Copy the whole automation:** open your automation, choose **⋮ → Edit in YAML** and copy everything.
+        Others can then paste it under *Settings → Automations & scenes → Create automation → ⋮ → Edit in YAML*
+        and only change what you mark with `TODO`.
+  - type: input
+    id: battery
+    attributes:
+      label: Inverter and battery
+      description: Brand and model, e.g. Sonnen eco 10, Huawei SUN2000 + LUNA2000 10 kWh.
+    validations:
+      required: true
+  - type: input
+    id: integration
+    attributes:
+      label: Integration
+      description: The integration that controls it, with a link and version, e.g. https://github.com/wlcrs/huawei_solar 1.5.0, Modbus, REST.
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: BattMind and Home Assistant version
+      description: e.g. BattMind 1.2.0, HA 2026.10.
+    validations:
+      required: true
+  - type: dropdown
+    id: tested
+    attributes:
+      label: Tested actions
+      description: The BattMind actions you have seen work on the battery.
+      multiple: true
+      options:
+        - Stop battery
+        - Charge from grid
+        - Forced discharge
+        - Discharge allowed
+        - Solar charging only
+        - Solar charging blocked
+        - EV charging
+    validations:
+      required: true
+  - type: textarea
+    id: automation
+    attributes:
+      label: Automation YAML
+      description: >-
+        The whole automation with `use_blueprint:`. Replace device ids, serial numbers, IP addresses and
+        tokens with `YOUR_DEVICE_ID` and similar, and mark what others must change with `# TODO`.
+      render: yaml
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes
+      description: Anything others should know, e.g. needed delays between commands, inverter settings, firmware, known problems.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before posting
+      options:
+        - label: The YAML contains no personal data (device ids, serial numbers, IP addresses, tokens, names).
+          required: true
+        - label: I have used this setup with BattMind on my own battery.
+          required: true

@@ -43,6 +43,10 @@ blueprint:
     entity (e.g. Cable Juice Planner's `switch.cjp_<car>_powerwall_discharge_above_needed`),
     optionally only above a battery level (e.g.
     `number.cjp_<car>_ev_charge_after_powerwall_battery_level`).
+
+
+    **Ready-made setups:** others' setups for many inverters, ready to paste,
+    are shared under [Blueprint setups](https://github.com/dezito/BattMind-HACS/discussions/categories/blueprint-setups).
   domain: automation
   author: dezito
   homeassistant:
