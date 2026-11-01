@@ -1,4 +1,4 @@
-# BattMind-HACS agent guide
+# BattMind-Integration agent guide
 
 Instructions for coding agents working in this repository. Follow the existing
 implementation and project documentation when this guide does not answer a

@@ -28,7 +28,7 @@ every rule does, and how to connect it to your inverter.
 | [Huawei Solar](inverters/huawei.md) | ready-made actions for the blueprint (LUNA2000) |
 
 Have you set up another inverter? Please share your actions in an
-[issue](https://github.com/dezito/BattMind-HACS/issues), so a page can be added for it.
+[issue](https://github.com/dezito/BattMind-Integration/issues), so a page can be added for it.
 
 ## Reference
 

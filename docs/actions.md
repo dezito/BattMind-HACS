@@ -26,7 +26,7 @@ The blueprint **BattMind - control the home battery** is installed with the inte
 inverters, because you choose what happens with Home Assistant's normal action editor.
 
 Others may already have set it up for your inverter: see
-[Blueprint setups](https://github.com/dezito/BattMind-HACS/discussions/categories/blueprint-setups). Paste a
+[Blueprint setups](https://github.com/dezito/BattMind-Integration/discussions/categories/blueprint-setups). Paste a
 setup under *Settings → Automations & scenes → Create automation → ⋮ → Edit in YAML* and change what is
 marked `TODO`. When yours works, share it there with **New discussion**, so the next one with the same
 inverter can copy it.

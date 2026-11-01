@@ -20,11 +20,11 @@
     "http",
     "lovelace"
   ],
-  "documentation": "https://github.com/dezito/BattMind-HACS",
+  "documentation": "https://github.com/dezito/BattMind-Integration",
   "integration_type": "service",
   "iot_class": "calculated",
-  "issue_tracker": "https://github.com/dezito/BattMind-HACS/issues",
+  "issue_tracker": "https://github.com/dezito/BattMind-Integration/issues",
   "requirements": [],
   "single_config_entry": false,
-  "version": "1.0.5"
+  "version": "1.0.5.1"
 }
