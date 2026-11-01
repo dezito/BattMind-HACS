@@ -70,6 +70,10 @@ integration for price, consumption and PV-based battery planning.
 > [!IMPORTANT]
 > First HACS release. Please open an [issue](https://github.com/dezito/BattMind-Integration/issues) if something doesn't work.
 
+<p align="center">
+  <img src="images/overview-dashboard.png" alt="BattMind dashboard with the battery level forecast, electricity prices, charging history and status" width="100%">
+</p>
+
 📖 **[Documentation](docs/README.md)** – [getting started](docs/getting-started.md), [how BattMind plans](docs/how-it-works.md),
 every rule explained with examples, [inverter setups](docs/inverters/huawei.md) and [FAQ](docs/faq-troubleshooting.md).
 
@@ -129,6 +133,14 @@ every rule explained with examples, [inverter setups](docs/inverters/huawei.md) 
 - **Languages:** Danish, English, German, Polish and Ukrainian
 - **Does not run in Home Assistant's main thread:** all calculations run in BattMind's own worker thread, so
   Home Assistant is not blocked while the plan is calculated
+
+| Battery level costs and plan | Bill with and without battery | Charging history |
+| --- | --- | --- |
+| ![Battery level costs and the charge/discharge plan](images/battery-level-costs-and-plan.png) | ![The bill of the period with and without the battery](images/plan-total-with-and-without-battery.png) | ![Charging history](images/charging-history.png) |
+
+| Economy per month | Planned against actual |
+| --- | --- |
+| ![Economy per month analysis](images/economy-per-month.png) | ![Planned against actual analysis](images/planned-against-actual.png) |
 
 ---
 

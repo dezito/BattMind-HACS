@@ -2,6 +2,10 @@
 
 **Switch:** *Control the battery with the whole period optimisation* (`switch.<prefix>_optimizer_control`) – on by default.
 
+<p align="center">
+  <img src="../../images/settings-control.png" alt="The Control settings: whole period optimisation, battery efficiency, price forecast correction and forecast type" width="380">
+</p>
+
 ## What it does
 
 The rules decide one thing at a time: first what to charge, then what to sell. Each rule is sensible on its

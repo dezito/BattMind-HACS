@@ -7,6 +7,10 @@ used even though it doesn't pay.
 An hour where discharging is blocked becomes `force_solar_only_charging`: the battery can still charge from
 solar, but the house uses the grid.
 
+<p align="center">
+  <img src="../../images/settings-discharging.png" alt="The Discharging settings" width="380">
+</p>
+
 ---
 
 ## 🚫 Profit only

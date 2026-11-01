@@ -20,6 +20,10 @@ It needs these HACS frontend cards: [ApexCharts Card](https://github.com/RomRide
 | **Overview** | the plan per day with a reason for each hour (click a row to see the numbers), the bill of the period without/with the battery (with [Cable Juice Planner](cookbook.md#together-with-cable-juice-planner-ev) also the cars' planned charging and the bill incl. the cars), and the solar forecast per day |
 | **Status** | above the emoji explanation: the battery level and power, house consumption, solar production and kWh charged by solar, the current buy price and `sensor.<prefix>_analysis` (savings this month). Rows whose entity is not configured are left out |
 
+| Battery level forecast | Electricity prices |
+| --- | --- |
+| ![Battery level forecast with the planned charging and discharging](../images/home-battery-soc-forecast.png) | ![Electricity prices with sell price, price forecast and solar forecast](../images/electricity-prices-per-hour.png) |
+
 At the top: **Force planning** recalculates the plan now. The sidebar has the emoji explanation – see [Emojis](emojis.md).
 
 ## Settings
@@ -59,16 +63,37 @@ From the charging history:
 | Avg. price | the month's average buy price over all hours |
 | Savings | what the battery saved, after loss and wear |
 
+<details>
+<summary>Screenshot</summary>
+
+<p align="center"><img src="../images/economy-per-month.png" alt="Economy per month" width="760"></p>
+
+</details>
+
 ### Per rule (12 months)
 
 Charged and discharged kWh per rule. For charging, **est. gain** is the charged kWh after loss, valued
 like the battery's discharges on average, minus their price and wear. For discharging, it is the actual
 savings. Both tables show the same money from two sides – don't add them up.
 
+<details>
+<summary>Screenshot</summary>
+
+<p align="center"><img src="../images/per-rule-12-months.png" alt="Charged and discharged kWh per rule over 12 months" width="380"></p>
+
+</details>
+
 ### Cycles and wear
 
 One cycle = discharged kWh equal to the battery size. **Wear** = wear per kWh × charged kWh. Use it to
 check the wear you set against the battery's guarantee (e.g. 6000 cycles).
+
+<details>
+<summary>Screenshot</summary>
+
+<p align="center"><img src="../images/cycles-and-wear.png" alt="Cycles, wear and savings per month" width="760"></p>
+
+</details>
 
 ### Measured round trip loss
 
@@ -79,6 +104,13 @@ configured, **Used now** is their combined loss at the configured maximum charge
 
 If the measured loss is far from the configured one, check the battery power sensor (and its sign) before
 changing the loss.
+
+<details>
+<summary>Screenshot</summary>
+
+<p align="center"><img src="../images/measured-round-trip-loss.png" alt="Measured round trip loss per month against the configured loss" width="760"></p>
+
+</details>
 
 ### Battery efficiency
 
@@ -114,10 +146,24 @@ as the whole-period optimiser does. **Enhance battery efficiency** under **Setti
 whether the curves are used in calculations. Turning it off keeps the graph, the saved curves and the
 measurements, but planning uses the round-trip loss.
 
+<details>
+<summary>Screenshot</summary>
+
+<p align="center"><img src="../images/battery-efficiency.png" alt="Charging and discharging efficiency by AC power" width="760"></p>
+
+</details>
+
 ### Self-sufficiency
 
 Where the house's consumption came from per hour: first solar, then the battery, the rest from the grid.
 **Self-sufficiency** = (solar + battery) ÷ consumption. **Export** is solar and battery energy sold.
+
+<details>
+<summary>Screenshot</summary>
+
+<p align="center"><img src="../images/self-sufficiency.png" alt="Self-sufficiency per month" width="760"></p>
+
+</details>
 
 ### Forecast accuracy
 
@@ -136,6 +182,13 @@ hours: the type closest to the actual average is not always ⭐. When another ty
 warning shows the numbers behind the suggestion: both types' error, how much smaller it is, and what
 each expected against the actual consumption. Choose the type under *Settings → Forecast type*.
 
+<details>
+<summary>Screenshot</summary>
+
+<p align="center"><img src="../images/forecast-accuracy.png" alt="Forecast accuracy of the consumption forecast types" width="760"></p>
+
+</details>
+
 ### Hindsight score
 
 How much of the possible saving was reached each day:
@@ -146,11 +199,25 @@ The best possible cost is calculated afterwards with the day's actual consumptio
 same start and end level, power, loss and wear. Forecast errors therefore count against the score – 100 %
 would require knowing the future.
 
+<details>
+<summary>Screenshot</summary>
+
+<p align="center"><img src="../images/hindsight-score.png" alt="Hindsight score per day" width="380"></p>
+
+</details>
+
 ### Planned against actual
 
 Every evening at 23 BattMind saves what the plan wants to charge from the grid and sell the next day, and
 compares it with what happened. Big differences come from forecast errors, and from plans that change
 during the day when prices or the battery level change.
+
+<details>
+<summary>Screenshot</summary>
+
+<p align="center"><img src="../images/planned-against-actual.png" alt="Planned grid charging and sale against actual" width="760"></p>
+
+</details>
 
 ### Empty in the expensive hours
 
@@ -160,11 +227,25 @@ hours, and the kWh and money bought from the grid in them. Many such days sugges
 - the consumption forecast is too low (see **Forecast accuracy**), or
 - the profit requirements are so high that BattMind doesn't charge.
 
+<details>
+<summary>Screenshot</summary>
+
+<p align="center"><img src="../images/empty-in-expensive-hours.png" alt="Days with an empty battery in the most expensive hours" width="380"></p>
+
+</details>
+
 ### Solar forecast
 
 The solar surplus the plan expected for the next day (saved the evening before) against the measured
 surplus: **Plan** is the combined forecast, **History (weather)** the part from the stored solar history,
 **Solcast** the forecast integration. **Bias** > 0: too much sun was expected.
+
+<details>
+<summary>Screenshot</summary>
+
+<p align="center"><img src="../images/solar-forecast.png" alt="Planned against measured solar surplus per day" width="760"></p>
+
+</details>
 
 ### Price forecast
 
@@ -196,16 +277,34 @@ Only the buy price is measured, and only hours with a forecast from the price in
 fills from its own price history are not included. The first numbers come at 13:00 the day after the first
 start, "3 days ahead" after 3 days.
 
+<details>
+<summary>Screenshot</summary>
+
+<p align="center"><img src="../images/price-forecast.png" alt="The price forecast against the real price per day ahead" width="760"></p>
+
+</details>
+
 ### History
 
 The required battery level until the next charge (48 hours), kWh charged by solar (7 days) and the
 consumption forecast per hour with the three forecast types.
+
+<details>
+<summary>Screenshot</summary>
+
+<p align="center"><img src="../images/consumption-forecast.png" alt="Consumption forecast per hour with the three forecast types" width="100%"></p>
+
+</details>
 
 ### What-if simulator
 
 A short description and a link to **Settings → Developer tools → Actions** with the
 **battmind.what_if** action preselected (requires an administrator). See
 [What-if simulator](what-if-simulator.md).
+
+<p align="center">
+  <img src="../images/what-if-simulator.png" alt="The What-if simulator card in the analysis" width="100%">
+</p>
 
 ## Editing the dashboard
 

@@ -14,6 +14,10 @@ optimisation may use.
 The examples below use 10 % loss and 0.10 kr/kWh wear: a grid kWh at price *p* costs `p × 1.11 + 0.10` out
 of the battery.
 
+<p align="center">
+  <img src="../../images/settings-charging-from-grid.png" alt="The Charging from the grid settings" width="380">
+</p>
+
 ---
 
 ## 💸 Cheapest periods
