@@ -46,12 +46,12 @@ blueprint:
 
 
     **Ready-made setups:** others' setups for many inverters, ready to paste,
-    are shared under [Blueprint setups](https://github.com/dezito/BattMind-HACS/discussions/categories/blueprint-setups).
+    are shared under [Blueprint setups](https://github.com/dezito/BattMind-Integration/discussions/categories/blueprint-setups).
   domain: automation
   author: dezito
   homeassistant:
     min_version: "2024.10.0"
-  source_url: https://github.com/dezito/BattMind-HACS/blob/main/custom_components/battmind/blueprints/battery_control.yaml
+  source_url: https://github.com/dezito/BattMind-Integration/blob/main/custom_components/battmind/blueprints/battery_control.yaml
   input:
     battmind:
       name: BattMind

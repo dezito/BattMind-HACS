@@ -31,7 +31,7 @@ primary safety system.
 
 ## 2. Install
 
-1. **HACS** → ⋮ → **Custom repositories**: add `https://github.com/dezito/BattMind-HACS` as **Integration**.
+1. **HACS** → ⋮ → **Custom repositories**: add `https://github.com/dezito/BattMind-Integration` as **Integration**.
 2. Search for **BattMind**, install it, and restart Home Assistant.
 3. **Settings → Devices & services → Add integration → BattMind**.
 

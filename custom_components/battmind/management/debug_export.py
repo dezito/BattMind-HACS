@@ -54,7 +54,7 @@ DEBUG_FORMAT = 1
 KEEP_FILES = 5  # per instance
 LINK_VALID = datetime.timedelta(hours=24)
 VIEW_URL = f"/api/{DOMAIN}/debug"
-ISSUE_URL = "https://github.com/dezito/BattMind-HACS/issues/new"
+ISSUE_URL = "https://github.com/dezito/BattMind-Integration/issues/new"
 ISSUE_TEMPLATE = "bug_report.yml"
 LOG_RECORDS = 1000
 LOG_FILE_LINES = 2000

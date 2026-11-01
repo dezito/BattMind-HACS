@@ -3,8 +3,8 @@
 # BattMind🤵‍♂️🔋⚡ for Home Assistant
 
 [![HACS Custom](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://hacs.xyz/docs/faq/custom_repositories/)
-[![GitHub Release](https://img.shields.io/github/v/release/dezito/BattMind-HACS)](https://github.com/dezito/BattMind-HACS/releases)
-[![License](https://img.shields.io/github/license/dezito/BattMind-HACS)](LICENSE)
+[![GitHub Release](https://img.shields.io/github/v/release/dezito/BattMind-Integration)](https://github.com/dezito/BattMind-Integration/releases)
+[![License](https://img.shields.io/github/license/dezito/BattMind-Integration)](LICENSE)
 
 Home battery optimisation that aims to save and earn as much money as possible from the battery.
 
@@ -68,7 +68,7 @@ integration for price, consumption and PV-based battery planning.
 > databases. See [Switching from the PyScript version](docs/migration.md).
 
 > [!IMPORTANT]
-> First HACS release. Please open an [issue](https://github.com/dezito/BattMind-HACS/issues) if something doesn't work.
+> First HACS release. Please open an [issue](https://github.com/dezito/BattMind-Integration/issues) if something doesn't work.
 
 📖 **[Documentation](docs/README.md)** – [getting started](docs/getting-started.md), [how BattMind plans](docs/how-it-works.md),
 every rule explained with examples, [inverter setups](docs/inverters/huawei.md) and [FAQ](docs/faq-troubleshooting.md).
@@ -152,7 +152,7 @@ an EV is charging. See [Actions and battery control](docs/actions.md) and the co
 [Huawei Solar example](docs/inverters/huawei.md).
 
 Find a ready-made setup for your inverter, or share your own, under
-[Blueprint setups](https://github.com/dezito/BattMind-HACS/discussions/categories/blueprint-setups).
+[Blueprint setups](https://github.com/dezito/BattMind-Integration/discussions/categories/blueprint-setups).
 
 The blueprint file is never overwritten on its own. If a new version arrives with a HACS update (or you
 have edited the file yourself), a repair shows up after restart under *Settings → System → Repairs*. If
@@ -189,9 +189,9 @@ reloaded. If the file is deleted, the latest version is put back on the next res
 
 ### HACS (recommended)
 
-[![Open your Home Assistant and add the repository in HACS.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=dezito&repository=BattMind-HACS&category=integration)
+[![Open your Home Assistant and add the repository in HACS.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=dezito&repository=BattMind-Integration&category=integration)
 
-1. **HACS** → ⋮ → **Custom repositories**: add `https://github.com/dezito/BattMind-HACS` as **Integration**.
+1. **HACS** → ⋮ → **Custom repositories**: add `https://github.com/dezito/BattMind-Integration` as **Integration**.
 2. Search for **BattMind**, install it, and restart Home Assistant.
 3. Add the integration:
 
