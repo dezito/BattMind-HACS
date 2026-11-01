@@ -71,7 +71,7 @@ integration for price, consumption and PV-based battery planning.
 > First HACS release. Please open an [issue](https://github.com/dezito/BattMind-Integration/issues) if something doesn't work.
 
 <p align="center">
-  <img src="images/overview-dashboard.png" alt="BattMind dashboard with the battery level forecast, electricity prices, charging history and status" width="100%">
+  <a href="https://sloth.nu/battmind.gif"><img src="https://sloth.nu/battmind.gif" alt="The BattMind dashboard in use: battery level forecast, electricity prices, plan, settings and analysis" width="100%"></a>
 </p>
 
 📖 **[Documentation](docs/README.md)** – [getting started](docs/getting-started.md), [how BattMind plans](docs/how-it-works.md),
